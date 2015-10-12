@@ -34,8 +34,8 @@ class Log: public i2p::util::MsgQueue<LogMsg>
 {
     public:
 
-        Log (): m_LogStream (nullptr) { SetOnEmpty (std::bind (&Log::Flush, this)); };
-        ~Log () { delete m_LogStream; };
+    Log (): m_LogStream (nullptr) { SetOnEmpty (std::bind (&Log::Flush, this)); };
+    ~Log () { delete m_LogStream; };
 
 		void SetLogFile (const std::string& fullFilePath);
 		void SetLogStream (std::ostream * logStream);
@@ -44,7 +44,7 @@ class Log: public i2p::util::MsgQueue<LogMsg>
 
     private:
 
-        void Flush ();
+    void Flush ();
 
 	private:
 

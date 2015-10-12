@@ -1,5 +1,6 @@
 #include <cryptopp/dh.h>
 #include "util/Log.h"
+#include "util/Stats.h"
 #include "crypto/CryptoConst.h"
 #include "RouterContext.h"
 #include "I2NPProtocol.h"
@@ -251,7 +252,14 @@ namespace transport
             if (!connected) return;
         }   
         if (!it->second.sessions.empty ())
+        {
+            // inform stats
+            for ( auto & msg : msgs )
+            {
+              i2p::stats::SentI2NP(msg->GetTypeID(), ident);
+            }
             it->second.sessions.front ()->SendI2NPMessages (msgs);
+        }
         else
         {   
             for (auto it1: msgs)
@@ -433,6 +441,11 @@ namespace transport
             if (it != m_Peers.end ())
             {
                 it->second.sessions.push_back (session);
+                // inform stats
+                for ( auto & msg : it->second.delayedMessages )
+                {
+                    i2p::stats::SentI2NP(msg->GetTypeID(), ident);
+                }
                 session->SendI2NPMessages (it->second.delayedMessages);
                 it->second.delayedMessages.clear ();
             }

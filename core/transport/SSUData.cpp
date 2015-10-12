@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <boost/bind.hpp>
 #include "util/Log.h"
+#include "util/Stats.h"
 #include "util/Timestamp.h"
 #include "NetworkDatabase.h"
 #include "SSU.h"
@@ -240,6 +241,10 @@ namespace transport
                         else
                             ScheduleDecay ();
                         m_ReceivedMessages.insert (msgID);
+                        // we got the next message
+                        // inform stats
+                        i2p::stats::RecvI2NP(msg->GetTypeID(), m_Session.m_RemoteIdentity.GetIdentHash());
+                        // put onto handler
                         m_Handler.PutNextMessage (msg);
                     }   
                     else
@@ -299,7 +304,7 @@ namespace transport
         }   
         if (m_SentMessages.empty ()) // schedule resend at first message only
             ScheduleResend ();
-        
+
         auto ret = m_SentMessages.insert (std::make_pair (msgID, std::unique_ptr<SentMessage>(new SentMessage))); 
         std::unique_ptr<SentMessage>& sentMessage = ret.first->second;
         if (ret.second) 

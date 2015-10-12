@@ -5,6 +5,7 @@
 #include <cryptopp/adler32.h>
 #include "util/base64.h"
 #include "util/Log.h"
+#include "util/Stats.h"
 #include "util/Timestamp.h"
 #include "crypto/CryptoConst.h"
 #include "I2NPProtocol.h"
@@ -583,8 +584,13 @@ namespace transport
         if (m_NextMessageOffset >= m_NextMessage->len + 4) // +checksum
         {   
             // we have a complete I2NP message
-            if (CryptoPP::Adler32().VerifyDigest (m_NextMessage->buf + m_NextMessageOffset - 4, m_NextMessage->buf, m_NextMessageOffset - 4))   
+            if (CryptoPP::Adler32().VerifyDigest (m_NextMessage->buf + m_NextMessageOffset - 4, m_NextMessage->buf, m_NextMessageOffset - 4))
+            {
+                // inform stats
+                i2p::stats::RecvI2NP(m_NextMessage->GetTypeID(), m_RemoteIdentity.GetIdentHash());
+                // tell handler
                 m_Handler.PutNextMessage (m_NextMessage);
+            }
             else
                 LogPrint (eLogWarning, "Incorrect Adler checksum of NTCP message. Dropped");
             m_NextMessage = nullptr;

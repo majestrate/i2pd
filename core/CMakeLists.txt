@@ -12,6 +12,7 @@ set(CORE_SRC
     "util/util.cpp"
     "util/Log.cpp"
     "util/HTTP.cpp"
+    "util/Stats.cpp"
     "tunnel/TransitTunnel.cpp"
     "tunnel/Tunnel.cpp"
     "tunnel/TunnelGateway.cpp"
