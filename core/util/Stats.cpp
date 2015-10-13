@@ -31,7 +31,9 @@ void EventPumper::RemoveEventListener(HandlerID id)
       {
         itr->second.erase(hitr);
       }
+      hitr++;
     }
+    itr++;
   }
 }
 
@@ -46,7 +48,8 @@ void EventPumper::GotEvent(EventType type, EventData const & d, Timestamp ts)
     {
       // call handler
       // TODO: use another thread?
-      item.first(d, ts);
+      auto func = item.first;
+      func(d, ts);
     }
   }
 }

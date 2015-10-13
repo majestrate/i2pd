@@ -20,7 +20,11 @@ HTTPConnection::HTTPConnection(boost::asio::ip::tcp::socket* socket,
 void HTTPConnection::Terminate()
 {
     m_Socket->close();
-    if (m_StatsHandlerID) i2p::stats::DeregisterEventListener(m_StatsHandlerID);
+    if (m_StatsHandlerID)
+    {
+      i2p::stats::DeregisterEventListener(m_StatsHandlerID);
+      m_StatsHandlerID = 0;
+    }
 }
 
 void HTTPConnection::Receive()
@@ -175,7 +179,7 @@ void HTTPConnection::HandleRequest()
 void HTTPConnection::WriteNextWebsocketFrame()
 {
   std::lock_guard<std::mutex> lock(m_FramesMutex);
-  if( m_SendFrames.size() )
+  if( m_SendFrames.size() > 0)
   {
     auto frame = m_SendFrames[0];
     boost::asio::async_write(
@@ -190,10 +194,14 @@ void HTTPConnection::HandleWebsocketSend(const boost::system::error_code & ecode
 {
   if(ecode)
   {
-    // failed send
-    boost::system::error_code ignored_ec;
-    m_Socket->shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
-    Terminate();
+    if (ecode != boost::asio::error::operation_aborted)
+    {
+      LogPrint("websocket", ecode.message());
+      // failed send
+      boost::system::error_code ignored_ec;
+      m_Socket->shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
+      Terminate();
+    }
     return;
   }
   WriteNextWebsocketFrame();
@@ -230,8 +238,6 @@ void HTTPConnection::BeginWebsocketUpgrade()
       m_Reply.setHeader("Sec-Websocket-Accept", wskeyhash);
       m_Reply.setHeader("Connection", "Upgrade");
       m_Reply.setHeader("Upgrade", "websocket");
-      
-      // success
       websocket = true;
       
   } catch (...) {
@@ -249,9 +255,13 @@ void HTTPConnection::HandleWebsocketWriteReply(const boost::system::error_code &
 {
   if(ecode)
   {
-    boost::system::error_code ignored_ec;
-    m_Socket->shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
-    Terminate();
+    if (ecode != boost::asio::error::operation_aborted)
+    {
+      LogPrint("websocket", ecode.message());
+      boost::system::error_code ignored_ec;
+      m_Socket->shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
+      Terminate();
+    }
     return;
   }
   
@@ -274,7 +284,9 @@ void HTTPConnection::WebsocketWriteStats(i2p::stats::EventData evdata, i2p::stat
     {
       ss << "\"" << elem << "\", ";
     }
-    ss << "null]"; // ends with a null so it's easier for us on this side
+    
+    ss << std::chrono::duration_cast<std::chrono::milliseconds>(evtime.time_since_epoch()).count() ;
+    ss << " ]"; 
     auto frames = i2p::util::http::CreateWebsocketFrames(ss.str());
     QueueSendFrames(frames);
     WriteNextWebsocketFrame();
