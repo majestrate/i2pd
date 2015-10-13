@@ -5,8 +5,9 @@
 #include <map>
 #include <functional>
 #include <memory>
-#include "Queue.h"
 #include "I2NPProtocol.h"
+#include "Queue.h"
+#include "util/Log.h"
 
 //
 // Stats.h -- i2p router fancy statistics and events manager
@@ -31,6 +32,9 @@ enum EventType
   eNumEventTypes
 };
 
+// unique identifier for an event handler
+typedef uint64_t HandlerID;
+  
 // to be converted to json array for websockets
 typedef std::vector<std::string> EventData;
 
@@ -52,13 +56,16 @@ class EventPumper : public i2p::util::MsgQueue<Event>
 {
 public:
   // register an event handler for this even type
-  void AddEventListener(EventType evtype, EventHandler listener);
+  HandlerID AddEventListener(EventType evtype, EventHandler listener);
+  void RemoveEventListener(HandlerID id);
   // we got an event
   void GotEvent(EventType type, EventData const & d, Timestamp ts);
 private:
-  typedef std::vector<EventHandler> HandlerContainer;
+  typedef std::pair<EventHandler, HandlerID> HandlerPair;
+  typedef std::vector<HandlerPair> HandlerContainer;
   std::map<EventType, HandlerContainer> m_handlers;
   std::mutex m_handlers_mtx;
+  HandlerID m_NextID;
 };
 
 struct Event
@@ -78,7 +85,7 @@ void SentI2NP(uint8_t msgtype, i2p::data::IdentHash const & dest);
 
 extern EventPumper * g_ev_pumper;
 
-inline void StartEvents()
+inline void Start()
 {
   if (!g_ev_pumper)
   {
@@ -86,7 +93,7 @@ inline void StartEvents()
   }
 }
 
-inline void StopEvents()
+inline void Stop()
 {
   if(g_ev_pumper)
   {
@@ -97,10 +104,23 @@ inline void StopEvents()
   }
 }
 
-inline void RegisterEventListener(EventType type, EventHandler handler)
+// returns the id of the listener or -1 on error
+inline HandlerID RegisterEventListener(EventType type, EventHandler handler)
 {
-  StartEvents();
-  g_ev_pumper->AddEventListener(type, handler);
+  if (!g_ev_pumper)
+  {
+    LogPrint(eLogError, "Not Registering Event Listener: stats not running");
+    return -1;
+  }
+  return g_ev_pumper->AddEventListener(type, handler);
+}
+  
+inline void DeregisterEventListener(HandlerID id)
+{
+  if(g_ev_pumper)
+  {
+    g_ev_pumper->RemoveEventListener(id);
+  }
 }
 
 }

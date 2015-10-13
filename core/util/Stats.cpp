@@ -7,10 +7,32 @@ namespace stats
 
 EventPumper * g_ev_pumper = nullptr;
 
-void EventPumper::AddEventListener(EventType evtype, EventHandler listener)
+HandlerID EventPumper::AddEventListener(EventType evtype, EventHandler listener)
 {
   std::lock_guard<std::mutex> lock(m_handlers_mtx);
-  m_handlers[evtype].push_back(listener);
+  if(m_NextID == 0) m_NextID++;
+  auto id = m_NextID;
+  m_handlers[evtype].push_back({listener, id});
+  m_NextID++;
+  return id;
+}
+
+void EventPumper::RemoveEventListener(HandlerID id)
+{
+  std::lock_guard<std::mutex> lock(m_handlers_mtx);
+
+  auto itr = m_handlers.begin();
+  while(itr != m_handlers.end())
+  {
+    auto hitr = itr->second.begin();
+    while(hitr != itr->second.end())
+    {
+      if (hitr->second == id)
+      {
+        itr->second.erase(hitr);
+      }
+    }
+  }
 }
 
 void EventPumper::GotEvent(EventType type, EventData const & d, Timestamp ts)
@@ -20,11 +42,11 @@ void EventPumper::GotEvent(EventType type, EventData const & d, Timestamp ts)
   if (search != m_handlers.end())
   {
     // we have handlers
-    for ( auto & handler : search->second )
+    for ( auto & item : search->second )
     {
       // call handler
       // TODO: use another thread?
-      handler(d, ts);
+      item.first(d, ts);
     }
   }
 }

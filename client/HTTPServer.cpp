@@ -1,4 +1,5 @@
 #include <boost/bind.hpp>
+#include <boost/lexical_cast.hpp>
 #include <ctime>
 #include <fstream>
 #include "util/Log.h"
@@ -11,7 +12,7 @@ namespace util {
 
 HTTPConnection::HTTPConnection(boost::asio::ip::tcp::socket* socket,
  std::shared_ptr<client::i2pcontrol::I2PControlSession> session)
-    : m_Socket(socket), m_BufferLen(0), m_Request(), m_Reply(), m_Session(session)
+    : m_Socket(socket), m_BufferLen(0), m_Request(), m_Reply(), m_StatsHandlerID(0), m_Session(session)
 {
     
 }
@@ -19,6 +20,7 @@ HTTPConnection::HTTPConnection(boost::asio::ip::tcp::socket* socket,
 void HTTPConnection::Terminate()
 {
     m_Socket->close();
+    if (m_StatsHandlerID) i2p::stats::DeregisterEventListener(m_StatsHandlerID);
 }
 
 void HTTPConnection::Receive()
@@ -149,6 +151,14 @@ void HTTPConnection::HandleRequest()
 {
 
     std::string uri = m_Request.getUri();
+
+    // upgrade to websocket for stats
+    if(uri == "/stats.sock")
+    {
+        BeginWebsocketUpgrade();
+        return;
+    }
+      
     if(uri == "/")
         uri = "index.html";
 
@@ -162,6 +172,121 @@ void HTTPConnection::HandleRequest()
     }
 }
 
+void HTTPConnection::WriteNextWebsocketFrame()
+{
+  std::lock_guard<std::mutex> lock(m_FramesMutex);
+  if( m_SendFrames.size() )
+  {
+    auto frame = m_SendFrames[0];
+    boost::asio::async_write(
+      *m_Socket, boost::asio::buffer(frame.data(), frame.size()),
+      std::bind(&HTTPConnection::HandleWebsocketSend, shared_from_this(), std::placeholders::_1)
+    );
+    m_SendFrames.erase(m_SendFrames.begin());
+  }
+}
+
+void HTTPConnection::HandleWebsocketSend(const boost::system::error_code & ecode)
+{
+  if(ecode)
+  {
+    // failed send
+    boost::system::error_code ignored_ec;
+    m_Socket->shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
+    Terminate();
+    return;
+  }
+  WriteNextWebsocketFrame();
+}
+
+void HTTPConnection::BeginWebsocketUpgrade()
+{
+  bool websocket = false;
+  try {
+      // do key hash
+      auto wskey = m_Request.getHeader("Sec-WebSocket-Key");
+      auto wskeyhash = i2p::util::http::WebsocketKeyHash(wskey);
+
+      // check websocket version
+      auto wsvers = m_Request.getHeader("Sec-WebSocket-Version");
+      auto wsversion = boost::lexical_cast<int>(wsvers);
+      if (wsversion != 13)
+      {
+          throw std::runtime_error("invalid websocket version");
+      }
+      // check additional headers
+      auto connection = m_Request.getHeader("Connection");
+      if (connection != "Upgrade")
+      {
+          throw std::runtime_error("invalid connection header");
+      }
+      auto upgrade = m_Request.getHeader("Upgrade");
+      if (upgrade != "websocket")
+      {
+          throw std::runtime_error("invalid upgrade header");
+      }
+      // we are go for websocket
+      m_Reply = i2p::util::http::Response(101);
+      m_Reply.setHeader("Sec-Websocket-Accept", wskeyhash);
+      m_Reply.setHeader("Connection", "Upgrade");
+      m_Reply.setHeader("Upgrade", "websocket");
+      
+      // success
+      websocket = true;
+      
+  } catch (...) {
+    // send 400 as we have missing headers or something is wrong
+    m_Reply = i2p::util::http::Response(400);
+  }
+  
+  // send reply
+  SendReply(websocket);
+  
+}
+
+
+void HTTPConnection::HandleWebsocketWriteReply(const boost::system::error_code & ecode)
+{
+  if(ecode)
+  {
+    boost::system::error_code ignored_ec;
+    m_Socket->shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
+    Terminate();
+    return;
+  }
+  
+  // we succeeded upgrading the connection
+  // subscribe to events
+  m_StatsHandlerID = i2p::stats::RegisterEventListener(i2p::stats::eEventI2NP,
+    std::bind(&HTTPConnection::WebsocketWriteStats,
+              shared_from_this(),
+              std::placeholders::_1, std::placeholders::_2));
+}
+
+void HTTPConnection::WebsocketWriteStats(i2p::stats::EventData evdata, i2p::stats::Timestamp evtime)
+{
+  if(m_StatsHandlerID)
+  {
+    // create json array
+    std::stringstream ss;
+    ss << "[";
+    for ( auto & elem : evdata )
+    {
+      ss << "\"" << elem << "\", ";
+    }
+    ss << "null]"; // ends with a null so it's easier for us on this side
+    auto frames = i2p::util::http::CreateWebsocketFrames(ss.str());
+    QueueSendFrames(frames);
+    WriteNextWebsocketFrame();
+  }
+}
+
+void HTTPConnection::QueueSendFrames(const std::vector<util::http::WebsocketFrame> & frames)
+{
+  std::lock_guard<std::mutex> lock(m_FramesMutex);
+  for ( auto & frame : frames ) m_SendFrames.push_back(frame); 
+}
+  
 void HTTPConnection::HandleI2PControlRequest()
 {
     std::stringstream ss(m_Request.getContent());
@@ -182,7 +307,7 @@ bool HTTPConnection::isAllowed(const std::string& address) const
     return true;
 }
 
-void HTTPConnection::SendReply()
+void HTTPConnection::SendReply(bool websocket)
 {
     // we need the date header to be compliant with HTTP 1.1
     std::time_t time_now = std::time(nullptr);
@@ -191,10 +316,20 @@ void HTTPConnection::SendReply()
         m_Reply.setHeader("Date", std::string(time_buff));
         m_Reply.setContentLength();
     }
-    boost::asio::async_write(
+    if (websocket)
+    {
+      boost::asio::async_write(
+        *m_Socket, boost::asio::buffer(m_Reply.toString()),
+        std::bind(&HTTPConnection::HandleWebsocketWriteReply, shared_from_this(), std::placeholders::_1)
+        );
+    }
+    else
+    {
+      boost::asio::async_write(
         *m_Socket, boost::asio::buffer(m_Reply.toString()),
         std::bind(&HTTPConnection::HandleWriteReply, shared_from_this(), std::placeholders::_1)
-    );
+        );
+    }
 }
 
 HTTPServer::HTTPServer(const std::string& address, int port):

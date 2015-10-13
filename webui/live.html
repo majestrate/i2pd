@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Purple I2P Live Events</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="css/main.css">
+    <script type="text/javascript" src="javascript/stats.js"></script>
+  </head>
+  <body>
+    <div id="livepanel">
+    </div>
+    <script type="text/javascript">
+      var elem = document.getElementById("livepanel");
+      var sock = new I2PStats.Socket(elem);
+      sock.start();
+    </script>
+  </body>
+</html>

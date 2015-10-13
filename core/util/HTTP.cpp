@@ -4,12 +4,94 @@
 #include <regex>
 #include <fstream>
 #include <boost/filesystem.hpp>
+#include <cryptopp/sha.h>
 #include "Log.h"
+#include "base64.h"
 
 namespace i2p {
 namespace util {
 namespace http {
 
+// see https://en.wikipedia.org/wiki/WebSocket
+static const char * websocket_guid = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+  
+std::string WebsocketKeyHash(const std::string& key)
+{
+  uint8_t digest[20];
+  char wshash[128];
+  std::memset(wshash, 0, sizeof(wshash));
+  std::stringstream ss;
+  ss << key;
+  ss << websocket_guid;
+  auto str = ss.str();
+  CryptoPP::SHA1().CalculateDigest(digest, (const uint8_t*)str.c_str(), str.size());
+  auto encoded = i2p::util::ByteStreamToBase64(digest, sizeof(digest), wshash, sizeof(wshash));
+  std::stringstream s;
+  for(std::size_t idx = 0; idx < encoded; idx++)
+  {
+    char c = wshash[idx];
+    switch(c)
+    {
+    case '-':
+      s << '+';
+      break;
+    case '~':
+      s << '/';
+      break;
+    default:
+      s << c;
+    }
+  }
+  return s.str();
+}
+
+std::vector<WebsocketFrame> CreateWebsocketFrames(const std::string & data, uint8_t chunksize)
+{
+  auto itr = data.begin();
+  std::vector<WebsocketFrame> frames;
+  std::size_t datasize = data.size();
+  auto chunks = datasize / chunksize;
+  std::size_t counter = datasize;
+  WebsocketFrame initial;
+  if (chunks && datasize > chunksize) {
+    initial.push_back(0x01);
+    initial.push_back(chunksize);
+    initial.insert(initial.end(), itr, itr+chunksize);
+    itr += chunksize;
+    counter -= chunksize;
+  }
+  else // send it in 1 frame
+  {
+    initial.push_back(0x81);
+    initial.push_back(uint8_t(datasize));
+    initial.insert(initial.end(), itr, data.end());
+  }
+  frames.push_back(initial);
+
+  while(chunks)
+  {
+    WebsocketFrame frame;
+    if (counter <= chunksize)
+    {
+      // last packet
+      frame.push_back(0x80);
+      frame.push_back(uint8_t(counter));
+      frame.insert(frame.end(), itr, data.end());
+    }
+    else
+    {
+      frame.push_back(0x00);
+      frame.push_back(chunksize);
+      frame.insert(frame.end(), itr, itr + chunksize);
+    }
+    counter -= chunksize;
+    itr += chunksize;
+    chunks--;
+    frames.push_back(frame);
+  }
+  return frames;
+}
+  
 void Request::parseRequestLine(const std::string& line)
 {
     std::stringstream ss(line);
@@ -159,6 +241,8 @@ std::string Response::toString() const
 std::string Response::getStatusMessage() const
 {
     switch(status) {
+        case 101:
+            return "Switching Protocols";
         case 105:
             return "Name Not Resolved";
         case 200:

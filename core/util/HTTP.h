@@ -4,11 +4,19 @@
 #include <string>
 #include <map>
 #include <sstream>
+#include <vector>
 
 namespace i2p {
 namespace util {
 namespace http {
 
+
+std::string WebsocketKeyHash(const std::string& key);
+
+typedef std::vector<uint8_t> WebsocketFrame;
+
+  std::vector<WebsocketFrame> CreateWebsocketFrames(const std::string & data, uint8_t chunksize=120);
+  
 class Request {
 
     void parseRequestLine(const std::string& line);

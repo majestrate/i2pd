@@ -12,6 +12,7 @@
 #include "NetworkDatabase.h"
 #include "Garlic.h"
 #include "util/util.h"
+#include "util/Stats.h"
 #include "Streaming.h"
 #include "Destination.h"
 #include "HTTPServer.h"
@@ -116,6 +117,9 @@ namespace i2p
                 else
                     StartLog (""); // write to stdout
             }
+            i2p::stats::Start();
+            LogPrint("Stats started");
+
             d.httpServer = new i2p::util::HTTPServer(
                 i2p::util::config::GetArg("-httpaddress", "127.0.0.1"),
                 i2p::util::config::GetArg("-httpport", 7070)
@@ -130,11 +134,14 @@ namespace i2p
             LogPrint("Tunnels started");
             i2p::client::context.Start ();
             LogPrint("Client started");
+            i2p::stats::Start();
+            LogPrint("Stats started");
             return true;
         }
 
         bool Daemon_Singleton::stop()
         {
+          
             LogPrint("Shutdown started.");
             i2p::client::context.Stop();
             LogPrint("Client stopped");
@@ -146,6 +153,8 @@ namespace i2p
             LogPrint("NetDB stopped");
             d.httpServer->Stop();
             LogPrint("HTTP Server stopped");
+            i2p::stats::Stop();
+            LogPrint("Stats stopped");
 
             StopLog ();
 

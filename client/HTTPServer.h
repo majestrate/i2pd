@@ -8,6 +8,7 @@
 #include <boost/array.hpp>
 #include "i2pcontrol/I2PControl.h"
 #include "util/HTTP.h"
+#include "util/Stats.h"
 
 namespace i2p {
 namespace util {
@@ -30,10 +31,29 @@ private:
     void HandleReceive(const boost::system::error_code& ecode, std::size_t bytes_transferred);
     void RunRequest();
     void HandleWriteReply(const boost::system::error_code& ecode);
-    void SendReply();
+    void SendReply(bool websocket=false);
 
     void Send404Reply();
 
+    // begin websocket handshake
+    void BeginWebsocketUpgrade();
+
+
+    void HandleWebsocketWriteReply(const boost::system::error_code & ecode);
+
+    // TODO: handle this
+    void HandleWebsocketReceive(const boost::system::error_code & ecode, std::size_t bytes_transferred);
+    // TODO: handle this
+    void HandleWebsocketSend(const boost::system::error_code & ecode);
+
+    void QueueSendFrames(const std::vector<util::http::WebsocketFrame> & frames);
+    void WriteNextWebsocketFrame();
+    
+    // write stats callback for websocket
+    void WebsocketWriteStats(i2p::stats::EventData evdata, i2p::stats::Timestamp evtime);
+
+    
+    
     /*
      * @throw std::runtime_error when the file is not accessible
      */
@@ -50,6 +70,10 @@ private:
     size_t m_BufferLen;
     util::http::Request m_Request;
     util::http::Response m_Reply;
+    i2p::stats::HandlerID m_StatsHandlerID;
+    std::mutex m_FramesMutex;
+    std::vector<util::http::WebsocketFrame> m_SendFrames;
+    std::vector<util::http::WebsocketFrame> m_RecvFrames;
     std::shared_ptr<i2p::client::i2pcontrol::I2PControlSession> m_Session;
 };
 
