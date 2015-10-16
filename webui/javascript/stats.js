@@ -159,6 +159,7 @@ I2PStats.Socket.prototype = {
   tick : function() {
     for ( var n in this.nodes ) {
       this.nodes[n].update();
+      if ( n === "US" ) continue;
       if ( this.nodes[n].cyclesQuiet > 10 ) {
         delete(this.nodes[n]);
         // remove cy node
