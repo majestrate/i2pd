@@ -298,11 +298,11 @@ namespace tunnel
     std::shared_ptr<const i2p::data::RouterInfo> TunnelPool::SelectNextHop (std::shared_ptr<const i2p::data::RouterInfo> prevHop) const
     {
         bool isExploratory = (m_LocalDestination == &i2p::context); // TODO: implement it better
-        auto hop = isExploratory ? i2p::data::netdb.GetRandomRouter (prevHop): 
+        auto hop = isExploratory ? i2p::data::netdb.GetHighBandwidthRandomRouter (prevHop): 
             i2p::data::netdb.GetHighBandwidthRandomRouter (prevHop);
 
         if (!hop || hop->GetProfile ()->IsBad ())
-            hop = i2p::data::netdb.GetRandomRouter ();
+            hop = i2p::data::netdb.GetHighBandwidthRandomRouter ();
         return hop; 
     }   
 

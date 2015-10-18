@@ -23,6 +23,7 @@ namespace data
     const char CAPS_FLAG_HIGH_BANDWIDTH1 = 'M'; 
     const char CAPS_FLAG_HIGH_BANDWIDTH2 = 'N';
     const char CAPS_FLAG_HIGH_BANDWIDTH3 = 'O';
+    const char CAPS_FLAG_UNLIMITED_BANDWIDTH = 'X';
 
     const char CAPS_FLAG_SSU_TESTING = 'B';
     const char CAPS_FLAG_SSU_INTRODUCER = 'C';

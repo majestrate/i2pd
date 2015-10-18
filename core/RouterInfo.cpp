@@ -247,9 +247,7 @@ namespace data
                 case CAPS_FLAG_FLOODFILL:
                     m_Caps |= Caps::eFloodfill;
                 break;
-                case CAPS_FLAG_HIGH_BANDWIDTH1:
-                case CAPS_FLAG_HIGH_BANDWIDTH2:
-                case CAPS_FLAG_HIGH_BANDWIDTH3:
+                case CAPS_FLAG_UNLIMITED_BANDWIDTH:
                     m_Caps |= Caps::eHighBandwidth;
                 break;
                 case CAPS_FLAG_HIDDEN:

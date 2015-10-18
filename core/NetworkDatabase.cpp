@@ -854,6 +854,15 @@ namespace data
             });
     }   
     
+    std::shared_ptr<const RouterInfo> NetDb::GetHighBandwidthRandomRouter () const
+    {
+        return GetRandomRouter (
+            [](std::shared_ptr<const RouterInfo> router)->bool 
+            { 
+                return !router->IsHidden () && (router->GetCaps () & RouterInfo::eHighBandwidth);
+            });
+    }   
+    
     std::shared_ptr<const RouterInfo> NetDb::GetHighBandwidthRandomRouter (std::shared_ptr<const RouterInfo> compatibleWith) const
     {
         return GetRandomRouter (
