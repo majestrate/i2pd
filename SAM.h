@@ -129,7 +129,7 @@ namespace client
 			bool m_IsSilent;
 			std::shared_ptr<i2p::stream::Stream> m_Stream;
 			SAMSession * m_Session;
-			bool m_Removed; // if we have been removed from the parent session
+			bool m_Removed; // if we are removed from the parent session
 	};	
 
 	struct SAMSession

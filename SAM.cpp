@@ -48,8 +48,8 @@ namespace client
 			case eSAMSocketTypeStream:
 			{
 				if (m_Session && !m_Removed) {
-					m_Session->sockets.remove (shared_from_this ());
 					m_Removed = true;
+					m_Session->sockets.remove (shared_from_this ());
 				}
 				break;
 			}
@@ -58,8 +58,8 @@ namespace client
 				if (m_Session)
 				{
 					if (!m_Removed) {
-						m_Session->sockets.remove (shared_from_this ());
 						m_Removed = true;
+						m_Session->sockets.remove (shared_from_this ());
 					}
 					m_Session->localDestination->StopAcceptingStreams ();
 				}
@@ -68,10 +68,13 @@ namespace client
 			case eSAMSocketTypeTerminated:
 				return;
 			default:
-				;
+				return;
 		}
 		m_SocketType = eSAMSocketTypeTerminated;
-		m_Socket.close ();
+		if (m_Socket.is_open ()) {
+			m_Socket.cancel ();
+			m_Socket.close ();
+		}
 	}
 
 	void SAMSocket::ReceiveHandshake ()
