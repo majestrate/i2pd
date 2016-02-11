@@ -18,7 +18,7 @@ namespace client
 	SAMSocket::SAMSocket (SAMBridge& owner): 
 		m_Owner (owner), m_Socket (m_Owner.GetService ()), m_Timer (m_Owner.GetService ()),
 		m_BufferOffset (0), m_SocketType (eSAMSocketTypeUnknown), m_IsSilent (false), 
-		m_Stream (nullptr), m_Session (nullptr)
+		m_Stream (nullptr), m_Session (nullptr), m_Removed (false)
 	{
 	}
 
@@ -47,9 +47,9 @@ namespace client
 			break;
 			case eSAMSocketTypeStream:
 			{
-				if (m_Session) {
+				if (m_Session && !m_Removed) {
 					m_Session->sockets.remove (shared_from_this ());
-					m_Session = nullptr;
+					m_Removed = true;
 				}
 				break;
 			}
@@ -57,9 +57,11 @@ namespace client
 			{
 				if (m_Session)
 				{
-					m_Session->sockets.remove (shared_from_this ());
+					if (!m_Removed) {
+						m_Session->sockets.remove (shared_from_this ());
+						m_Removed = true;
+					}
 					m_Session->localDestination->StopAcceptingStreams ();
-					m_Session = nullptr;
 				}
 				break;
 			}
