@@ -608,8 +608,12 @@ namespace stream
 				}
 			}	
 		}	
-		if (!m_CurrentOutboundTunnel || !m_CurrentOutboundTunnel->IsEstablished ())
-			m_CurrentOutboundTunnel = m_LocalDestination.GetOwner ()->GetTunnelPool ()->GetNewOutboundTunnel (m_CurrentOutboundTunnel);
+		if (!m_CurrentOutboundTunnel || !m_CurrentOutboundTunnel->IsEstablished ()) {
+			i2p::tunnel::TunnelPool * pool = m_LocalDestination.GetOwner()->GetTunnelPool().get();
+			if (pool) {
+				m_CurrentOutboundTunnel = pool->GetNewOutboundTunnel (m_CurrentOutboundTunnel);
+			}
+		}
 		if (!m_CurrentOutboundTunnel)
 		{
 			LogPrint (eLogError, "Streaming: No outbound tunnels in the pool");
