@@ -47,8 +47,10 @@ namespace client
 			break;
 			case eSAMSocketTypeStream:
 			{
-				if (m_Session)
+				if (m_Session) {
 					m_Session->sockets.remove (shared_from_this ());
+					m_Session = nullptr;
+				}
 				break;
 			}
 			case eSAMSocketTypeAcceptor:
@@ -57,9 +59,12 @@ namespace client
 				{
 					m_Session->sockets.remove (shared_from_this ());
 					m_Session->localDestination->StopAcceptingStreams ();
+					m_Session = nullptr;
 				}
 				break;
 			}
+			case eSAMSocketTypeTerminated:
+				return;
 			default:
 				;
 		}
