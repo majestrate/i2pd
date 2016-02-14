@@ -113,7 +113,9 @@ namespace stream
 				if (!m_IsAckSendScheduled)
 				{
 					m_IsAckSendScheduled = true;
-					m_AckSendTimer.expires_from_now (boost::posix_time::milliseconds(ACK_SEND_TIMEOUT));
+					auto ackTimeout = m_RTT/10;
+					if (ackTimeout > ACK_SEND_TIMEOUT) ackTimeout = ACK_SEND_TIMEOUT;
+					m_AckSendTimer.expires_from_now (boost::posix_time::milliseconds(ackTimeout));
 					m_AckSendTimer.async_wait (std::bind (&Stream::HandleAckSendTimer,
 						shared_from_this (), std::placeholders::_1));
 				}
@@ -274,7 +276,7 @@ namespace stream
 				if (!seqn && m_RoutingSession) // first message confirmed
 					m_RoutingSession->SetSharedRoutingPath (
 						std::make_shared<i2p::garlic::GarlicRoutingPath> (
-							i2p::garlic::GarlicRoutingPath{m_CurrentOutboundTunnel, m_CurrentRemoteLease, 0}));
+							i2p::garlic::GarlicRoutingPath{m_CurrentOutboundTunnel, m_CurrentRemoteLease, m_RTT, 0, 0}));
 			}
 			else
 				break;
@@ -605,6 +607,8 @@ namespace stream
 				{
 					m_CurrentOutboundTunnel = routingPath->outboundTunnel;
 					m_CurrentRemoteLease = routingPath->remoteLease;
+					m_RTT = routingPath->rtt;
+					m_RTO = m_RTT*1.5; // TODO: implement it better
 				}
 			}	
 		}	
@@ -623,7 +627,7 @@ namespace stream
 		auto ts = i2p::util::GetMillisecondsSinceEpoch ();		
 		if (!m_CurrentRemoteLease || ts >= m_CurrentRemoteLease->endDate - i2p::tunnel::TUNNEL_EXPIRATION_THRESHOLD*1000)
 			UpdateCurrentRemoteLease (true);
-		if (m_CurrentRemoteLease && ts < m_CurrentRemoteLease->endDate)
+		if (m_CurrentRemoteLease && ts < m_CurrentRemoteLease->endDate + i2p::data::LEASE_ENDDATE_THRESHOLD)
 		{	
 			std::vector<i2p::tunnel::TunnelMessageBlock> msgs;
 			for (auto it: packets)
@@ -731,7 +735,8 @@ namespace stream
 	{
 		if (!m_RemoteLeaseSet || m_RemoteLeaseSet->IsExpired ()) 
 		{
-			m_RemoteLeaseSet = m_LocalDestination.GetOwner ()->FindLeaseSet (m_RemoteIdentity->GetIdentHash ());
+			auto remoteLeaseSet = m_LocalDestination.GetOwner ()->FindLeaseSet (m_RemoteIdentity->GetIdentHash ());
+			if (remoteLeaseSet) m_RemoteLeaseSet = remoteLeaseSet; // renew if possible
 			if (!m_RemoteLeaseSet)	
 				LogPrint (eLogWarning, "Streaming: LeaseSet ", m_RemoteIdentity->GetIdentHash ().ToBase64 (), " not found");
 		}
