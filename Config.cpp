@@ -112,7 +112,7 @@ namespace config {
       ("pidfile",   value<std::string>()->default_value(""),     "Path to pidfile (default: ~/i2pd/i2pd.pid or /var/lib/i2pd/i2pd.pid)")
       ("log",       value<std::string>()->default_value(""),     "Logs destination: stdout, file (stdout if not set, file - otherwise, for compatibility)")
       ("logfile",   value<std::string>()->default_value(""),     "Path to logfile (stdout if not set, autodetect if daemon)")
-      ("loglevel",  value<std::string>()->default_value("info"), "Set the minimal level of log messages (debug, info, warn, error)")
+      ("loglevel",  value<std::string>()->default_value("error"), "Set the minimal level of log messages (debug, info, warn, error)")
       ("datadir",   value<std::string>()->default_value(""),     "Path to storage of i2pd data (RI, keys, peer profiles, ...)")
       ("host",      value<std::string>()->default_value("0.0.0.0"),     "External IP")
       ("port",      value<uint16_t>()->default_value(0),                "Port to listen for incoming connections (default: auto)")

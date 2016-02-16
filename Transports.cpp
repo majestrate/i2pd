@@ -318,8 +318,9 @@ namespace transport
 						}
 					}
 				}
-			}	
-			LogPrint (eLogError, "Transports: No NTCP or SSU addresses available");
+			}
+
+			LogPrint (eLogWarning, "Transports: No NTCP or SSU addresses available");
 			peer.Done ();
 			std::unique_lock<std::mutex>  l(m_PeersMutex);	
 			m_Peers.erase (ident);
