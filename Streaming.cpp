@@ -88,7 +88,7 @@ namespace stream
 		}
 
 		LogPrint (eLogDebug, "Streaming: Received seqn=", receivedSeqn);
-		if (isSyn || receivedSeqn == m_LastReceivedSequenceNumber + 1)
+		if (receivedSeqn == m_LastReceivedSequenceNumber + 1)
 		{			
 			// we have received next in sequence message
 			ProcessPacket (packet);
@@ -735,8 +735,7 @@ namespace stream
 	{
 		if (!m_RemoteLeaseSet || m_RemoteLeaseSet->IsExpired ()) 
 		{
-			auto remoteLeaseSet = m_LocalDestination.GetOwner ()->FindLeaseSet (m_RemoteIdentity->GetIdentHash ());
-			if (remoteLeaseSet) m_RemoteLeaseSet = remoteLeaseSet; // renew if possible
+			m_RemoteLeaseSet = m_LocalDestination.GetOwner ()->FindLeaseSet (m_RemoteIdentity->GetIdentHash ());
 			if (!m_RemoteLeaseSet)	
 				LogPrint (eLogWarning, "Streaming: LeaseSet ", m_RemoteIdentity->GetIdentHash ().ToBase64 (), " not found");
 		}
@@ -778,6 +777,7 @@ namespace stream
 				m_RemoteLeaseSet = nullptr;
 				m_CurrentRemoteLease = nullptr;
 				// re-request expired
+				 m_LocalDestination.GetOwner ()->RequestDestination (m_RemoteIdentity->GetIdentHash ());
 			}	
 		}
 		else
