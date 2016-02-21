@@ -159,7 +159,11 @@ namespace proxy
 		LogPrint (eLogInfo, "HTTPProxy: jump service for ", m_address, ", inserting to address book");
 		//TODO: this is very dangerous and broken. We should ask the user before doing anything see http://pastethis.i2p/raw/pn5fL4YNJL7OSWj3Sc6N/
 		//TODO: we could redirect the user again to avoid dirtiness in the browser
-		i2p::client::context.GetAddressBook ().InsertAddress (m_address, base64);
+		auto & addressBook = i2p::client::context.GetAddressBook();
+		if (addressBook.FindAddress() == nullptr) {
+			// only add if not present in address book
+			addressBook.InsertAddress (m_address, base64);
+		}
 		m_path.erase(addressHelperPos);
 	}
 
