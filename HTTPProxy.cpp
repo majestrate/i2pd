@@ -156,11 +156,11 @@ namespace proxy
 		}
 		auto base64 = m_path.substr (addressHelperPos + strlen(helpermark1));
 		base64 = i2p::util::http::urlDecode(base64); //Some of the symbols may be urlencoded
-		LogPrint (eLogInfo, "HTTPProxy: jump service for ", m_address, ", inserting to address book");
 		//TODO: this is very dangerous and broken. We should ask the user before doing anything see http://pastethis.i2p/raw/pn5fL4YNJL7OSWj3Sc6N/
 		//TODO: we could redirect the user again to avoid dirtiness in the browser
 		auto & addressBook = i2p::client::context.GetAddressBook();
 		if (addressBook.FindAddress() == nullptr) {
+ 			LogPrint (eLogInfo, "HTTPProxy: jump service for ", m_address, ", inserting to address book");
 			// only add if not present in address book
 			addressBook.InsertAddress (m_address, base64);
 		}
