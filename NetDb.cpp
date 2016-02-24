@@ -372,9 +372,9 @@ namespace data
 		std::unique_lock<std::mutex> l(m_RouterInfosMutex);
 
 		size_t total = m_RouterInfos.size ();
-		const uint64_t expirationTimeout = NETDB_MAX_EXPIRATION_TIMEOUT*1000LL; 
+		uint64_t expirationTimeout = NETDB_MAX_EXPIRATION_TIMEOUT*1000LL;
 		const uint64_t ts = i2p::util::GetMillisecondsSinceEpoch();
-		// routers don't expire if less than 90 or uptime is less than 1 hour	
+		// routers don't expire if less than 90 or uptime is less than 1 hour
 		bool checkForExpiration = total > NETDB_MIN_ROUTERS && ts > (i2p::context.GetStartupTime () + 600)*1000LL; // 10 minutes	
 		if (checkForExpiration && ts > (i2p::context.GetStartupTime () + 3600)*1000LL) // 1 hour			
 			expirationTimeout = i2p::context.IsFloodfill () ? NETDB_FLOODFILL_EXPIRATION_TIMEOUT*1000LL :
