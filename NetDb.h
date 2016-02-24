@@ -23,7 +23,11 @@
 namespace i2p
 {
 namespace data
-{		
+{
+
+	// how many routers left before we need to reseed
+	const size_t RESEED_THRESHOLD = 25;
+	
 	class NetDb
 	{
 		public:
@@ -37,7 +41,7 @@ namespace data
 			bool AddRouterInfo (const uint8_t * buf, int len);
 			bool AddRouterInfo (const IdentHash& ident, const uint8_t * buf, int len);
 			bool AddLeaseSet (const IdentHash& ident, const uint8_t * buf, int len, std::shared_ptr<i2p::tunnel::InboundTunnel> from);
-			std::shared_ptr<RouterInfo> FindRouter (const IdentHash& ident) const;
+			std::shared_ptr<RouterInfo> FindRouter(const IdentHash& ident);
 			std::shared_ptr<LeaseSet> FindLeaseSet (const IdentHash& destination) const;
 			std::shared_ptr<RouterProfile> FindRouterProfile (const IdentHash& ident) const;
 
@@ -69,21 +73,24 @@ namespace data
 			int GetNumLeaseSets () const { return m_LeaseSets.size (); };
 			
 		private:
-
 			void Load ();
 			bool LoadRouterInfo (const std::string & path);
 			void SaveUpdated ();
 			void Run (); // exploratory thread
-			void Explore (int numDestinations);	
+			void Explore (const size_t numDestinations);	
 			void Publish ();
 			void ManageLeaseSets ();
 			void ManageRequests ();
 
+			// fetch RI from memory
+			std::shared_ptr<RouterInfo> GetRouterInfo (const IdentHash& ident) const;
+			
 			template<typename Filter>
 			std::shared_ptr<const RouterInfo> GetRandomRouter (Filter filter) const;	
 		
 		private:
-
+			
+			mutable std::mutex m_LeaseSetsMutex;
 			std::map<IdentHash, std::shared_ptr<LeaseSet> > m_LeaseSets;
 			mutable std::mutex m_RouterInfosMutex;
 			std::map<IdentHash, std::shared_ptr<RouterInfo> > m_RouterInfos;
