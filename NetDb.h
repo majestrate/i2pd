@@ -23,7 +23,6 @@
 namespace i2p
 {
 namespace data
-<<<<<<< HEAD
 {
 
 	const int NETDB_MIN_ROUTERS = 90;
