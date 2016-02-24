@@ -24,7 +24,7 @@ namespace i2p
 {
 namespace data
 {
-
+	const int RESEED_THRESHOLD = 30;
 	const int NETDB_MIN_ROUTERS = 90;
 	const int NETDB_FLOODFILL_EXPIRATION_TIMEOUT = 60*60; // 1 hour, in seconds
 	const int NETDB_INTRODUCEE_EXPIRATION_TIMEOUT = 65*60;
