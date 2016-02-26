@@ -625,7 +625,7 @@ namespace stream
 		}
 
 		auto ts = i2p::util::GetMillisecondsSinceEpoch ();		
-		if (!m_CurrentRemoteLease || ts >= m_CurrentRemoteLease->endDate - i2p::tunnel::TUNNEL_EXPIRATION_THRESHOLD*1000)
+		if (!m_CurrentRemoteLease || ts >= m_CurrentRemoteLease->endDate - i2p::data::LEASE_ENDDATE_THRESHOLD)
 			UpdateCurrentRemoteLease (true);
 		if (m_CurrentRemoteLease && ts < m_CurrentRemoteLease->endDate + i2p::data::LEASE_ENDDATE_THRESHOLD)
 		{	
@@ -747,8 +747,8 @@ namespace stream
 			if (leases.empty ())
 			{
 				expired = false;
-				m_LocalDestination.GetOwner ()->RequestDestination (m_RemoteIdentity->GetIdentHash ()); // time to re-request
-				leases = m_RemoteLeaseSet->GetNonExpiredLeases (true); // then with threshold
+				m_LocalDestination.GetOwner ()->RequestDestination (m_RemoteIdentity->GetIdentHash ()); // time to request
+				leases = m_RemoteLeaseSet->GetNonExpiredLeases (true); // then with threshold	
 			}
 			if (!leases.empty ())
 			{	
@@ -776,8 +776,7 @@ namespace stream
 			{	
 				m_RemoteLeaseSet = nullptr;
 				m_CurrentRemoteLease = nullptr;
-				// re-request expired
-				 m_LocalDestination.GetOwner ()->RequestDestination (m_RemoteIdentity->GetIdentHash ());
+				// we have requested expired before, no need to do it twice
 			}	
 		}
 		else
