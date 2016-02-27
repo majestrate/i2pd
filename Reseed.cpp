@@ -43,7 +43,7 @@ namespace data
   static std::vector<std::string> httpsReseedHostList =
   {
     "http://reseed.i2p.rocks:8080/" // is ipv6 only
-  }
+  };
 
 	Reseeder::Reseeder()
 	{
