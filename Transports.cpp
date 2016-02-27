@@ -121,7 +121,7 @@ namespace transport
 				m_NTCPServer->Start ();
 			}	
 			
-			if (address.transportStyle == RouterInfo::eTransportSSU && address.host.is_v4 ())
+			if (address.transportStyle == RouterInfo::eTransportSSU)
 			{
 				if (!m_SSUServer)
 				{	
