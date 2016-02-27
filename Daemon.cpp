@@ -89,7 +89,9 @@ namespace i2p
 			LogPrint(eLogInfo,  "i2pd v", VERSION, " starting");
 			LogPrint(eLogDebug, "FS: main config file: ", config);
 			LogPrint(eLogDebug, "FS: data directory: ", datadir);
+      LogPrint(eLogDebug, "our RI hash is: ",i2p::context.GetRouterInfo().GetIdentHashBase64());
 
+      
 			uint16_t port; i2p::config::GetOption("port", port);
 			if (!i2p::config::IsDefault("port"))
 			{	
