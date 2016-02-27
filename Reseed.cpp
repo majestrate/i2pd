@@ -23,6 +23,7 @@ namespace i2p
 {
 namespace data
 {
+  /*
 	static std::vector<std::string> httpsReseedHostList = 
 	{
 		"https://reseed.i2p-projekt.de/", // Only HTTPS
@@ -37,7 +38,13 @@ namespace data
         "https://user.mx24.eu/", // Only HTTPS and SU3 (v3) support
         "https://download.xxlspeed.com/" // Only HTTPS and SU3 (v3) support
 	};
-	
+	*/
+
+  static std::vector<std::string> httpsReseedHostList =
+  {
+    "http://reseed.i2p.rocks:8080/" // is ipv6 only
+  }
+
 	Reseeder::Reseeder()
 	{
 	}
