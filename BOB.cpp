@@ -523,7 +523,12 @@ namespace client
 		else
 			SendReplyError ("malformed");
 	}	
-		
+
+  void BOBCommandSession::TestCommandHandler(const char * operand, size_t len)
+  {
+    SendReplyOK("test");
+  }
+  
 	BOBCommandChannel::BOBCommandChannel (const std::string& address, int port):
 		m_IsRunning (false), m_Thread (nullptr),
 		m_Acceptor (m_Service, boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(address), port))
@@ -548,6 +553,7 @@ namespace client
 		m_CommandHandlers[BOB_COMMAND_CLEAR] = &BOBCommandSession::ClearCommandHandler;
 		m_CommandHandlers[BOB_COMMAND_LIST] = &BOBCommandSession::ListCommandHandler;
 		m_CommandHandlers[BOB_COMMAND_OPTION] = &BOBCommandSession::OptionCommandHandler;
+    m_CommandHandlers[BOB_COMMAND_TEST] = &BOBCommandSession::TestCommandHandler;
 	}
 
 	BOBCommandChannel::~BOBCommandChannel ()

@@ -36,7 +36,8 @@ namespace client
 	const char BOB_COMMAND_CLEAR[] = "clear";
 	const char BOB_COMMAND_LIST[] = "list";
 	const char BOB_COMMAND_OPTION[] = "option";
-	
+  const char BOB_COMMAND_TEST[] = "test";
+  
 	const char BOB_VERSION[] = "BOB 00.00.10\nOK\n";	
 	const char BOB_REPLY_OK[] = "OK %s\n";
 	const char BOB_REPLY_ERROR[] = "ERROR %s\n";
@@ -168,7 +169,8 @@ namespace client
 			void ClearCommandHandler (const char * operand, size_t len);
 			void ListCommandHandler (const char * operand, size_t len);
 			void OptionCommandHandler (const char * operand, size_t len);
-			
+      void TestCommandHandler (const char * operand, size_t len);
+      
 		private:
 
 			void Receive ();
