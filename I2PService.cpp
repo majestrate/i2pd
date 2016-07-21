@@ -189,6 +189,9 @@ namespace client
 		if (!ecode)
 		{
 			LogPrint(eLogDebug, "I2PService: ", GetName(), " accepted");
+			// set recv buffer size
+			boost::asio::socket_base::receive_buffer_size option(TCP_IP_PIPE_BUFFER_SIZE);
+			socket->set_option(option);
 			auto handler = CreateHandler(socket);
 			if (handler) 
 			{
