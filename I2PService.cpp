@@ -32,7 +32,12 @@ namespace client
 		}
 	}
 
-	TCPIPPipe::TCPIPPipe(I2PService * owner, std::shared_ptr<boost::asio::ip::tcp::socket> upstream, std::shared_ptr<boost::asio::ip::tcp::socket> downstream) : I2PServiceHandler(owner), m_up(upstream), m_down(downstream) {}
+	TCPIPPipe::TCPIPPipe(I2PService * owner, std::shared_ptr<boost::asio::ip::tcp::socket> upstream, std::shared_ptr<boost::asio::ip::tcp::socket> downstream) : I2PServiceHandler(owner), m_up(upstream), m_down(downstream) {
+		// set recv buffer for both sockets
+		boost::asio::socket_base::receive_buffer_size option(TCP_IP_PIPE_BUFFER_SIZE);
+		m_up->set_option(option);
+		m_down->set_option(option);
+	}
 
 	TCPIPPipe::~TCPIPPipe()
 	{
@@ -189,9 +194,6 @@ namespace client
 		if (!ecode)
 		{
 			LogPrint(eLogDebug, "I2PService: ", GetName(), " accepted");
-			// set recv buffer size
-			boost::asio::socket_base::receive_buffer_size option(TCP_IP_PIPE_BUFFER_SIZE);
-			socket->set_option(option);
 			auto handler = CreateHandler(socket);
 			if (handler) 
 			{

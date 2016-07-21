@@ -172,7 +172,10 @@ namespace proxy
 				m_UseUpstreamProxy(useUpstream),
 				m_UpstreamProxyAddress(upstreamAddr),
 				m_UpstreamProxyPort(upstreamPort) 
-				{ m_address.ip = 0; EnterState(GET_SOCKSV); }
+				{
+					m_address.ip = 0; EnterState(GET_SOCKSV);
+					m_sock->set_option(boost::asio::socket_base::receive_buffer_size(socks_buffer_size));
+				}
 				
 			~SOCKSHandler() { Terminate(); }
 			void Handle() { AsyncSockRead(); }
