@@ -121,7 +121,7 @@ namespace transport
      *  called every interval to do outbound message queue resend and clean up inbound message queue, 
      *  returns true if we should tick again, returns false if this session should be closed 
      */
-    bool Tick();
+    bool Tick(const Time now);
 		private:
 
 			void SendMsgAck (uint32_t msgID);

@@ -393,9 +393,8 @@ namespace transport
 	}	
 
 
-  bool SSUData::Tick()
+  bool SSUData::Tick(const Time now)
   {
-    Time now = i2p::util::GetSinceEpoch<Time>();
     // handle inbound cleanup
     // for each inbound message ...
     for ( auto it = m_IncompleteMessages.begin (); it != m_IncompleteMessages.end(); )
