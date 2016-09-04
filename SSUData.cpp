@@ -10,23 +10,9 @@ namespace i2p
 {
 namespace transport
 {
-	void IncompleteMessage::AttachNextFragment (const uint8_t * fragment, size_t fragmentSize)
-	{
-		if (msg->len + fragmentSize > msg->maxLen)
-		{
-			LogPrint (eLogWarning, "SSU: I2NP message size ", msg->maxLen, " is not enough");
-			auto newMsg = NewI2NPMessage ();
-			*newMsg = *msg;
-			msg = newMsg;
-		}
-		if (msg->Concat (fragment, fragmentSize) < fragmentSize)
-			LogPrint (eLogError, "SSU: I2NP buffer overflow ", msg->maxLen);
-		nextFragmentNum++;
-	}
 
 	SSUData::SSUData (SSUSession& session):
-		m_Session (session), m_ResendTimer (session.GetService ()), 
-		m_IncompleteMessagesCleanupTimer (session.GetService ()), 
+		m_Session (session), 
 		m_MaxPacketSize (session.IsV6 () ? SSU_V6_MAX_PACKET_SIZE : SSU_V4_MAX_PACKET_SIZE), 
 		m_PacketSize (m_MaxPacketSize), m_LastMessageReceivedTime (0)
 	{
@@ -38,13 +24,13 @@ namespace transport
 
 	void SSUData::Start ()
 	{
-		ScheduleIncompleteMessagesCleanup ();
+		//ScheduleIncompleteMessagesCleanup ();
 	}	
 		
 	void SSUData::Stop ()
 	{
-		m_ResendTimer.cancel ();
-		m_IncompleteMessagesCleanupTimer.cancel ();
+		//m_ResendTimer.cancel ();
+		//m_IncompleteMessagesCleanupTimer.cancel ();
 	}	
 		
 	void SSUData::AdjustPacketSize (std::shared_ptr<const i2p::data::RouterInfo> remoteRouter)
@@ -85,9 +71,7 @@ namespace transport
 		auto it = m_SentMessages.find (msgID);
 		if (it != m_SentMessages.end ())
 		{
-			m_SentMessages.erase (it);	
-			if (m_SentMessages.empty ())
-				m_ResendTimer.cancel ();
+			m_SentMessages.erase (it);
 		}
 	}		
 
@@ -173,9 +157,9 @@ namespace transport
 				auto msg = NewI2NPShortMessage ();
 				msg->len -= I2NP_SHORT_HEADER_SIZE;
 				it = m_IncompleteMessages.insert (std::make_pair (msgID, 
-					std::unique_ptr<IncompleteMessage>(new IncompleteMessage (msg)))).first;
+					std::unique_ptr<InboundMessage>(new InboundMessage (msg)))).first;
 			}
-			std::unique_ptr<IncompleteMessage>& incompleteMessage = it->second;
+			std::unique_ptr<InboundMessage>& incompleteMessage = it->second;
 
 			// handle current fragment
 			if (fragmentNum == incompleteMessage->nextFragmentNum)
@@ -212,7 +196,7 @@ namespace transport
 					LogPrint (eLogWarning, "SSU: Missing fragments from ", (int)incompleteMessage->nextFragmentNum, " to ", fragmentNum - 1, " of message ", msgID);
 					auto savedFragment = new Fragment (fragmentNum, buf, fragmentSize, isLast);
 					if (incompleteMessage->savedFragments.insert (std::unique_ptr<Fragment>(savedFragment)).second)
-						incompleteMessage->lastFragmentInsertTime = i2p::util::GetSecondsSinceEpoch ();
+						incompleteMessage->lastFragmentInsertTime = i2p::util::GetSinceEpoch<Time> ();
 					else	
 						LogPrint (eLogWarning, "SSU: Fragment ", (int)fragmentNum, " of message ", msgID, " already saved");
 				}
@@ -233,7 +217,7 @@ namespace transport
 					if (!m_ReceivedMessages.count (msgID))
 					{	
 						m_ReceivedMessages.insert (msgID);
-						m_LastMessageReceivedTime = i2p::util::GetSecondsSinceEpoch ();
+						m_LastMessageReceivedTime = i2p::util::GetSinceEpoch<Time> ();
 						if (!msg->IsExpired ())
 							m_Handler.PutNextMessage (msg);
 						else
@@ -293,15 +277,16 @@ namespace transport
 		{
 			LogPrint (eLogWarning, "SSU: message ", msgID, " already sent");
 			return;
-		}	
+		}
+    /*
 		if (m_SentMessages.empty ()) // schedule resend at first message only
 			ScheduleResend ();
-		
-		auto ret = m_SentMessages.insert (std::make_pair (msgID, std::unique_ptr<SentMessage>(new SentMessage))); 
-		std::unique_ptr<SentMessage>& sentMessage = ret.first->second;
+    */
+		auto ret = m_SentMessages.insert (std::make_pair (msgID, std::unique_ptr<OutboundMessage>(new OutboundMessage))); 
+		std::unique_ptr<OutboundMessage>& sentMessage = ret.first->second;
 		if (ret.second)	
 		{
-			sentMessage->nextResendTime = i2p::util::GetSecondsSinceEpoch () + RESEND_INTERVAL;
+			sentMessage->nextResendTime = i2p::util::GetSinceEpoch<Time> () + RESEND_INTERVAL;
 			sentMessage->numResends = 0;
 		}	
 		auto& fragments = sentMessage->fragments;
@@ -407,95 +392,79 @@ namespace transport
 		m_Session.Send (buf, len);
 	}	
 
-	void SSUData::ScheduleResend()
-	{		
-		m_ResendTimer.cancel ();
-		m_ResendTimer.expires_from_now (boost::posix_time::seconds(RESEND_INTERVAL));
-		auto s = m_Session.shared_from_this();
-		m_ResendTimer.async_wait ([s](const boost::system::error_code& ecode)
-			{ s->m_Data.HandleResendTimer (ecode); });
-	}
 
-	void SSUData::HandleResendTimer (const boost::system::error_code& ecode)
-	{
-		if (ecode != boost::asio::error::operation_aborted)
-		{
-			uint32_t ts = i2p::util::GetSecondsSinceEpoch ();
-			int numResent = 0;
-			for (auto it = m_SentMessages.begin (); it != m_SentMessages.end ();)
-			{
-				if (ts >= it->second->nextResendTime)
-				{	
-					if (it->second->numResends < MAX_NUM_RESENDS)
-					{
-						for (auto& f: it->second->fragments)
-							if (f)
-							{
-								try
-								{
-									m_Session.Send (f->buf, f->len); // resend
-									numResent++;
-								}
-								catch (boost::system::system_error& ec)
-								{
-									LogPrint (eLogWarning, "SSU: Can't resend data fragment ", ec.what ());
-								}
-							}
+  bool SSUData::Tick()
+  {
+    Time now = i2p::util::GetSinceEpoch<Time>();
+    // handle inbound cleanup
+    // for each inbound message ...
+    for ( auto it = m_IncompleteMessages.begin (); it != m_IncompleteMessages.end(); )
+    {
+      // has this message not gotten a fragment in time?
+      if ( now > it->second->lastFragmentInsertTime + INCOMPLETE_MESSAGES_CLEANUP_TIMEOUT)
+      {
+        // recveive has timed out so delete the message from inbound queue
+        LogPrint(eLogInfo, "SSU: message ", it->first, " was not received in ",
+                 std::chrono::duration_cast<std::chrono::seconds>(INCOMPLETE_MESSAGES_CLEANUP_TIMEOUT).count(),
+                 " seconds, deleted");
+        it = m_IncompleteMessages.erase(it);
+      }
+      else // it has not timed out yet
+        ++it;
+    }
 
-						it->second->numResends++;
-						it->second->nextResendTime += it->second->numResends*RESEND_INTERVAL;
-						++it;
-					}	
-					else
-					{
-						LogPrint (eLogInfo, "SSU: message has not been ACKed after ", MAX_NUM_RESENDS, " attempts, deleted");
-						it = m_SentMessages.erase (it);
-					}	
-				}	
-				else
-					++it;
-			}
-			if (numResent < MAX_OUTGOING_WINDOW_SIZE)
-				ScheduleResend ();
-			else
-			{
-				LogPrint (eLogError, "SSU: resend window exceeds max size. Session terminated");
-				m_Session.Close ();
-			}	
-		}	
-	}	
+    // decay inbound message queue
+    if (m_ReceivedMessages.size() > MAX_NUM_RECEIVED_MESSAGES || now > m_LastMessageReceivedTime + DECAY_INTERVAL)
+      m_ReceivedMessages.clear();
 
-	void SSUData::ScheduleIncompleteMessagesCleanup ()
-	{
-		m_IncompleteMessagesCleanupTimer.cancel ();
-		m_IncompleteMessagesCleanupTimer.expires_from_now (boost::posix_time::seconds(INCOMPLETE_MESSAGES_CLEANUP_TIMEOUT));
-		auto s = m_Session.shared_from_this();
-		m_IncompleteMessagesCleanupTimer.async_wait ([s](const boost::system::error_code& ecode)
-			{ s->m_Data.HandleIncompleteMessagesCleanupTimer (ecode); });
-	}
-		
-	void SSUData::HandleIncompleteMessagesCleanupTimer (const boost::system::error_code& ecode)
-	{
-		if (ecode != boost::asio::error::operation_aborted)
-		{
-			uint32_t ts = i2p::util::GetSecondsSinceEpoch ();
-			for (auto it = m_IncompleteMessages.begin (); it != m_IncompleteMessages.end ();)
-			{
-				if (ts > it->second->lastFragmentInsertTime + INCOMPLETE_MESSAGES_CLEANUP_TIMEOUT)
-				{
-					LogPrint (eLogWarning, "SSU: message ", it->first, " was not completed  in ", INCOMPLETE_MESSAGES_CLEANUP_TIMEOUT, " seconds, deleted");
-					it = m_IncompleteMessages.erase (it);
-				}	
-				else
-					++it;
-			}	
-			// decay
-			if (m_ReceivedMessages.size () > MAX_NUM_RECEIVED_MESSAGES ||
-			    i2p::util::GetSecondsSinceEpoch () > m_LastMessageReceivedTime + DECAY_INTERVAL)
-				m_ReceivedMessages.clear ();
-			
-			ScheduleIncompleteMessagesCleanup ();
-		}	
+    
+    // handle outbound resend
+    size_t numResends = 0;
+    // for each message we are sending  ...
+    for ( auto it = m_SentMessages.begin(); it != m_SentMessages.end(); )
+    {
+      if ( now >= it->second->nextResendTime)
+      {
+        // we need to resend this message
+        if (it->second->numResends < MAX_NUM_RESENDS)
+        {
+          // we have not exceeded max number of resend tries yet
+          // for each fragment ...
+          for ( const auto & frag : it->second->fragments)
+          {
+            if(frag)
+            {
+              try
+              {
+                m_Session.Send(frag->buf, frag->len); // try resending fragment
+              }
+              catch (boost::system::system_error & ec)
+              {
+                // catch exception from resend
+                LogPrint(eLogWarning, "SSU: can't resend data fragment ", ec.what());
+              }
+            }
+          } // end for
+          // increment resend attempts
+          it->second->numResends ++;
+          // linear backoff for resend
+          it->second->nextResendTime += it->second->numResends * RESEND_INTERVAL;
+          // next message
+          ++it;
+        }
+        else
+        {
+          // max resend attempts reached for this message
+          LogPrint(eLogInfo, "SSU: message not ACKed after ", MAX_NUM_RESENDS, " attempts, deleted");
+          // erase message from send queue
+          it = m_SentMessages.erase(it);
+        }
+      }
+      else
+        ++it; // no resend required for this message
+    }
+    m_LastTick = now;
+    return numResends < MAX_OUTGOING_WINDOW_SIZE;  
 	}	
 }
 }

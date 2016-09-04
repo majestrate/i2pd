@@ -25,8 +25,8 @@ namespace transport
 		bool IsExtendedOptions () const { return flag & SSU_HEADER_EXTENDED_OPTIONS_INCLUDED; };	
 	};
 
-	const int SSU_CONNECT_TIMEOUT = 5; // 5 seconds
-	const int SSU_TERMINATION_TIMEOUT = 330; // 5.5 minutes
+  const std::chrono::seconds SSU_TERMINATION_TIMEOUT(330);
+  const std::chrono::seconds SSU_CONNECT_TIMEOUT(5);
 
 	// payload types (4 bits)
 	const uint8_t PAYLOAD_TYPE_SESSION_REQUEST = 0;
@@ -65,6 +65,8 @@ namespace transport
 	{
 		public:
 
+    typedef std::chrono::milliseconds TimeDuration;
+    
 			SSUSession (SSUServer& server, boost::asio::ip::udp::endpoint& remoteEndpoint,
 				std::shared_ptr<const i2p::data::RouterInfo> router = nullptr, bool peerTest = false);
 			void ProcessNextMessage (uint8_t * buf, size_t len, const boost::asio::ip::udp::endpoint& senderEndpoint);		
@@ -90,10 +92,13 @@ namespace transport
 			void SendKeepAlive ();	
 			uint32_t GetRelayTag () const { return m_RelayTag; };	
 			const i2p::data::RouterInfo::IntroKey& GetIntroKey () const { return m_IntroKey; };
-			uint32_t GetCreationTime () const { return m_CreationTime; };
+      TimeDuration GetCreationTime () const { return m_CreationTime; };
 
 			void FlushData ();
-			
+
+      /** called by SSUServer, returns true if this session is alive and good, if this session has timed out then returns false */
+      bool Tick(const TimeDuration now);
+      
 		private:
 
 			boost::asio::io_service& GetService ();
@@ -115,12 +120,17 @@ namespace transport
 			void ProcessRelayResponse (const uint8_t * buf, size_t len);
 			void ProcessRelayIntro (const uint8_t * buf, size_t len);
 			void Established ();
+
+      /*
 			void ScheduleConnectTimer ();
-			void HandleConnectTimer (const boost::system::error_code& ecode);
+			void HandleConnectTimer (const boost::system::error_code& ecode); 
+      */
+      /** mark that we are trying to make an outbound connection at this moment in time */
+      void ScheduleConnect (); 
 			void ProcessPeerTest (const uint8_t * buf, size_t len, const boost::asio::ip::udp::endpoint& senderEndpoint);
 			void SendPeerTest (uint32_t nonce, const boost::asio::ip::address& address, uint16_t port, const uint8_t * introKey, bool toAddress = true, bool sendAddress = true); 
 			void ProcessData (uint8_t * buf, size_t len);		
-			void SendSesionDestroyed ();
+			void SendSessionDestroyed ();
 			void Send (uint8_t type, const uint8_t * payload, size_t len); // with session key
 			void Send (const uint8_t * buf, size_t size); 
 			
@@ -130,13 +140,13 @@ namespace transport
 			void Decrypt (uint8_t * buf, size_t len, const i2p::crypto::AESKey& aesKey);
 			void DecryptSessionKey (uint8_t * buf, size_t len);
 			bool Validate (uint8_t * buf, size_t len, const i2p::crypto::MACKey& macKey);			
-
+      /** mark progress/activity while connecting */
+      void TickConnect();
 		private:
 	
 			friend class SSUData; // TODO: change in later
 			SSUServer& m_Server;
 			boost::asio::ip::udp::endpoint m_RemoteEndpoint;
-			boost::asio::deadline_timer m_ConnectTimer;
 			bool m_IsPeerTest;
 			SessionState m_State;
 			bool m_IsSessionKey;
@@ -146,7 +156,8 @@ namespace transport
 			i2p::crypto::AESKey m_SessionKey;
 			i2p::crypto::MACKey m_MacKey;
 			i2p::data::RouterInfo::IntroKey m_IntroKey;
-			uint32_t m_CreationTime; // seconds since epoch
+    TimeDuration m_CreationTime; // since epoch
+      TimeDuration m_LastTimeoutCheck; // since epoch
 			SSUData m_Data;
 			bool m_IsDataReceived;
 			std::unique_ptr<SignedData> m_SignedData; // we need it for SessionConfirmed only

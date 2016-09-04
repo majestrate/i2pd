@@ -54,7 +54,9 @@ namespace transport
 	{
 		public:
 
-			TransportSession (std::shared_ptr<const i2p::data::RouterInfo> router, int terminationTimeout): 
+    typedef std::chrono::milliseconds TimeDuration;
+    
+			TransportSession (std::shared_ptr<const i2p::data::RouterInfo> router, TimeDuration terminationTimeout): 
 				m_DHKeysPair (nullptr), m_NumSentBytes (0), m_NumReceivedBytes (0), m_IsOutgoing (router), m_TerminationTimeout (terminationTimeout), 
 				m_LastActivityTimestamp (i2p::util::GetSecondsSinceEpoch ())
 			{
@@ -71,11 +73,13 @@ namespace transport
 			size_t GetNumSentBytes () const { return m_NumSentBytes; };
 			size_t GetNumReceivedBytes () const { return m_NumReceivedBytes; };
 			bool IsOutgoing () const { return m_IsOutgoing; };
-			
-			int GetTerminationTimeout () const { return m_TerminationTimeout; };
-			void SetTerminationTimeout (int terminationTimeout) { m_TerminationTimeout = terminationTimeout; };	
-			bool IsTerminationTimeoutExpired (uint64_t ts) const 
-			{ return ts >= m_LastActivityTimestamp + GetTerminationTimeout (); };	
+    template<typename duration>
+      duration GetTerminationTimeout () const { return std::chrono::duration_cast<duration>(m_TerminationTimeout); }
+    template<typename duration>
+      void SetTerminationTimeout (duration terminationTimeout) { m_TerminationTimeout = std::chrono::duration_cast<TimeDuration>(terminationTimeout); }
+    template<typename duration>
+			bool IsTerminationTimeoutExpired (duration ts) const 
+    { return ts >= std::chrono::duration_cast<duration>(m_LastActivityTimestamp) + GetTerminationTimeout<duration> (); }
 
 			virtual void SendI2NPMessages (const std::vector<std::shared_ptr<I2NPMessage> >& msgs) = 0;
 			
@@ -85,8 +89,8 @@ namespace transport
 			std::shared_ptr<i2p::crypto::DHKeys> m_DHKeysPair; // X - for client and Y - for server
 			size_t m_NumSentBytes, m_NumReceivedBytes;
 			bool m_IsOutgoing;
-			int m_TerminationTimeout;
-			uint64_t m_LastActivityTimestamp;
+      TimeDuration m_TerminationTimeout;
+      TimeDuration m_LastActivityTimestamp;
 	};	
 }
 }

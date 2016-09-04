@@ -555,7 +555,7 @@ namespace transport
 				m_Handler.Flush ();
 			}	
 			
-			m_LastActivityTimestamp = i2p::util::GetSecondsSinceEpoch ();
+			m_LastActivityTimestamp = i2p::util::GetSinceEpoch<TimeDuration> ();
 			Receive ();
 		}	
 	}	
@@ -682,7 +682,7 @@ namespace transport
 		}
 		else
 		{	
-			m_LastActivityTimestamp = i2p::util::GetSecondsSinceEpoch ();
+			m_LastActivityTimestamp = i2p::util::GetSinceEpoch<TimeDuration>();
 			m_NumSentBytes += bytes_transferred;
 			i2p::transport::transports.UpdateSentBytes (bytes_transferred);
 			if (!m_SendQueue.empty())
@@ -878,10 +878,11 @@ namespace transport
 				auto it = m_BanList.find (ep.address ());
 				if (it != m_BanList.end ())
 				{
-					uint32_t ts = i2p::util::GetSecondsSinceEpoch ();
-					if (ts < it->second)
+          TimeDuration now = i2p::util::GetSinceEpoch<TimeDuration>();
+					if (now < it->second)
 					{
-						LogPrint (eLogWarning, "NTCP: ", ep.address (), " is banned for ", it->second - ts, " more seconds");
+            TimeDuration delta = it->second - now;
+						LogPrint (eLogWarning, "NTCP: ", ep.address (), " is banned for ", std::chrono::duration_cast<std::chrono::seconds>(delta).count(), " more seconds");
 						conn = nullptr;
 					}
 					else
@@ -915,10 +916,11 @@ namespace transport
 				auto it = m_BanList.find (ep.address ());
 				if (it != m_BanList.end ())
 				{
-					uint32_t ts = i2p::util::GetSecondsSinceEpoch ();
-					if (ts < it->second)
+          TimeDuration now = i2p::util::GetSinceEpoch<TimeDuration>();
+					if (now < it->second)
 					{
-						LogPrint (eLogWarning, "NTCP: ", ep.address (), " is banned for ", it->second - ts, " more seconds");
+            TimeDuration delta = it->second - now;
+						LogPrint (eLogWarning, "NTCP: ", ep.address (), " is banned for ", std::chrono::duration_cast<std::chrono::seconds>(delta).count(), " more seconds");
 						conn = nullptr;
 					}
 					else
@@ -970,14 +972,14 @@ namespace transport
 
 	void NTCPServer::Ban (const boost::asio::ip::address& addr)
 	{
-		uint32_t ts = i2p::util::GetSecondsSinceEpoch ();	
+		TimeDuration ts = i2p::util::GetSinceEpoch<TimeDuration>();	
 		m_BanList[addr] = ts + NTCP_BAN_EXPIRATION_TIMEOUT;
-		LogPrint (eLogWarning, "NTCP: ", addr, " has been banned for ", NTCP_BAN_EXPIRATION_TIMEOUT, " seconds");
+		LogPrint (eLogWarning, "NTCP: ", addr, " has been banned for ", std::chrono::duration_cast<std::chrono::seconds>(NTCP_BAN_EXPIRATION_TIMEOUT).count(), " seconds");
 	}
 
 	void NTCPServer::ScheduleTermination ()
 	{
-		m_TerminationTimer.expires_from_now (boost::posix_time::seconds(NTCP_TERMINATION_CHECK_TIMEOUT));
+    ExpireTimer(m_TerminationTimer, NTCP_TERMINATION_CHECK_TIMEOUT);
 		m_TerminationTimer.async_wait (std::bind (&NTCPServer::HandleTerminationTimer,
 			this, std::placeholders::_1));
 	}
@@ -986,14 +988,14 @@ namespace transport
 	{
 		if (ecode != boost::asio::error::operation_aborted)
 		{	
-			auto ts = i2p::util::GetSecondsSinceEpoch ();
+			TimeDuration now = i2p::util::GetSinceEpoch<TimeDuration> ();
 			for (auto& it: m_NTCPSessions)
- 				if (it.second->IsTerminationTimeoutExpired (ts))
+ 				if (it.second->IsTerminationTimeoutExpired (now))
 				{
 					auto session = it.second;
 					m_Service.post ([session] 
 						{ 
-							LogPrint (eLogDebug, "NTCP: No activity for ", session->GetTerminationTimeout (), " seconds");
+							LogPrint (eLogDebug, "NTCP: No activity for ", session->GetTerminationTimeout<std::chrono::seconds> ().count(), " seconds");
 							session->Terminate ();
 						});	
 				}

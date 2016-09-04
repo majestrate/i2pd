@@ -11,7 +11,7 @@
 #include "I2NPProtocol.h"
 #include "Identity.h"
 #include "RouterInfo.h"
-
+#include "Log.h"
 namespace i2p
 {
 namespace transport
@@ -28,12 +28,12 @@ namespace transport
 	const size_t UDP_HEADER_SIZE = 8;
 	const size_t SSU_V4_MAX_PACKET_SIZE = SSU_MTU_V4 - IPV4_HEADER_SIZE - UDP_HEADER_SIZE; // 1456
 	const size_t SSU_V6_MAX_PACKET_SIZE = SSU_MTU_V6 - IPV6_HEADER_SIZE - UDP_HEADER_SIZE; // 1424
-	const int RESEND_INTERVAL = 3; // in seconds
-	const int MAX_NUM_RESENDS = 5;
-	const int DECAY_INTERVAL = 20; // in seconds
-	const int INCOMPLETE_MESSAGES_CLEANUP_TIMEOUT = 30; // in seconds
-	const unsigned int MAX_NUM_RECEIVED_MESSAGES = 1000; // how many msgID we store for duplicates check
-	const int MAX_OUTGOING_WINDOW_SIZE = 200; // how many unacked message we can store
+	const std::chrono::seconds RESEND_INTERVAL(3);
+	const size_t MAX_NUM_RESENDS = 5;
+  const std::chrono::seconds DECAY_INTERVAL(20);
+	const std::chrono::seconds INCOMPLETE_MESSAGES_CLEANUP_TIMEOUT(30);
+	const size_t MAX_NUM_RECEIVED_MESSAGES = 1000; // how many msgID we store for duplicates check
+	const size_t MAX_OUTGOING_WINDOW_SIZE = 200; // how many unacked message we can store
 	// data flags
 	const uint8_t DATA_FLAG_EXTENDED_DATA_INCLUDED = 0x02;
 	const uint8_t DATA_FLAG_WANT_REPLY = 0x04;
@@ -61,23 +61,38 @@ namespace transport
 			return f1->fragmentNum < f2->fragmentNum; 
 		};
 	};	
-	
+
+  template<typename Time>
 	struct IncompleteMessage
 	{
 		std::shared_ptr<I2NPMessage> msg;
-		int nextFragmentNum;	
-		uint32_t lastFragmentInsertTime; // in seconds
+		int nextFragmentNum;
+    
+    Time lastFragmentInsertTime; // since epoch
 		std::set<std::unique_ptr<Fragment>, FragmentCmp> savedFragments;
 		
 		IncompleteMessage (std::shared_ptr<I2NPMessage> m): msg (m), nextFragmentNum (0), lastFragmentInsertTime (0) {};
-		void AttachNextFragment (const uint8_t * fragment, size_t fragmentSize);	
+		void AttachNextFragment (const uint8_t * fragment, size_t fragmentSize)
+    {
+      if (msg->len + fragmentSize > msg->maxLen)
+      {
+        LogPrint (eLogWarning, "SSU: I2NP message size ", msg->maxLen, " is not enough");
+        auto newMsg = NewI2NPMessage ();
+        *newMsg = *msg;
+        msg = newMsg;
+      }
+      if (msg->Concat (fragment, fragmentSize) < fragmentSize)
+        LogPrint (eLogError, "SSU: I2NP buffer overflow ", msg->maxLen);
+      nextFragmentNum++;
+    }
 	};
 
+  template<typename Time>
 	struct SentMessage
 	{
 		std::vector<std::unique_ptr<Fragment> > fragments;
-		uint32_t nextResendTime; // in seconds
-		int numResends;
+		Time nextResendTime; // since epoch
+		size_t numResends;
 	};	
 	
 	class SSUSession;
@@ -85,6 +100,10 @@ namespace transport
 	{
 		public:
 
+    typedef std::chrono::milliseconds Time;
+    typedef SentMessage<Time> OutboundMessage;
+    typedef IncompleteMessage<Time> InboundMessage;
+    
 			SSUData (SSUSession& session); 
 			~SSUData ();
 
@@ -98,6 +117,11 @@ namespace transport
 			void AdjustPacketSize (std::shared_ptr<const i2p::data::RouterInfo> remoteRouter);	
 			void UpdatePacketSize (const i2p::data::IdentHash& remoteIdent);
 
+    /** 
+     *  called every interval to do outbound message queue resend and clean up inbound message queue, 
+     *  returns true if we should tick again, returns false if this session should be closed 
+     */
+    bool Tick();
 		private:
 
 			void SendMsgAck (uint32_t msgID);
@@ -106,23 +130,25 @@ namespace transport
 			void ProcessFragments (uint8_t * buf);
 			void ProcessSentMessageAck (uint32_t msgID);	
 
+    /*
 			void ScheduleResend ();
+    
 			void HandleResendTimer (const boost::system::error_code& ecode);	
 
 			void ScheduleIncompleteMessagesCleanup ();
 			void HandleIncompleteMessagesCleanupTimer (const boost::system::error_code& ecode);	
-			
+    */	
 			
 		private:	
 
 			SSUSession& m_Session;
-			std::map<uint32_t, std::unique_ptr<IncompleteMessage> > m_IncompleteMessages;
-			std::map<uint32_t, std::unique_ptr<SentMessage> > m_SentMessages;
+			std::map<uint32_t, std::unique_ptr<InboundMessage> > m_IncompleteMessages;
+			std::map<uint32_t, std::unique_ptr<OutboundMessage> > m_SentMessages;
 			std::unordered_set<uint32_t> m_ReceivedMessages;
-			boost::asio::deadline_timer m_ResendTimer, m_IncompleteMessagesCleanupTimer;
 			int m_MaxPacketSize, m_PacketSize;
 			i2p::I2NPMessagesHandler m_Handler;
-			uint32_t m_LastMessageReceivedTime; // in second
+			Time m_LastMessageReceivedTime; // since epoch
+      Time m_LastTick; // in seconds
 	};	
 }
 }
