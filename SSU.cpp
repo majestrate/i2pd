@@ -11,6 +11,8 @@ namespace i2p
 namespace transport
 {
 
+  const std::chrono::milliseconds SSU_SESSION_TICK_INTERVAL(500);
+
 	SSUServer::SSUServer (const boost::asio::ip::address & addr, int port):
 		m_OnlyV6(true), m_IsRunning(false),
 		m_Thread (nullptr), m_ThreadV6 (nullptr), m_ReceiversThread (nullptr),

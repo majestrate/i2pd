@@ -26,7 +26,7 @@ namespace transport
   const std::chrono::minutes SSU_PEER_TEST_TIMEOUT(1);
   const std::chrono::hours SSU_TO_INTRODUCER_SESSION_DURATION(1);
   const std::chrono::seconds SSU_TERMINATION_CHECK_TIMEOUT(30);
-  const std::chrono::seconds SSU_SESSION_TICK_INTERVAL(1);
+
 	struct SSUPacket
 	{
 		i2p::crypto::AESAlignedBuffer<1500> buf;
