@@ -890,7 +890,7 @@ namespace transport
   bool SSUSession::Tick(const TimeDuration now)
   {
     if(m_State == eSessionStateEstablished)
-      return m_Data.Tick();
+      return m_Data.Tick(now);
     else
       return (now - m_LastTimeoutCheck) >= SSU_CONNECT_TIMEOUT;
   }
