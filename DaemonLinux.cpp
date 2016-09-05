@@ -74,11 +74,12 @@ namespace i2p
 					LogPrint(eLogError, "Daemon: could not chdir: ", strerror(errno));
 					return false;
 				}
-
+#ifndef __MUSL__
 				// point std{in,out,err} descriptors to /dev/null
-                stdin  = freopen("/dev/null", "r", stdin);
+        stdin  = freopen("/dev/null", "r", stdin);
 				stdout = freopen("/dev/null", "w", stdout);
 				stderr = freopen("/dev/null", "w", stderr);
+#endif
 			}
 
 			// Pidfile
