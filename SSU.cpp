@@ -738,10 +738,14 @@ namespace transport
     for ( auto it = sessions.begin(); it != sessions.end(); )
     {
       if(!it->second->Tick(now))
+      {
         // session failed to tick, let's close it
         it->second->Close();
-      // next session
-      ++it;
+        // expunge of closed session
+        it = sessions.erase(it);
+      }
+      else // next session
+        ++it;
     }
     // schedule next round of session ticks
     ScheduleSessionTick(isv6);
