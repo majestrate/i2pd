@@ -195,14 +195,32 @@ namespace i2p
         {
           LogPrint(eLogInfo, "Daemon: setting restricted routes to use family ", fam);
           i2p::transport::transports.RestrictRoutes({fam});
-        } else
-          LogPrint(eLogError, "Daemon: no family specified for restricted routes");
-      }
-      bool hidden; i2p::config::GetOption("trust.hidden", hidden);
-      if (hidden)
-      {
-        LogPrint(eLogInfo, "Daemon: using hidden mode");
-        i2p::data::netdb.SetHidden(true);
+        }
+        std::string routerInfo; i2p::config::GetOption("trust.routerInfo", routerInfo);
+        if(routerInfo.length() > 0)
+        {
+          if (!i2p::fs::Exists(routerInfo))
+          {
+            LogPrint(eLogError, "Daemon: ", routerInfo, " does not exist");
+          }
+          auto ri = std::make_shared<const i2p::data::RouterInfo>(routerInfo);
+          auto ident = ri->GetIdentHashBase64();
+          if (!ri->IsFloodfill()) 
+          {
+            LogPrint(eLogError, "Daemon: cannot use ", ident, " as friend router because their router info is either bad or not a floodfill");
+            return false;
+          }
+          LogPrint(eLogInfo, "Daemon: using floodfill router ", ident, " as friend router");
+          i2p::transport::transports.RestrictRoutes(ri);
+        }
+        
+        bool hidden; i2p::config::GetOption("trust.hidden", hidden);
+        if (hidden)
+        {
+          LogPrint(eLogInfo, "Daemon: using hidden mode");
+          i2p::context.HideRouter();
+          i2p::data::netdb.SetHidden(true);
+        }
       }
       return true;
 		}
@@ -226,12 +244,6 @@ namespace i2p
 			i2p::transport::transports.Start(ntcp, ssu);
 			if (i2p::transport::transports.IsBoundNTCP() || i2p::transport::transports.IsBoundSSU()) {
 				LogPrint(eLogInfo, "Daemon: Transports started");
-			} else {
-				LogPrint(eLogError, "Daemon: failed to start Transports");
-				/** shut down netdb right away */
-				i2p::transport::transports.Stop();
-				i2p::data::netdb.Stop();
-				return false;
 			}
 						
 			bool http; i2p::config::GetOption("http.enabled", http);

@@ -112,7 +112,22 @@ namespace transport
 		m_Thread = new std::thread (std::bind (&Transports::Run, this));
 		// create acceptors
 		auto& addresses = context.GetRouterInfo ().GetAddresses ();
-		for (const auto& address : addresses)
+    if (addresses.size() == 0)
+    {
+      // hidden mode
+      if (enableNTCP)
+      {
+        m_NTCPServer = new NTCPServer();
+        m_NTCPServer->Start();
+      }
+      if (enableSSU)
+      {
+        m_SSUServer = new SSUServer(rand() % (30777 - 9111) + 1); // random high port
+        m_SSUServer->Start();
+        DetectExternalIP();
+      }
+    }
+    for (const auto& address : addresses)
 		{
 			if (!address) continue;
 			if (m_NTCPServer == nullptr && enableNTCP)
@@ -281,6 +296,14 @@ namespace transport
 		
 	bool Transports::ConnectToPeer (const i2p::data::IdentHash& ident, Peer& peer)
 	{
+    if (RoutesRestricted())
+    {
+      if (m_TrustedFloodfill && m_TrustedFloodfill->GetIdentHash() != ident)
+      {
+        LogPrint(eLogError, "Transports: not connecting to non trusted router ", ident.ToBase64());
+        return false;
+      }
+    }
 		if (peer.router) // we have RI already
 		{	
 			if (!peer.numAttempts) // NTCP
@@ -499,7 +522,13 @@ namespace transport
 #ifndef MESHNET
 			i2p::context.SetStatus (eRouterStatusTesting);
 #endif
-
+      if (RoutesRestricted())
+      {
+        auto router = GetRestrictedPeer();
+        if (router && router->IsSSU(!context.SupportsV6()))
+          m_SSUServer->CreateSession(router, true);
+        return;
+      }
 			for (int i = 0; i < 5; i++)
 			{
 				auto router = i2p::data::netdb.GetRandomPeerTestRouter ();
@@ -664,12 +693,27 @@ namespace transport
   }
 
   bool Transports::RoutesRestricted() const {
+    if (m_TrustedFloodfill) return true;
     std::lock_guard<std::mutex> lock(m_FamilyMutex);
     return m_TrustedFamilies.size() > 0;
   }
 
+  void Transports::RestrictRoutes(std::shared_ptr<const i2p::data::RouterInfo> floodfill)
+  {
+    if(floodfill)
+    {
+      auto ident = floodfill->GetIdentHashBase64();
+      LogPrint(eLogWarning, "!!! Router ", ident, " will be able to do traffic corillation and network segmentation attacks on you if they are evil !!!");
+      LogPrint(eLogWarning, "!!! Make sure you trust ", ident, " to not conduct passive or active network attacks !!!");
+    }
+    m_TrustedFloodfill = floodfill;
+  }
+  
   /** XXX: if routes are not restricted this dies */
   std::shared_ptr<const i2p::data::RouterInfo> Transports::GetRestrictedPeer() const {
+    
+    if(m_TrustedFloodfill) return m_TrustedFloodfill;
+    
     std::string fam;
     {
       std::lock_guard<std::mutex> lock(m_FamilyMutex);
@@ -678,6 +722,11 @@ namespace transport
     }
     boost::to_lower(fam);
     return i2p::data::netdb.GetRandomRouterInFamily(fam);
+  }
+
+  std::shared_ptr<const i2p::data::RouterInfo> Transports::GetTrustedFloodfill() const
+  {
+    return m_TrustedFloodfill;
   }
 }
 }

@@ -706,11 +706,15 @@ namespace tunnel
 		if (m_OutboundTunnels.empty () || m_InboundTunnels.size () < 5) 
 		{
 			// trying to create one more inbound tunnel
-			auto router = i2p::data::netdb.GetRandomRouter ();
-			if (!router) {
-				LogPrint (eLogWarning, "Tunnel: can't find any router, skip creating tunnel");
-				return;
-			}
+      std::shared_ptr<const i2p::data::RouterInfo> router;
+      if (i2p::transport::transports.RoutesRestricted())
+      {
+        router = i2p::transport::transports.GetRestrictedPeer();
+      }
+      else
+      {
+        router = i2p::data::netdb.GetRandomRouter();
+      }
 			LogPrint (eLogDebug, "Tunnel: creating one hop inbound tunnel");
 			CreateTunnel<InboundTunnel> (
 				std::make_shared<TunnelConfig> (std::vector<std::shared_ptr<const i2p::data::IdentityEx> > { router->GetRouterIdentity () })

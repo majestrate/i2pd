@@ -157,6 +157,7 @@ namespace config {
   	trust.add_options()
       ("trust.enabled", value<bool>()->default_value(false), "enable explicit trust options")
       ("trust.family", value<std::string>()->default_value(""), "Router Familiy to trust for first hops")
+      ("trust.routerInfo", value<std::string>()->default_value(""), "Path to routerInfo of floodfill to use with floodfill friend mode")
       ("trust.hidden", value<bool>()->default_value(false), "should we hide our router from other routers?");
   
     m_OptionsDesc

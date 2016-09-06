@@ -51,6 +51,7 @@ namespace i2p
 			void SetStatus (RouterStatus status);
 
 			void UpdatePort (int port); // called from Daemon
+      void HideRouter(); // put ourselves into hidden mode
 			void UpdateAddress (const boost::asio::ip::address& host);	// called from SSU or Daemon
 			bool AddIntroducer (const i2p::data::RouterInfo::Introducer& introducer);
 			void RemoveIntroducer (const boost::asio::ip::udp::endpoint& e);

@@ -40,7 +40,7 @@ namespace data
 		InitProfilesStorage ();
 		m_Families.LoadCertificates ();
 		Load ();
-		if (m_RouterInfos.size () < 25) // reseed if # of router less than 50
+		if (m_RouterInfos.size () < 25)
 			Reseed ();
 
 		m_IsRunning = true;
@@ -126,13 +126,13 @@ namespace data
 					i2p::context.CleanupDestination ();
 					lastDestinationCleanup = ts;
 				}
-        // if we're in hidden mode don't publish or explore
-				// if (m_HiddenMode) continue;
-				
 				if (ts - lastPublish >= NETDB_PUBLISH_INTERVAL) // publish 
 				{
-					Publish ();
-					lastPublish = ts;
+          if(!m_HiddenMode)
+          {
+            Publish ();
+            lastPublish = ts;
+          }
 				}	
 				if (ts - lastExploratory >= 30) // exploratory every 30 seconds
 				{	
@@ -147,8 +147,9 @@ namespace data
 						numRouters = 800/numRouters;
 						if (numRouters < 1) numRouters = 1;
 						if (numRouters > 9) numRouters = 9;	
-						m_Requests.ManageRequests ();					
-						Explore (numRouters);
+						m_Requests.ManageRequests ();
+            if(!m_HiddenMode)
+              Explore (numRouters);
 						lastExploratory = ts;
 					}	
 				}	
@@ -289,8 +290,30 @@ namespace data
 			return it->second->SetUnreachable (unreachable);
 	}
 
+  void NetDb::BootstrapFromFloodfill(std::shared_ptr<const i2p::data::RouterInfo> floodfill)
+  {
+    auto ident = floodfill->GetIdentHash();
+    auto ourIdent = i2p::context.GetSharedRouterInfo()->GetIdentHash();
+    LogPrint(eLogInfo, "NetDb: bootstrapping via floodfill ", ident.ToBase64());
+    AddRouterInfo(ident, floodfill->GetBuffer(), floodfill->GetBufferLen());
+    std::vector<std::shared_ptr<I2NPMessage> > msgs;
+    for (int c = 0 ; c < NETDB_FLOODFILL_BOOTSTRAP_DLM_COUNT; ++c)
+    {
+      i2p::data::IdentHash randIdent;
+      randIdent.Randomize();
+      msgs.push_back(i2p::CreateRouterInfoDatabaseLookupMsg(randIdent, ourIdent, 0, true, nullptr));
+    }
+    i2p::transport::transports.SendMessages(ident, msgs);
+  }
+  
 	void NetDb::Reseed ()
 	{
+    if (i2p::transport::transports.RoutesRestricted())
+    {
+      auto ff = i2p::transport::transports.GetTrustedFloodfill();
+      if(ff) BootstrapFromFloodfill(ff);
+      return;
+    }
 		if (!m_Reseeder)
 		{		
 			m_Reseeder = new Reseeder ();
@@ -660,7 +683,7 @@ namespace data
 				// no more requests for detination possible. delete it
 				m_Requests.RequestComplete (ident, nullptr);
 		}
-		else	
+		else 
 			LogPrint (eLogWarning, "NetDb: requested destination for ", key, " not found");
 
 		// try responses

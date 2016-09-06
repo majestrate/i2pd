@@ -57,6 +57,11 @@ namespace data {
 			{
 				memset(m_Buf, c, sz);
 			}
+
+      void Randomize()
+      {
+        RAND_bytes(m_Buf, sz);
+      }
 			
 			std::string ToBase64 () const
 			{
