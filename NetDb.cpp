@@ -516,7 +516,7 @@ namespace data
 			return;			
 		}
     std::shared_ptr<const i2p::data::RouterInfo> floodfill = nullptr;
-    if (i2p::transport::transports.RoutesRestricted() && m_Floodfills.size() == 1)
+    if (i2p::transport::transports.RoutesRestricted())
       floodfill = i2p::transport::transports.GetTrustedFloodfill();
     else
       floodfill = GetClosestFloodfill (destination, dest->GetExcludedPeers ());

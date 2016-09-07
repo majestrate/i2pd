@@ -419,6 +419,7 @@ namespace transport
     
     // handle outbound resend
     size_t numResends = 0;
+    size_t numFails = 0;
     // for each message we are sending  ...
     for ( auto it = m_SentMessages.begin(); it != m_SentMessages.end(); )
     {
@@ -457,13 +458,14 @@ namespace transport
           LogPrint(eLogInfo, "SSU: message not ACKed after ", MAX_NUM_RESENDS, " attempts, deleted");
           // erase message from send queue
           it = m_SentMessages.erase(it);
+          ++numFails;
         }
       }
       else
         ++it; // no resend required for this message
     }
     m_LastTick = now;
-    return numResends < MAX_OUTGOING_WINDOW_SIZE;  
+    return numResends < MAX_OUTGOING_WINDOW_SIZE || numFails < MAX_OUTGOING_WINDOW_SIZE;
 	}	
 }
 }
