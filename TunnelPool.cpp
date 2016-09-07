@@ -410,7 +410,6 @@ namespace tunnel
 			std::shared_ptr<TunnelConfig> config;
 			if (m_NumInboundHops > 0)
 			{	
-				std::reverse (peers.begin (), peers.end ());	
 				config = std::make_shared<TunnelConfig> (peers);
 			}	
 			auto tunnel = tunnels.CreateInboundTunnel (config, outboundTunnel);

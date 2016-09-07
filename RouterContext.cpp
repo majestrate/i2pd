@@ -126,6 +126,7 @@ namespace i2p
 
   void RouterContext::HideRouter()
   {
+    CreateNewRouter();
     m_RouterInfo.MakeHidden();
     UpdateRouterInfo();
   }

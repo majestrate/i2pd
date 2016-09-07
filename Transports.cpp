@@ -122,7 +122,7 @@ namespace transport
       }
       if (enableSSU)
       {
-        m_SSUServer = new SSUServer(rand() % (30777 - 9111) + 1); // random high port
+        m_SSUServer = new SSUServer(rand() % (30777 - 9111) + 9111); // random high port
         m_SSUServer->Start();
         DetectExternalIP();
       }

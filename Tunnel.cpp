@@ -644,7 +644,11 @@ namespace tunnel
 		{
 			// trying to create one more oubound tunnel
 			auto inboundTunnel = GetNextInboundTunnel ();
-			auto router = i2p::data::netdb.GetRandomRouter ();
+      std::shared_ptr<const i2p::data::RouterInfo> router;
+      if (i2p::transport::transports.RoutesRestricted())
+        router = i2p::transport::transports.GetRestrictedPeer();
+      else
+        router = i2p::data::netdb.GetRandomRouter ();
 			if (!inboundTunnel || !router) return;
 			LogPrint (eLogDebug, "Tunnel: creating one hop outbound tunnel");
 			CreateTunnel<OutboundTunnel> (

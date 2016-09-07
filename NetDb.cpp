@@ -142,6 +142,8 @@ namespace data
 						LogPrint(eLogError, "NetDb: no known routers, reseed seems to be totally failed");
 						break;
 					}
+          if (numRouters == 1 && i2p::transport::transports.RoutesRestricted())
+            Reseed();
 					if (numRouters < 2500 || ts - lastExploratory >= 90)
 					{	
 						numRouters = 800/numRouters;
@@ -301,7 +303,8 @@ namespace data
     {
       i2p::data::IdentHash randIdent;
       randIdent.Randomize();
-      msgs.push_back(i2p::CreateRouterInfoDatabaseLookupMsg(randIdent, ourIdent, 0, true, nullptr));
+      bool exploratory = c % 4 != 0;
+      msgs.push_back(i2p::CreateRouterInfoDatabaseLookupMsg(randIdent, ourIdent, 0, exploratory, nullptr));
     }
     i2p::transport::transports.SendMessages(ident, msgs);
   }
@@ -512,8 +515,11 @@ namespace data
 			LogPrint (eLogWarning, "NetDb: destination ", destination.ToBase64(), " is requested already");
 			return;			
 		}
-
-		auto floodfill = GetClosestFloodfill (destination, dest->GetExcludedPeers ());
+    std::shared_ptr<const i2p::data::RouterInfo> floodfill = nullptr;
+    if (i2p::transport::transports.RoutesRestricted() && m_Floodfills.size() == 1)
+      floodfill = i2p::transport::transports.GetTrustedFloodfill();
+    else
+      floodfill = GetClosestFloodfill (destination, dest->GetExcludedPeers ());
 		if (floodfill)
 			transports.SendMessage (floodfill->GetIdentHash (), dest->CreateRequestMessage (floodfill->GetIdentHash ()));	
 		else
@@ -683,8 +689,9 @@ namespace data
 				// no more requests for detination possible. delete it
 				m_Requests.RequestComplete (ident, nullptr);
 		}
-		else 
-			LogPrint (eLogWarning, "NetDb: requested destination for ", key, " not found");
+		else if(!i2p::transport::transports.RoutesRestricted())
+      LogPrint (eLogWarning, "NetDb: requested destination for ", key, " not found");
+    
 
 		// try responses
 		for (int i = 0; i < num; i++)
