@@ -517,18 +517,16 @@ namespace transport
 		
 	void Transports::DetectExternalIP ()
 	{
+    // don't do external ip detection with restricted routes
+    if (RoutesRestricted())
+      return;
+      
 		if (m_SSUServer)
 		{
 #ifndef MESHNET
 			i2p::context.SetStatus (eRouterStatusTesting);
 #endif
-      if (RoutesRestricted())
-      {
-        auto router = GetRestrictedPeer();
-        if (router && router->IsSSU(!context.SupportsV6()))
-          m_SSUServer->CreateSession(router);
-        return;
-      }
+      
 			for (int i = 0; i < 5; i++)
 			{
 				auto router = i2p::data::netdb.GetRandomPeerTestRouter ();
