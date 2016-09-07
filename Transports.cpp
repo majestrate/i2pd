@@ -526,7 +526,7 @@ namespace transport
       {
         auto router = GetRestrictedPeer();
         if (router && router->IsSSU(!context.SupportsV6()))
-          m_SSUServer->CreateSession(router, true);
+          m_SSUServer->CreateSession(router);
         return;
       }
 			for (int i = 0; i < 5; i++)
