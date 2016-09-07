@@ -298,10 +298,14 @@ namespace transport
 	{
     if (RoutesRestricted())
     {
-      if (m_TrustedFloodfill && m_TrustedFloodfill->GetIdentHash() != ident)
+      if (m_TrustedFloodfill)
       {
-        LogPrint(eLogError, "Transports: not connecting to non trusted router ", ident.ToBase64());
-        return false;
+        i2p::data::IdentHash expectedIdent = m_TrustedFloodfill->GetIdentHash();
+        if (expectedIdent != ident)       
+        {
+          LogPrint(eLogError, "Transports: not connecting to untrusted peer ", ident.ToBase64());
+          return false;
+        }
       }
     }
 		if (peer.router) // we have RI already
