@@ -79,7 +79,8 @@ namespace tunnel
 			void SetCustomPeerSelector(TunnelPeerSelector selector);
 			void UnsetCustomPeerSelector();
 			bool HasCustomPeerSelector();
-			void OnTunnelBuildResult(std::shared_ptr<const TunnelConfig> config, TunnelBuildResult result);
+			template<class TTunnel>
+			void OnTunnelBuildResult(TTunnel& tunnel, TunnelBuildResult result);
 		private:
 			void CreateInboundTunnel ();	
 			void CreateOutboundTunnel ();

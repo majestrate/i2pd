@@ -70,7 +70,7 @@ namespace tunnel
 			std::unique_lock<std::mutex> l(m_InboundTunnelsMutex);
 			m_InboundTunnels.insert (createdTunnel);
 		}
-		OnTunnelBuildResult(createdTunnel->GetTunnelConfig(), eBuildResultOkay);
+		OnTunnelBuildResult(createdTunnel, eBuildResultOkay);
 		if (m_LocalDestination)
 			m_LocalDestination->SetLeaseSetUpdated ();
 	}
@@ -95,7 +95,7 @@ namespace tunnel
 			std::unique_lock<std::mutex> l(m_OutboundTunnelsMutex);
 			m_OutboundTunnels.insert (createdTunnel);
 		}
-		OnTunnelBuildResult(createdTunnel->GetTunnelConfig(), eBuildResultOkay);
+		OnTunnelBuildResult(createdTunnel, eBuildResultOkay);
 		//CreatePairedInboundTunnel (createdTunnel);
 	}
 
@@ -508,13 +508,14 @@ namespace tunnel
 		return m_CustomPeerSelector != nullptr;
 	}
 
-  void TunnelPool::OnTunnelBuildResult(std::shared_ptr<const TunnelConfig> config, TunnelBuildResult result)
+  template <typename TTunnels>
+  void TunnelPool::OnTunnelBuildResult(TTunnels & tunnel, TunnelBuildResult result)
   {
 
     std::lock_guard<std::mutex> lock(m_CustomPeerSelectorMutex);
     if(m_CustomPeerSelector == nullptr) return;
-    auto peers = config->GetPeers();
-    m_CustomPeerSelector->OnBuildResult(peers, config->IsInbound(), result);
+    auto peers = tunnel->GetPeers();
+    m_CustomPeerSelector->OnBuildResult(peers, tunnel->IsInbound(), result);
   }
 }
 }
