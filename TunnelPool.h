@@ -38,7 +38,7 @@ namespace tunnel
 		typedef std::shared_ptr<const i2p::data::IdentityEx> Peer;
 		typedef std::vector<Peer> TunnelPath;
 		virtual bool SelectPeers(TunnelPath & peers, int hops, bool isInbound) = 0;
-		virtual void OnBuildResult(TunnelPath & peer, bool isInbound, TunnelBuildResult result) = 0;
+		virtual bool OnBuildResult(TunnelPath & peer, bool isInbound, TunnelBuildResult result) = 0;
 	};
 
 	typedef std::shared_ptr<ITunnelPeerSelector> TunnelPeerSelector;
