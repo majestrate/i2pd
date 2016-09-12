@@ -70,6 +70,7 @@ namespace tunnel
 			std::unique_lock<std::mutex> l(m_InboundTunnelsMutex);
 			m_InboundTunnels.insert (createdTunnel);
 		}
+		OnTunnelBuildResult(createdTunnel->GetTunnelConfig(), eBuildResultOkay);
 		if (m_LocalDestination)
 			m_LocalDestination->SetLeaseSetUpdated ();
 	}
@@ -94,6 +95,7 @@ namespace tunnel
 			std::unique_lock<std::mutex> l(m_OutboundTunnelsMutex);
 			m_OutboundTunnels.insert (createdTunnel);
 		}
+		OnTunnelBuildResult(createdTunnel->GetTunnelConfig(), eBuildResultOkay);
 		//CreatePairedInboundTunnel (createdTunnel);
 	}
 

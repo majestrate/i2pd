@@ -602,7 +602,6 @@ namespace tunnel
 				break;
 				default:
 					// success
-					if(pool && config) pool->OnTunnelBuildResult(config, eBuildResultOkay);
 					it = pendingTunnels.erase (it);
 					m_NumSuccesiveTunnelCreations++;
 			}
