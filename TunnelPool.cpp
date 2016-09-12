@@ -341,7 +341,7 @@ namespace tunnel
 		if (m_ExplicitPeers) return SelectExplicitPeers (peers, isInbound);
 
 		auto prevHop = i2p::context.GetSharedRouterInfo ();			
-		if(i2p::transport::transports.RoutesRestricted() && !isInbound)
+		if(i2p::transport::transports.RoutesRestricted())
 		{
 			/** if routes are restricted prepend trusted first hop */
 			auto hop = i2p::transport::transports.GetRestrictedPeer();
@@ -371,11 +371,6 @@ namespace tunnel
 			prevHop = hop;
 			peers.push_back (hop->GetRouterIdentity ());
 		}
-    if (isInbound && i2p::transport::transports.RoutesRestricted())
-    {
-      auto hop = i2p::transport::transports.GetRestrictedPeer();
-      peers.push_back(hop->GetRouterIdentity());
-    }
 		return true;
 	}	
 	
@@ -510,5 +505,14 @@ namespace tunnel
 		std::lock_guard<std::mutex> lock(m_CustomPeerSelectorMutex);
 		return m_CustomPeerSelector != nullptr;
 	}
+
+  void TunnelPool::OnTunnelBuildResult(std::shared_ptr<const TunnelConfig> config, TunnelBuildResult result)
+  {
+
+    std::lock_guard<std::mutex> lock(m_CustomPeerSelectorMutex);
+    if(m_CustomPeerSelector == nullptr) return;
+    auto peers = config->GetPeers();
+    m_CustomPeerSelector->OnBuildResult(peers, config->IsInbound(), result);
+  }
 }
 }

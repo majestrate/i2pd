@@ -555,10 +555,12 @@ namespace tunnel
 	void Tunnels::ManagePendingTunnels (PendingTunnels& pendingTunnels)
 	{
 		// check pending tunnel. delete failed or timeout
-		uint64_t ts = i2p::util::GetSecondsSinceEpoch ();
+		uint32_t ts = i2p::util::GetSecondsSinceEpoch ();
 		for (auto it = pendingTunnels.begin (); it != pendingTunnels.end ();)
 		{
 			auto tunnel = it->second;
+			auto config = tunnel->GetTunnelConfig ();
+			auto pool = tunnel->GetTunnelPool();
 			switch (tunnel->GetState ())
 			{
 				case eTunnelStatePending: 
@@ -566,7 +568,6 @@ namespace tunnel
 					{
 						LogPrint (eLogDebug, "Tunnel: pending build request ", it->first, " timeout, deleted");
 						// update stats
-						auto config = tunnel->GetTunnelConfig ();
 						if (config)
 						{
 							auto hop = config->GetFirstHop ();
@@ -581,6 +582,7 @@ namespace tunnel
 								hop = hop->next;
 							}
 						}
+						if(pool && config) pool->OnTunnelBuildResult(config, eBuildResultTimeout);
 						// delete
 						it = pendingTunnels.erase (it);
 						m_NumFailedTunnelCreations++;
@@ -590,6 +592,7 @@ namespace tunnel
 				break;
 				case eTunnelStateBuildFailed:
 					LogPrint (eLogDebug, "Tunnel: pending build request ", it->first, " failed, deleted");
+					if(pool && config) pool->OnTunnelBuildResult(config, eBuildResultRejected);
 					it = pendingTunnels.erase (it);
 					m_NumFailedTunnelCreations++;
 				break;
@@ -599,6 +602,7 @@ namespace tunnel
 				break;
 				default:
 					// success
+					if(pool && config) pool->OnTunnelBuildResult(config, eBuildResultOkay);
 					it = pendingTunnels.erase (it);
 					m_NumSuccesiveTunnelCreations++;
 			}
@@ -607,7 +611,7 @@ namespace tunnel
 
 	void Tunnels::ManageOutboundTunnels ()
 	{
-		uint64_t ts = i2p::util::GetSecondsSinceEpoch ();
+		uint32_t ts = i2p::util::GetSecondsSinceEpoch ();
 		{
 			for (auto it = m_OutboundTunnels.begin (); it != m_OutboundTunnels.end ();)
 			{
