@@ -45,6 +45,12 @@ namespace data
 		pt.put_child (PEER_PROFILE_SECTION_PARTICIPATION, participation);
 		pt.put_child (PEER_PROFILE_SECTION_USAGE, usage);
 
+		if (IsBanned()) {
+			boost::property_tree::ptree ban;
+			ban.put(PEER_PRPFILE_BAN_REASON, m_BanReason);
+			ban.put_child (PEER_PROFILE_SECTION_BAN, ban);
+		}
+		
 		// save to file
 		std::string ident = m_IdentHash.ToBase64 ();
 		std::string path = m_ProfilesStorage.Path(ident);
