@@ -23,7 +23,7 @@ namespace data
 	const char PEER_PRPFILE_BAN_REASON[] = "reason";
   
 	const int PEER_PROFILE_EXPIRATION_TIMEOUT = 72; // in hours (3 days)
-	
+  
 	class RouterProfile
 	{
 		public:
@@ -43,8 +43,15 @@ namespace data
 			void Ban();
 
 			bool IsBanned();
-			std::string GetBanReason() { return m_BanReason; }
+			std::string GetBanReason() const { return m_BanReason; }
+
+			uint32_t GetTunnelsAgreed() const { return m_NumTunnelsAgreed; }
+			uint32_t GetTunnelsDeclined() const { return m_NumTunnelsDeclined; }
+			uint32_t GetTunnelsTimeout() const { return m_NumTunnelsNonReplied; }
 		
+			uint32_t GetTaken() const { return m_NumTimesTaken; }
+			uint32_t GetRejected() const { return m_NumTimesRejected; }
+
 		private:
 
 			boost::posix_time::ptime GetTime () const;
