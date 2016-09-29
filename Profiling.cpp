@@ -98,6 +98,12 @@ namespace data
 				}	catch (boost::property_tree::ptree_bad_path& ex) {
 					LogPrint (eLogWarning, "Missing section ", PEER_PROFILE_SECTION_USAGE, " in profile for ", ident);
 				}
+				if (pt.find(PEER_PROFILE_SECTION_BAN) != pt.not_found())
+				{
+					auto ban = pt.get_child(PEER_PROFILE_SECTION_BAN);
+					m_BanReason = ban.get(PEER_PRPFILE_BAN_REASON, "");
+				}
+				
 			} else {
 				*this = RouterProfile (m_IdentHash);
 			}
@@ -133,7 +139,8 @@ namespace data
 	}	
 		
 	bool RouterProfile::IsBad ()
-	{ 
+	{
+		if(IsBanned()) return true;
 		auto isBad = IsAlwaysDeclining () || IsLowPartcipationRate () /*|| IsLowReplyRate ()*/;
 		if (isBad && m_NumTimesRejected > 10*(m_NumTimesTaken + 1)) 
 		{
@@ -144,9 +151,24 @@ namespace data
 			isBad = false;
 		}		
 		if (isBad) m_NumTimesRejected++; else m_NumTimesTaken++;
-		return isBad;	
+		return isBad;
 	}
-		
+
+	void RouterProfile::BanWithReason(const std::string & reason)
+	{
+		m_BanReason = reason;
+	}
+
+	void RouterProfile::Ban()
+	{
+		BanWithReason("no reason specified");
+	}
+
+	bool RouterProfile::IsBanned()
+	{
+		return m_BanReason.size() > 0;
+	}
+	
 	std::shared_ptr<RouterProfile> GetRouterProfile (const IdentHash& identHash)
 	{
 		auto profile = std::make_shared<RouterProfile> (identHash);
