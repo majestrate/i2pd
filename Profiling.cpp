@@ -170,6 +170,11 @@ namespace data
 		BanWithReason("no reason specified");
 	}
 
+	void RouterProfile::Unban()
+	{
+		m_BanReason = "";
+	}
+	
 	bool RouterProfile::IsBanned()
 	{
 		return m_BanReason.size() > 0;

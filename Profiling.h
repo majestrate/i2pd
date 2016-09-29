@@ -42,6 +42,8 @@ namespace data
 			void BanWithReason(const std::string & reason);
 			void Ban();
 
+			void Unban();
+		
 			bool IsBanned();
 			std::string GetBanReason() const { return m_BanReason; }
 
