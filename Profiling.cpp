@@ -60,7 +60,9 @@ namespace data
 		} catch (std::exception& ex) {
 			/* boost exception verbose enough */
 			LogPrint (eLogError, "Profiling: ", ex.what ());
+			return false;
 		}
+		return true;
 	}
 
 	void RouterProfile::Load ()

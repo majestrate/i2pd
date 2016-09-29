@@ -31,7 +31,7 @@ namespace data
 			RouterProfile (const IdentHash& identHash);
 			RouterProfile& operator= (const RouterProfile& ) = default;
 			
-			void Save ();
+			bool Save ();
 			void Load ();
 
 			bool IsBad ();
