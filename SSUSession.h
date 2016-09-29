@@ -27,6 +27,8 @@ namespace transport
 
   const std::chrono::seconds SSU_TERMINATION_TIMEOUT(330);
   const std::chrono::seconds SSU_CONNECT_TIMEOUT(5);
+  const std::chrono::seconds SSU_CLOCK_SKEW(60);
+
 
 	// payload types (4 bits)
 	const uint8_t PAYLOAD_TYPE_SESSION_REQUEST = 0;
