@@ -29,7 +29,7 @@ namespace data
 		m_LastUpdateTime = GetTime ();
 	}	
 		
-	void RouterProfile::Save ()
+	bool RouterProfile::Save ()
 	{
 		// fill sections
 		boost::property_tree::ptree participation;
