@@ -461,7 +461,7 @@ namespace client
 		}
 	}
 
-	void I2CPSession::ReconfigureSessionMessageHandler (const uint8_t* /*buf*/, size_t /*len*/)
+	void I2CPSession::ReconfigureSessionMessageHandler (const uint8_t* buf, size_t len)
 	{
     uint16_t sessionID = bufbe16toh(buf);
     if(sessionID == m_SessionID)
