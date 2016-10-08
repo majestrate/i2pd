@@ -251,30 +251,26 @@ namespace datagram
 				}
 			}
 		}
-		auto now = i2p::util::GetMillisecondsSinceEpoch ();
-		// if this path looks dead reset the routing path since we didn't seem to be able to get a path in time
-		if (m_LastPathChange && now - m_LastPathChange >= DATAGRAM_SESSION_PATH_TIMEOUT ) ResetRoutingPath();
 		UpdateLeaseSet(msg);
-		
 	}
 
 	void DatagramSession::UpdateRoutingPath(const std::shared_ptr<i2p::garlic::GarlicRoutingPath> & path)
 	{
+		m_LastPathChange = i2p::util::GetMillisecondsSinceEpoch ();
 		if(m_RoutingSession == nullptr && m_RemoteLeaseSet)
 			m_RoutingSession = m_LocalDestination->GetRoutingSession(m_RemoteLeaseSet, true);
 		if(!m_RoutingSession) return;
 		// set routing path and update time we last updated the routing path
 		m_RoutingSession->SetSharedRoutingPath (path);
-		m_LastPathChange = i2p::util::GetMillisecondsSinceEpoch ();
 	}
 
 	bool DatagramSession::ShouldUpdateRoutingPath() const
 	{
 		auto now = i2p::util::GetMillisecondsSinceEpoch ();
 		// we need to rotate paths becuase the routing path is too old
-		if (now - m_LastPathChange >= DATAGRAM_SESSION_PATH_SWITCH_INTERVAL) return true;
+		// if (now - m_LastPathChange >= DATAGRAM_SESSION_PATH_SWITCH_INTERVAL) return true;
 		// our path looks dead so we need to rotate paths
-		if (now - m_LastSuccess >= DATAGRAM_SESSION_PATH_TIMEOUT) return true;
+		if (now - m_LastSuccess >= DATAGRAM_SESSION_PATH_TIMEOUT) return m_RoutingSession != nullptr && m_RoutingSession->GetSharedRoutingPath() != nullptr;
 		// if we have a routing session and routing path we don't need to switch paths
 		return m_RoutingSession == nullptr || m_RoutingSession->GetSharedRoutingPath () == nullptr;
 	}
