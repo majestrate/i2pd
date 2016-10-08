@@ -151,7 +151,7 @@ namespace tunnel
 		{	
 			if (it->IsEstablished () && it != excluded)
 			{
-        if(it->LatencyFitsRange(m_MinLatency, m_MaxLatency) && !ignoreLatency) continue; // latency check
+        if((!ignoreLatency) && !it->LatencyFitsRange(m_MinLatency, m_MaxLatency)) continue; // latency check
 				tunnel = it;
 				i++;
 			}
@@ -171,11 +171,10 @@ namespace tunnel
 			for (const auto& it: m_OutboundTunnels)
 				if (it->IsEstablished () && old->GetEndpointIdentHash () == it->GetEndpointIdentHash ())
 				{
-          if(ignoreLatency || it->LatencyFitsRange(m_MinLatency, m_MaxLatency))
-          {
-            tunnel = it;
-            break;
-          }
+          if((!ignoreLatency) && !it->LatencyFitsRange(m_MinLatency, m_MaxLatency)) continue;
+          tunnel = it;
+          break;
+
 				}
 		}
 	
