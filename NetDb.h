@@ -34,6 +34,8 @@ namespace data
 	const int NETDB_MAX_EXPIRATION_TIMEOUT = 27*60*60; // 27 hours
 	const int NETDB_PUBLISH_INTERVAL = 60*40;
 
+  const int NETDB_FLOODFILL_BOOTSTRAP_DLM_COUNT = 50; // how many DLM to send to our trusted floodfill when bootstrapping
+  
 	/** function for visiting a leaseset stored in a floodfill */
 	typedef std::function<void(const IdentHash, std::shared_ptr<LeaseSet>)> LeaseSetVisitor;
 
@@ -99,6 +101,9 @@ namespace data
 			void VisitRouterInfos(RouterInfoVisitor v);
 			/** visit N random router that match using filter, then visit them with a visitor, return number of RouterInfos that were visited */
 			size_t VisitRandomRouterInfos(RouterInfoFilter f, RouterInfoVisitor v, size_t n);
+
+      void BootstrapFromFloodfill(std::shared_ptr<const i2p::data::RouterInfo> floodfill);
+      
 		private:
 
 			void Load ();

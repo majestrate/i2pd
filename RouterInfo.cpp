@@ -313,6 +313,12 @@ namespace data
 			SetUnreachable (true);
 	}
 
+  void RouterInfo::MakeHidden()
+  {
+    SetCaps(eHidden);
+    m_Addresses = boost::make_shared<Addresses>();
+  }
+  
   bool RouterInfo::IsFamily(const std::string & fam) const {
     return m_Family == fam;
   }

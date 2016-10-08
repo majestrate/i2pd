@@ -112,7 +112,22 @@ namespace transport
 		m_Thread = new std::thread (std::bind (&Transports::Run, this));
 		// create acceptors
 		auto& addresses = context.GetRouterInfo ().GetAddresses ();
-		for (const auto& address : addresses)
+    if (addresses.size() == 0)
+    {
+      // hidden mode
+      if (enableNTCP)
+      {
+        m_NTCPServer = new NTCPServer();
+        m_NTCPServer->Start();
+      }
+      if (enableSSU)
+      {
+        m_SSUServer = new SSUServer(rand() % (30777 - 9111) + 9111); // random high port
+        m_SSUServer->Start();
+        DetectExternalIP();
+      }
+    }
+    for (const auto& address : addresses)
 		{
 			if (!address) continue;
 			if (m_NTCPServer == nullptr && enableNTCP)
@@ -281,6 +296,18 @@ namespace transport
 		
 	bool Transports::ConnectToPeer (const i2p::data::IdentHash& ident, Peer& peer)
 	{
+    if (RoutesRestricted())
+    {
+      if (m_TrustedFloodfill)
+      {
+        i2p::data::IdentHash expectedIdent = m_TrustedFloodfill->GetIdentHash();
+        if (expectedIdent != ident)       
+        {
+          LogPrint(eLogError, "Transports: not connecting to untrusted peer ", ident.ToBase64());
+          return false;
+        }
+      }
+    }
 		if (peer.router) // we have RI already
 		{	
 			if (!peer.numAttempts) // NTCP
@@ -494,12 +521,16 @@ namespace transport
 		
 	void Transports::DetectExternalIP ()
 	{
+    // don't do external ip detection with restricted routes
+    if (RoutesRestricted())
+      return;
+      
 		if (m_SSUServer)
 		{
 #ifndef MESHNET
 			i2p::context.SetStatus (eRouterStatusTesting);
 #endif
-
+      
 			for (int i = 0; i < 5; i++)
 			{
 				auto router = i2p::data::netdb.GetRandomPeerTestRouter ();
@@ -571,7 +602,7 @@ namespace transport
 				if (sendDatabaseStore)
 					session->SendI2NPMessages ({ CreateDatabaseStoreMsg () });
 				else
-					session->SetTerminationTimeout (10); // most likely it's publishing, no follow-up messages expected, set timeout to 10 seconds
+					session->SetTerminationTimeout (std::chrono::seconds(10)); // most likely it's publishing, no follow-up messages expected, set timeout to 10 seconds
 				it->second.sessions.push_back (session);
 				session->SendI2NPMessages (it->second.delayedMessages);
 				it->second.delayedMessages.clear ();
@@ -664,12 +695,27 @@ namespace transport
   }
 
   bool Transports::RoutesRestricted() const {
+    if (m_TrustedFloodfill) return true;
     std::lock_guard<std::mutex> lock(m_FamilyMutex);
     return m_TrustedFamilies.size() > 0;
   }
 
+  void Transports::RestrictRoutes(std::shared_ptr<const i2p::data::RouterInfo> floodfill)
+  {
+    if(floodfill)
+    {
+      auto ident = floodfill->GetIdentHashBase64();
+      LogPrint(eLogWarning, "!!! Router ", ident, " will be able to do traffic corillation and network segmentation attacks on you if they are evil !!!");
+      LogPrint(eLogWarning, "!!! Make sure you trust ", ident, " to not conduct passive or active network attacks !!!");
+    }
+    m_TrustedFloodfill = floodfill;
+  }
+  
   /** XXX: if routes are not restricted this dies */
   std::shared_ptr<const i2p::data::RouterInfo> Transports::GetRestrictedPeer() const {
+    
+    if(m_TrustedFloodfill) return m_TrustedFloodfill;
+    
     std::string fam;
     {
       std::lock_guard<std::mutex> lock(m_FamilyMutex);
@@ -678,6 +724,11 @@ namespace transport
     }
     boost::to_lower(fam);
     return i2p::data::netdb.GetRandomRouterInFamily(fam);
+  }
+
+  std::shared_ptr<const i2p::data::RouterInfo> Transports::GetTrustedFloodfill() const
+  {
+    return m_TrustedFloodfill;
   }
 }
 }

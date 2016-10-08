@@ -27,6 +27,12 @@ namespace util
 		return std::chrono::duration_cast<std::chrono::seconds>(
 			  	 std::chrono::system_clock::now().time_since_epoch()).count ();
 	}
+
+  template<typename unit>
+  inline unit GetSinceEpoch()
+  {
+    return std::chrono::duration_cast<unit>(std::chrono::system_clock::now().time_since_epoch());
+  }
 }
 }
 

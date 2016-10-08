@@ -36,18 +36,21 @@ namespace transport
 
 	const size_t NTCP_MAX_MESSAGE_SIZE = 16384; 
 	const size_t NTCP_BUFFER_SIZE = 4160; // fits 4 tunnel messages (4*1028)
-	const int NTCP_TERMINATION_TIMEOUT = 120; // 2 minutes
-	const int NTCP_TERMINATION_CHECK_TIMEOUT = 30; // 30 seconds	
-	const size_t NTCP_DEFAULT_PHASE3_SIZE = 2/*size*/ + i2p::data::DEFAULT_IDENTITY_SIZE/*387*/ + 4/*ts*/ + 15/*padding*/ + 40/*signature*/; // 448 	
-	const int NTCP_BAN_EXPIRATION_TIMEOUT = 70; // in second
-	const int NTCP_CLOCK_SKEW = 60; // in seconds 
-	const int NTCP_MAX_OUTGOING_QUEUE_SIZE = 200; // how many messages we can queue up
+  const std::chrono::minutes NTCP_TERMINATION_TIMEOUT(2);
+  const std::chrono::seconds NTCP_TERMINATION_CHECK_TIMEOUT(30);
+	const size_t NTCP_DEFAULT_PHASE3_SIZE = 2/*size*/ + i2p::data::DEFAULT_IDENTITY_SIZE/*387*/ + 4/*ts*/ + 15/*padding*/ + 40/*signature*/; // 448
+  const std::chrono::seconds NTCP_BAN_EXPIRATION_TIMEOUT(70);
+  const std::chrono::minutes NTCP_CLOCK_SKEW_DURATION(1);
+	const size_t NTCP_MAX_OUTGOING_QUEUE_SIZE = 200; // how many messages we can queue up
 
+  const uint32_t NTCP_CLOCK_SKEW = std::chrono::duration_cast<std::chrono::seconds>(NTCP_CLOCK_SKEW_DURATION).count();
+  
 	class NTCPServer;
 	class NTCPSession: public TransportSession, public std::enable_shared_from_this<NTCPSession>
 	{
 		public:
 
+    typedef std::chrono::milliseconds TimeDuration;
 			NTCPSession (NTCPServer& server, std::shared_ptr<const i2p::data::RouterInfo> in_RemoteRouter = nullptr);
 			~NTCPSession ();
 			void Terminate ();
@@ -129,7 +132,15 @@ namespace transport
 	class NTCPServer
 	{
 		public:
-
+    typedef std::chrono::milliseconds TimeDuration;
+    typedef boost::asio::deadline_timer Timer;
+    
+    static void ExpireTimer(Timer & timer, TimeDuration d)
+    {
+      boost::posix_time::milliseconds e(std::chrono::duration_cast<std::chrono::milliseconds>(d).count());
+      timer.expires_from_now(e);
+    }
+    
 			NTCPServer ();
 			~NTCPServer ();
 
@@ -165,10 +176,10 @@ namespace transport
 			std::thread * m_Thread;	
 			boost::asio::io_service m_Service;
 			boost::asio::io_service::work m_Work;
-			boost::asio::deadline_timer m_TerminationTimer;
+			Timer m_TerminationTimer;
 			boost::asio::ip::tcp::acceptor * m_NTCPAcceptor, * m_NTCPV6Acceptor;
 			std::map<i2p::data::IdentHash, std::shared_ptr<NTCPSession> > m_NTCPSessions; // access from m_Thread only
-			std::map<boost::asio::ip::address, uint32_t> m_BanList; // IP -> ban expiration time in seconds
+			std::map<boost::asio::ip::address, TimeDuration> m_BanList; // IP -> ban expiration time in seconds
 
 		public:
 

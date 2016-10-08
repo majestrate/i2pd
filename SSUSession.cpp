@@ -14,9 +14,10 @@ namespace transport
 	SSUSession::SSUSession (SSUServer& server, boost::asio::ip::udp::endpoint& remoteEndpoint,
 		std::shared_ptr<const i2p::data::RouterInfo> router, bool peerTest ): 
 		TransportSession (router, SSU_TERMINATION_TIMEOUT), 
-		m_Server (server), m_RemoteEndpoint (remoteEndpoint), m_ConnectTimer (GetService ()), 
+		m_Server (server), m_RemoteEndpoint (remoteEndpoint),
 		m_IsPeerTest (peerTest),m_State (eSessionStateUnknown), m_IsSessionKey (false), 
-		m_RelayTag (0),m_Data (*this), m_IsDataReceived (false)
+		m_RelayTag (0), m_CreationTime(0), m_LastTimeoutCheck(0),
+    m_Data (*this), m_IsDataReceived (false)
 	{	
 		if (router)
 		{
@@ -31,7 +32,7 @@ namespace transport
 			auto address = i2p::context.GetRouterInfo ().GetSSUAddress (false);
 			if (address) m_IntroKey = address->key;
 		}
-		m_CreationTime = i2p::util::GetSecondsSinceEpoch ();
+    m_CreationTime = i2p::util::GetSinceEpoch<TimeDuration> ();
 	}
 
 	SSUSession::~SSUSession ()
@@ -97,7 +98,7 @@ namespace transport
 		{
 			if (!len) return; // ignore zero-length packets	
 			if (m_State == eSessionStateEstablished)
-				m_LastActivityTimestamp = i2p::util::GetSecondsSinceEpoch ();	
+				m_LastActivityTimestamp = i2p::util::GetSinceEpoch<TimeDuration> ();	
 			
 			if (m_IsSessionKey && Validate (buf, len, m_MacKey)) // try session key first
 				DecryptSessionKey (buf, len);	
@@ -229,8 +230,8 @@ namespace transport
 		}
 
 		LogPrint (eLogDebug, "SSU message: session created");
-		m_ConnectTimer.cancel (); // connect timer
-		SignedData s; // x,y, our IP, our port, remote IP, remote port, relayTag, signed on time 
+    TickConnect();
+    SignedData s; // x,y, our IP, our port, remote IP, remote port, relayTag, signed on time 
 		auto headerSize = GetSSUHeaderSize (buf);	
 		if (headerSize >= len)
 		{
@@ -274,11 +275,12 @@ namespace transport
 		payload += 4; // relayTag
 		if (i2p::context.GetStatus () == eRouterStatusTesting)
 		{	
-			auto ts = i2p::util::GetSecondsSinceEpoch ();
-			uint32_t signedOnTime = bufbe32toh(payload);
+			auto ts = i2p::util::GetSinceEpoch<std::chrono::seconds>();
+			std::chrono::seconds signedOnTime(bufbe32toh(payload));
 			if (signedOnTime < ts - SSU_CLOCK_SKEW || signedOnTime > ts + SSU_CLOCK_SKEW)
 			{
-				LogPrint (eLogError, "SSU: clock skew detected ", (int)ts - signedOnTime, ". Check your clock"); 
+        std::chrono::seconds dlt = ts - signedOnTime;
+				LogPrint (eLogError, "SSU: clock skew detected ", dlt.count(), ". Check your clock"); 
 				i2p::context.SetError (eRouterErrorClockSkew);
 			}
 		}	
@@ -320,11 +322,13 @@ namespace transport
 		SetRemoteIdentity (std::make_shared<i2p::data::IdentityEx> (payload, identitySize));
 		m_Data.UpdatePacketSize (m_RemoteIdentity->GetIdentHash ());
 		payload += identitySize; // identity	
-		auto ts = i2p::util::GetSecondsSinceEpoch ();
-		uint32_t signedOnTime = bufbe32toh(payload); 
+    auto ts = i2p::util::GetSinceEpoch<std::chrono::seconds>();
+    std::chrono::seconds signedOnTime(bufbe32toh(payload));
 		if (signedOnTime < ts - SSU_CLOCK_SKEW || signedOnTime > ts + SSU_CLOCK_SKEW)
 		{
-			LogPrint (eLogError, "SSU message 'confirmed' time difference ", (int)ts - signedOnTime, " exceeds clock skew"); 
+      
+      std::chrono::seconds dlt = ts - signedOnTime;
+			LogPrint (eLogError, "SSU message 'confirmed' time difference ", dlt.count(), " exceeds clock skew"); 
 			Failed ();
 			return;
 		}	
@@ -805,8 +809,7 @@ namespace transport
 	{
 		if (m_State == eSessionStateUnknown)
 		{	
-			// set connect timer
-			ScheduleConnectTimer ();
+      TickConnect();
 			m_DHKeysPair = transports.GetNextDHKeysPair ();
 			SendSessionRequest ();
 		}	
@@ -815,39 +818,21 @@ namespace transport
 	void SSUSession::WaitForConnect ()
 	{
 		if (!IsOutgoing ()) // incoming session
-			ScheduleConnectTimer ();
+      TickConnect();
 		else
 			LogPrint (eLogError, "SSU: wait for connect for outgoing session");
 	}
 
-	void SSUSession::ScheduleConnectTimer ()
-	{
-		m_ConnectTimer.cancel ();
-		m_ConnectTimer.expires_from_now (boost::posix_time::seconds(SSU_CONNECT_TIMEOUT));
-		m_ConnectTimer.async_wait (std::bind (&SSUSession::HandleConnectTimer,
-			shared_from_this (), std::placeholders::_1));	
-}
+  void SSUSession::TickConnect ()
+  {
+    m_LastTimeoutCheck = i2p::util::GetSinceEpoch<TimeDuration>();
+  }
 
-	void SSUSession::HandleConnectTimer (const boost::system::error_code& ecode)
-	{
-		if (!ecode)
-		{
-			// timeout expired
-			LogPrint (eLogWarning, "SSU: session with ", m_RemoteEndpoint, " was not established after ", SSU_CONNECT_TIMEOUT, " seconds");
-			Failed ();
-		}	
-	}	
-	
 	void SSUSession::Introduce (const i2p::data::RouterInfo::Introducer& introducer,
 		std::shared_ptr<const i2p::data::RouterInfo> to)
 	{
 		if (m_State == eSessionStateUnknown)
-		{	
-			// set connect timer
-			m_ConnectTimer.expires_from_now (boost::posix_time::seconds(SSU_CONNECT_TIMEOUT));
-			m_ConnectTimer.async_wait (std::bind (&SSUSession::HandleConnectTimer,
-				shared_from_this (), std::placeholders::_1));
-		}
+      TickConnect();
 		uint32_t nonce;
 		RAND_bytes ((uint8_t *)&nonce, 4);
 		m_RelayRequests[nonce] = to;
@@ -857,19 +842,15 @@ namespace transport
 	void SSUSession::WaitForIntroduction ()
 	{
 		m_State = eSessionStateIntroduced;
-		// set connect timer
-		m_ConnectTimer.expires_from_now (boost::posix_time::seconds(SSU_CONNECT_TIMEOUT));
-		m_ConnectTimer.async_wait (std::bind (&SSUSession::HandleConnectTimer,
-			shared_from_this (), std::placeholders::_1));			
+    TickConnect();
 	}
 
 	void SSUSession::Close ()
 	{
-		m_State = eSessionStateClosed;
-		SendSesionDestroyed ();
-		transports.PeerDisconnected (shared_from_this ());
+		SendSessionDestroyed ();
+    m_State = eSessionStateClosed;
+    transports.PeerDisconnected (shared_from_this ());
 		m_Data.Stop ();
-		m_ConnectTimer.cancel ();
 	}	
 
 	void SSUSession::Done ()
@@ -886,7 +867,7 @@ namespace transport
 		transports.PeerConnected (shared_from_this ());
 		if (m_IsPeerTest)
 			SendPeerTest ();
-		m_LastActivityTimestamp = i2p::util::GetSecondsSinceEpoch ();
+		m_LastActivityTimestamp = i2p::util::GetSinceEpoch<TimeDuration> ();
 	}	
 
 	void SSUSession::Failed ()
@@ -926,6 +907,14 @@ namespace transport
 			m_IsDataReceived = false;
 		}		
 	}
+
+  bool SSUSession::Tick(const TimeDuration now)
+  {
+    if(m_State == eSessionStateEstablished)
+      return m_Data.Tick(now);
+    else
+      return (now - m_LastTimeoutCheck) >= SSU_CONNECT_TIMEOUT;
+  }
 
 	void SSUSession::ProcessPeerTest (const uint8_t * buf, size_t len, const boost::asio::ip::udp::endpoint& senderEndpoint)
 	{
@@ -1126,12 +1115,14 @@ namespace transport
 			FillHeaderAndEncrypt (PAYLOAD_TYPE_DATA, buf, 48);
 			Send (buf, 48);
 			LogPrint (eLogDebug, "SSU: keep-alive sent");
-			m_LastActivityTimestamp = i2p::util::GetSecondsSinceEpoch ();
+			m_LastActivityTimestamp = i2p::util::GetSinceEpoch<TimeDuration> ();
 		}	
 	}
 
-	void SSUSession::SendSesionDestroyed ()
+	void SSUSession::SendSessionDestroyed ()
 	{
+    if (m_State == eSessionStateClosed)
+      return;
 		if (m_IsSessionKey)
 		{
 			uint8_t buf[48 + 18];

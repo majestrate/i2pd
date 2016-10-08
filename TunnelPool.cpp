@@ -72,6 +72,7 @@ namespace tunnel
 			std::unique_lock<std::mutex> l(m_InboundTunnelsMutex);
 			m_InboundTunnels.insert (createdTunnel);
 		}
+		OnTunnelBuildResult(createdTunnel, eBuildResultOkay);
 		if (m_LocalDestination)
 			m_LocalDestination->SetLeaseSetUpdated ();
 	}
@@ -96,6 +97,7 @@ namespace tunnel
 			std::unique_lock<std::mutex> l(m_OutboundTunnelsMutex);
 			m_OutboundTunnels.insert (createdTunnel);
 		}
+		OnTunnelBuildResult(createdTunnel, eBuildResultOkay);
 		//CreatePairedInboundTunnel (createdTunnel);
 	}
 
@@ -426,13 +428,13 @@ namespace tunnel
 		{
 			std::shared_ptr<TunnelConfig> config;
 			if (m_NumInboundHops > 0)
-			{	
-				std::reverse (peers.begin (), peers.end ());	
+			{
+				std::reverse(peers.begin(), peers.end());
 				config = std::make_shared<TunnelConfig> (peers);
 			}	
 			auto tunnel = tunnels.CreateInboundTunnel (config, outboundTunnel);
 			tunnel->SetTunnelPool (shared_from_this ());
-			if (tunnel->IsEstablished ()) // zero hops
+			if (tunnel->IsEstablished () && m_NumInboundHops == 0) // zero hops
 				TunnelCreated (tunnel);
 		}	
 		else
@@ -449,7 +451,7 @@ namespace tunnel
 		if (m_NumInboundHops > 0) config = std::make_shared<TunnelConfig>(tunnel->GetPeers ());
 		auto newTunnel = tunnels.CreateInboundTunnel (config, outboundTunnel);
 		newTunnel->SetTunnelPool (shared_from_this());
-		if (newTunnel->IsEstablished ()) // zero hops
+		if (newTunnel->IsEstablished () && m_NumInboundHops == 0) // zero hops
 			TunnelCreated (newTunnel);
 	}	
 		
@@ -469,7 +471,7 @@ namespace tunnel
 					config = std::make_shared<TunnelConfig>(peers, inboundTunnel->GetNextTunnelID (), inboundTunnel->GetNextIdentHash ());
 				auto tunnel = tunnels.CreateOutboundTunnel (config);
 				tunnel->SetTunnelPool (shared_from_this ());
-				if (tunnel->IsEstablished ()) // zero hops
+				if (tunnel->IsEstablished () && m_NumInboundHops == 0) // zero hops
 					TunnelCreated (tunnel);
 			}	
 			else
@@ -492,7 +494,7 @@ namespace tunnel
 				config = std::make_shared<TunnelConfig>(tunnel->GetPeers (), inboundTunnel->GetNextTunnelID (), inboundTunnel->GetNextIdentHash ());
 			auto newTunnel = tunnels.CreateOutboundTunnel (config);
 			newTunnel->SetTunnelPool (shared_from_this ());
-			if (newTunnel->IsEstablished ()) // zero hops
+			if (newTunnel->IsEstablished () && m_NumInboundHops == 0) // zero hops
 				TunnelCreated (newTunnel);
 		}	
 		else
@@ -522,5 +524,15 @@ namespace tunnel
 		std::lock_guard<std::mutex> lock(m_CustomPeerSelectorMutex);
 		return m_CustomPeerSelector != nullptr;
 	}
+
+  template <typename TTunnels>
+  void TunnelPool::OnTunnelBuildResult(TTunnels & tunnel, TunnelBuildResult result)
+  {
+
+    std::lock_guard<std::mutex> lock(m_CustomPeerSelectorMutex);
+    if(m_CustomPeerSelector == nullptr) return;
+    auto peers = tunnel->GetPeers();
+    m_CustomPeerSelector->OnBuildResult(peers, tunnel->IsInbound(), result);
+  }
 }
 }

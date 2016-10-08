@@ -58,6 +58,47 @@ namespace client
 	// params
 	const char I2CP_PARAM_DONT_PUBLISH_LEASESET[] = "i2cp.dontPublishLeaseSet";	
 	const char I2CP_PARAM_MESSAGE_RELIABILITY[] = "i2cp.messageReliability";	
+
+  typedef uint64_t I2CPDate;
+
+  typedef std::string I2CPString;
+  
+  size_t ExtractString(const uint8_t * buf, size_t len, I2CPString & str);
+  size_t PutString(uint8_t * buf, size_t len, const I2CPString & str);
+  
+  class I2CPMapping
+  {
+  public:
+    typedef I2CPString MapKey;
+    typedef I2CPString MapValue;
+    typedef std::map<MapKey, MapValue> Map;
+
+
+    size_t FromBuffer(const uint8_t * buf,size_t l);
+
+    bool Has(const MapKey * k);
+    bool Get(const MapKey & k, MapValue & v) const;
+    void Set(const MapKey & k, const MapValue & v);
+    void Unset(const MapKey & k);
+    void Clear();
+    std::vector<MapKey> Keys() const;
+    Map GetMap() const;
+    
+  private:
+    Map m_Values;
+
+  };
+  
+  struct I2CPSessionConfig
+  {
+
+    /** read from buffer */
+    size_t FromBuffer(const uint8_t * buf, size_t len);
+    
+    i2p::data::IdentityEx Destination;
+    I2CPMapping Options;
+    I2CPDate Created;
+  };
   
 	class I2CPSession;
 	class I2CPDestination: public LeaseSetDestination
@@ -74,12 +115,18 @@ namespace client
 			const uint8_t * GetEncryptionPrivateKey () const { return m_EncryptionPrivateKey; };
 			std::shared_ptr<const i2p::data::IdentityEx> GetIdentity () const { return m_Identity; };
 
+      
+      /** reconfigure session using new i2cp options, return true if was successfully reconfigured otherwise return false */
+      bool Reconfigure(const I2CPMapping & options);
+      
 		protected:
 
 			// I2CP
 			void HandleDataMessage (const uint8_t * buf, size_t len);
 			void CreateNewLeaseSet (std::vector<std::shared_ptr<i2p::tunnel::InboundTunnel> > tunnels);
 
+      void SetI2CPOption(const std::string & option, const std::string & value);
+      
 		private:
 
 			std::shared_ptr<I2CPDestination> GetSharedFromThis ()
@@ -104,7 +151,7 @@ namespace client
 #else
 			typedef boost::asio::ip::tcp proto;
 #endif		
-
+      
 			I2CPSession (I2CPServer& owner, std::shared_ptr<proto::socket> socket);
 
 			~I2CPSession ();
@@ -141,9 +188,6 @@ namespace client
 			void Terminate ();
 			
 			void HandleI2CPMessageSent (const boost::system::error_code& ecode, std::size_t bytes_transferred, const uint8_t * buf);
-			std::string ExtractString (const uint8_t * buf, size_t len);
-			size_t PutString (uint8_t * buf, size_t len, const std::string& str);
-			void ExtractMapping (const uint8_t * buf, size_t len, std::map<std::string, std::string>& mapping);
 
 			void SendSessionStatusMessage (uint8_t status);
 			void SendHostReplyMessage (uint32_t requestID, std::shared_ptr<const i2p::data::IdentityEx> identity);
@@ -159,6 +203,7 @@ namespace client
 			uint16_t m_SessionID;
 			uint32_t m_MessageID;
 			bool m_IsSendAccepted;
+      I2CPSessionConfig m_SessionConfig;
 	};
 	typedef void (I2CPSession::*I2CPMessageHandler)(const uint8_t * buf, size_t len);
 	

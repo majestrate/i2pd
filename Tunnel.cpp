@@ -599,10 +599,12 @@ namespace tunnel
 	void Tunnels::ManagePendingTunnels (PendingTunnels& pendingTunnels)
 	{
 		// check pending tunnel. delete failed or timeout
-		uint64_t ts = i2p::util::GetSecondsSinceEpoch ();
+		uint32_t ts = i2p::util::GetSecondsSinceEpoch ();
 		for (auto it = pendingTunnels.begin (); it != pendingTunnels.end ();)
 		{
 			auto tunnel = it->second;
+			auto config = tunnel->GetTunnelConfig ();
+			auto pool = tunnel->GetTunnelPool();
 			switch (tunnel->GetState ())
 			{
 				case eTunnelStatePending: 
@@ -610,7 +612,6 @@ namespace tunnel
 					{
 						LogPrint (eLogDebug, "Tunnel: pending build request ", it->first, " timeout, deleted");
 						// update stats
-						auto config = tunnel->GetTunnelConfig ();
 						if (config)
 						{
 							auto hop = config->GetFirstHop ();
@@ -625,6 +626,7 @@ namespace tunnel
 								hop = hop->next;
 							}
 						}
+						if(pool) pool->OnTunnelBuildResult(tunnel, eBuildResultTimeout);
 						// delete
 						it = pendingTunnels.erase (it);
 						m_NumFailedTunnelCreations++;
@@ -634,6 +636,7 @@ namespace tunnel
 				break;
 				case eTunnelStateBuildFailed:
 					LogPrint (eLogDebug, "Tunnel: pending build request ", it->first, " failed, deleted");
+					if(pool) pool->OnTunnelBuildResult(tunnel, eBuildResultRejected);
 					it = pendingTunnels.erase (it);
 					m_NumFailedTunnelCreations++;
 				break;
@@ -651,7 +654,7 @@ namespace tunnel
 
 	void Tunnels::ManageOutboundTunnels ()
 	{
-		uint64_t ts = i2p::util::GetSecondsSinceEpoch ();
+		uint32_t ts = i2p::util::GetSecondsSinceEpoch ();
 		{
 			for (auto it = m_OutboundTunnels.begin (); it != m_OutboundTunnels.end ();)
 			{
@@ -688,7 +691,11 @@ namespace tunnel
 		{
 			// trying to create one more oubound tunnel
 			auto inboundTunnel = GetNextInboundTunnel ();
-			auto router = i2p::data::netdb.GetRandomRouter ();
+      std::shared_ptr<const i2p::data::RouterInfo> router;
+      if (i2p::transport::transports.RoutesRestricted())
+        router = i2p::transport::transports.GetRestrictedPeer();
+      else
+        router = i2p::data::netdb.GetRandomRouter ();
 			if (!inboundTunnel || !router) return;
 			LogPrint (eLogDebug, "Tunnel: creating one hop outbound tunnel");
 			CreateTunnel<OutboundTunnel> (
@@ -750,11 +757,15 @@ namespace tunnel
 		if (m_OutboundTunnels.empty () || m_InboundTunnels.size () < 5) 
 		{
 			// trying to create one more inbound tunnel
-			auto router = i2p::data::netdb.GetRandomRouter ();
-			if (!router) {
-				LogPrint (eLogWarning, "Tunnel: can't find any router, skip creating tunnel");
-				return;
-			}
+      std::shared_ptr<const i2p::data::RouterInfo> router;
+      if (i2p::transport::transports.RoutesRestricted())
+      {
+        router = i2p::transport::transports.GetRestrictedPeer();
+      }
+      else
+      {
+        router = i2p::data::netdb.GetRandomRouter();
+      }
 			LogPrint (eLogDebug, "Tunnel: creating one hop inbound tunnel");
 			CreateTunnel<InboundTunnel> (
 				std::make_shared<TunnelConfig> (std::vector<std::shared_ptr<const i2p::data::IdentityEx> > { router->GetRouterIdentity () })

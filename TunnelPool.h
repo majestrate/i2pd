@@ -14,6 +14,7 @@
 #include "TunnelBase.h"
 #include "RouterContext.h"
 #include "Garlic.h"
+#include "TunnelConfig.h"
 
 namespace i2p
 {
@@ -23,12 +24,21 @@ namespace tunnel
 	class InboundTunnel;
 	class OutboundTunnel;
 
+	enum TunnelBuildResult
+	{
+		eBuildResultOkay,
+		eBuildResultTimeout,
+		eBuildResultRejected
+	};
+	 
+  
 	/** interface for custom tunnel peer selection algorithm */
 	struct ITunnelPeerSelector
 	{
 		typedef std::shared_ptr<const i2p::data::IdentityEx> Peer;
 		typedef std::vector<Peer> TunnelPath;
 		virtual bool SelectPeers(TunnelPath & peers, int hops, bool isInbound) = 0;
+		virtual bool OnBuildResult(TunnelPath & peer, bool isInbound, TunnelBuildResult result) = 0;
 	};
 
 	typedef std::shared_ptr<ITunnelPeerSelector> TunnelPeerSelector;
@@ -72,8 +82,9 @@ namespace tunnel
 			void SetCustomPeerSelector(TunnelPeerSelector selector);
 			void UnsetCustomPeerSelector();
 			bool HasCustomPeerSelector();
+			template<class TTunnel>
+			void OnTunnelBuildResult(TTunnel& tunnel, TunnelBuildResult result);
 		private:
-			
 			void CreateInboundTunnel ();	
 			void CreateOutboundTunnel ();
 			void CreatePairedInboundTunnel (std::shared_ptr<OutboundTunnel> outboundTunnel);

@@ -107,12 +107,17 @@ namespace transport
 
     /** get a trusted first hop for restricted routes */
     std::shared_ptr<const i2p::data::RouterInfo> GetRestrictedPeer() const;
+    /** get a trusted floodfill router for restricted routes */
+    std::shared_ptr<const i2p::data::RouterInfo> GetTrustedFloodfill() const;
     /** do we want to use restricted routes? */
     bool RoutesRestricted() const;  
     /** restrict routes to use only these router families for first hops */
     void RestrictRoutes(std::vector<std::string> families);
+
+    /** restrict routes to use only this router for all traffic and bootstrap */
+    void RestrictRoutes(std::shared_ptr<const i2p::data::RouterInfo> floodfill);
     
-			void PeerTest ();
+    void PeerTest ();
 			
 		private:
 
@@ -146,7 +151,8 @@ namespace transport
 			SSUServer * m_SSUServer;
 			mutable std::mutex m_PeersMutex;
 			std::map<i2p::data::IdentHash, Peer> m_Peers;
-			
+      std::shared_ptr<const i2p::data::RouterInfo> m_TrustedFloodfill;
+      
 			DHKeysPairSupplier m_DHKeysPairSupplier;
 
 			std::atomic<uint64_t> m_TotalSentBytes, m_TotalReceivedBytes;

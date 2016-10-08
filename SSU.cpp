@@ -11,6 +11,8 @@ namespace i2p
 namespace transport
 {
 
+  const std::chrono::milliseconds SSU_SESSION_TICK_INTERVAL(500);
+
 	SSUServer::SSUServer (const boost::asio::ip::address & addr, int port):
 		m_OnlyV6(true), m_IsRunning(false),
 		m_Thread (nullptr), m_ThreadV6 (nullptr), m_ReceiversThread (nullptr),
@@ -18,7 +20,8 @@ namespace transport
 		m_EndpointV6 (addr, port), 
 		m_Socket (m_ReceiversService, m_Endpoint), m_SocketV6 (m_ReceiversService), 
 		m_IntroducersUpdateTimer (m_Service), m_PeerTestsCleanupTimer (m_Service),
-		m_TerminationTimer (m_Service), m_TerminationTimerV6 (m_ServiceV6)	
+		m_TerminationTimer (m_Service), m_TerminationTimerV6 (m_ServiceV6),
+    m_SessionTickerTimer(m_Service), m_SessionTickerTimerV6(m_ServiceV6)
 	{
 		m_SocketV6.open (boost::asio::ip::udp::v6());
 		m_SocketV6.set_option (boost::asio::ip::v6_only (true));
@@ -34,7 +37,8 @@ namespace transport
 		m_Endpoint (boost::asio::ip::udp::v4 (), port), m_EndpointV6 (boost::asio::ip::udp::v6 (), port), 
 		m_Socket (m_ReceiversService, m_Endpoint), m_SocketV6 (m_ReceiversService), 
 		m_IntroducersUpdateTimer (m_Service), m_PeerTestsCleanupTimer (m_Service),
-		m_TerminationTimer (m_Service), m_TerminationTimerV6 (m_ServiceV6)	
+		m_TerminationTimer (m_Service), m_TerminationTimerV6 (m_ServiceV6),
+    m_SessionTickerTimer(m_Service), m_SessionTickerTimerV6(m_ServiceV6)
 	{
 		
 		m_Socket.set_option (boost::asio::socket_base::receive_buffer_size (65535));
@@ -61,13 +65,17 @@ namespace transport
 		{
 			m_Thread = new std::thread (std::bind (&SSUServer::Run, this));
 			m_ReceiversService.post (std::bind (&SSUServer::Receive, this));
-			ScheduleTermination ();		
+			ScheduleTermination ();
+      // issues v4 session ticks
+      ScheduleSessionTick(false);
 		}
 		if (context.SupportsV6 ())
 		{	
 			m_ThreadV6 = new std::thread (std::bind (&SSUServer::RunV6, this));
 			m_ReceiversService.post (std::bind (&SSUServer::ReceiveV6, this));	
-			ScheduleTerminationV6 ();	
+			ScheduleTerminationV6 ();
+      // issue v6 session ticks
+      ScheduleSessionTick(true);
 		}
 		SchedulePeerTestsCleanupTimer ();	
 		ScheduleIntroducersUpdateTimer (); // wait for 30 seconds and decide if we need introducers
@@ -495,16 +503,16 @@ namespace transport
 
 	std::set<SSUSession *> SSUServer::FindIntroducers (int maxNumIntroducers)
 	{
-		uint32_t ts = i2p::util::GetSecondsSinceEpoch ();
+    std::chrono::seconds now(i2p::util::GetSecondsSinceEpoch());
 		std::set<SSUSession *> ret;
 		for (int i = 0; i < maxNumIntroducers; i++)
 		{
 			auto session = GetRandomV4Session (
-				[&ret, ts](std::shared_ptr<SSUSession> session)->bool 
+				[&ret, now](std::shared_ptr<SSUSession> session)->bool 
 				{ 
 					return session->GetRelayTag () && !ret.count (session.get ()) &&
 						session->GetState () == eSessionStateEstablished &&
-						ts < session->GetCreationTime () + SSU_TO_INTRODUCER_SESSION_DURATION; 
+						now < (session->GetCreationTime () + SSU_TO_INTRODUCER_SESSION_DURATION);
 				}
 											);	
 			if (session)
@@ -518,7 +526,8 @@ namespace transport
 
 	void SSUServer::ScheduleIntroducersUpdateTimer ()
 	{
-		m_IntroducersUpdateTimer.expires_from_now (boost::posix_time::seconds(SSU_KEEP_ALIVE_INTERVAL));
+    boost::posix_time::seconds expires(std::chrono::duration_cast<std::chrono::seconds>(SSU_KEEP_ALIVE_INTERVAL).count());
+		m_IntroducersUpdateTimer.expires_from_now (expires);
 		m_IntroducersUpdateTimer.async_wait (std::bind (&SSUServer::HandleIntroducersUpdateTimer,
 			this, std::placeholders::_1));	
 	}
@@ -539,11 +548,11 @@ namespace transport
 			if (!i2p::context.IsUnreachable ()) i2p::context.SetUnreachable ();
 			std::list<boost::asio::ip::udp::endpoint> newList;
 			size_t numIntroducers = 0;
-			uint32_t ts = i2p::util::GetSecondsSinceEpoch ();
+      std::chrono::seconds now(i2p::util::GetSecondsSinceEpoch ());
 			for (const auto& it : m_Introducers)
 			{	
 				auto session = FindSession (it);
-				if (session && ts < session->GetCreationTime () + SSU_TO_INTRODUCER_SESSION_DURATION)
+				if (session && now < (session->GetCreationTime () + SSU_TO_INTRODUCER_SESSION_DURATION))
 				{
 					session->SendKeepAlive ();
 					newList.push_back (it);
@@ -585,7 +594,7 @@ namespace transport
 
 	void SSUServer::NewPeerTest (uint32_t nonce, PeerTestParticipant role, std::shared_ptr<SSUSession> session)
 	{
-		m_PeerTests[nonce] = { i2p::util::GetMillisecondsSinceEpoch (), role, session };
+		m_PeerTests[nonce] = { std::chrono::milliseconds(i2p::util::GetMillisecondsSinceEpoch ()), role, session };
 	}
 
 	PeerTestParticipant SSUServer::GetPeerTestParticipant (uint32_t nonce)
@@ -620,7 +629,8 @@ namespace transport
 
 	void SSUServer::SchedulePeerTestsCleanupTimer ()
 	{
-		m_PeerTestsCleanupTimer.expires_from_now (boost::posix_time::seconds(SSU_PEER_TEST_TIMEOUT));
+    boost::posix_time::seconds expires(std::chrono::duration_cast<std::chrono::seconds>(SSU_PEER_TEST_TIMEOUT).count());
+		m_PeerTestsCleanupTimer.expires_from_now (expires);
 		m_PeerTestsCleanupTimer.async_wait (std::bind (&SSUServer::HandlePeerTestsCleanupTimer,
 			this, std::placeholders::_1));	
 	}
@@ -630,10 +640,10 @@ namespace transport
 		if (ecode != boost::asio::error::operation_aborted)
 		{
 			int numDeleted = 0;	
-			uint64_t ts = i2p::util::GetMillisecondsSinceEpoch ();	
+      std::chrono::milliseconds ts(i2p::util::GetMillisecondsSinceEpoch ());
 			for (auto it = m_PeerTests.begin (); it != m_PeerTests.end ();)
 			{
-				if (ts > it->second.creationTime + SSU_PEER_TEST_TIMEOUT*1000LL)
+				if (ts > (it->second.creationTime + SSU_PEER_TEST_TIMEOUT))
 				{
 					numDeleted++;
 					it = m_PeerTests.erase (it);
@@ -649,7 +659,7 @@ namespace transport
 
 	void SSUServer::ScheduleTermination ()
 	{
-		m_TerminationTimer.expires_from_now (boost::posix_time::seconds(SSU_TERMINATION_CHECK_TIMEOUT));
+    ExpireTimer(m_TerminationTimer, SSU_TERMINATION_CHECK_TIMEOUT);
 		m_TerminationTimer.async_wait (std::bind (&SSUServer::HandleTerminationTimer,
 			this, std::placeholders::_1));
 	}
@@ -658,14 +668,14 @@ namespace transport
 	{
 		if (ecode != boost::asio::error::operation_aborted)
 		{	
-			auto ts = i2p::util::GetSecondsSinceEpoch ();
+      TimeDuration now = i2p::util::GetSinceEpoch<TimeDuration>();
 			for (auto& it: m_Sessions)
- 				if (it.second->IsTerminationTimeoutExpired (ts))
+ 				if (it.second->IsTerminationTimeoutExpired(now))
 				{
 					auto session = it.second;
 					m_Service.post ([session] 
 						{ 
-							LogPrint (eLogWarning, "SSU: no activity with ", session->GetRemoteEndpoint (), " for ", session->GetTerminationTimeout (), " seconds");
+							LogPrint (eLogWarning, "SSU: no activity with ", session->GetRemoteEndpoint (), " for ", session->GetTerminationTimeout<std::chrono::seconds> ().count(), " seconds");
 							session->Failed ();
 						});	
 				}
@@ -675,8 +685,8 @@ namespace transport
 
 	void SSUServer::ScheduleTerminationV6 ()
 	{
-		m_TerminationTimerV6.expires_from_now (boost::posix_time::seconds(SSU_TERMINATION_CHECK_TIMEOUT));
-		m_TerminationTimerV6.async_wait (std::bind (&SSUServer::HandleTerminationTimerV6,
+    ExpireTimer(m_TerminationTimerV6, SSU_TERMINATION_CHECK_TIMEOUT);
+    m_TerminationTimerV6.async_wait (std::bind (&SSUServer::HandleTerminationTimerV6,
 			this, std::placeholders::_1));
 	}
 
@@ -684,20 +694,62 @@ namespace transport
 	{
 		if (ecode != boost::asio::error::operation_aborted)
 		{	
-			auto ts = i2p::util::GetSecondsSinceEpoch ();
+      TimeDuration now = i2p::util::GetSinceEpoch<TimeDuration>();
 			for (auto& it: m_SessionsV6)
- 				if (it.second->IsTerminationTimeoutExpired (ts))
+ 				if (it.second->IsTerminationTimeoutExpired (now))
 				{
 					auto session = it.second;
 					m_ServiceV6.post ([session] 
-						{ 
-							LogPrint (eLogWarning, "SSU: no activity with ", session->GetRemoteEndpoint (), " for ", session->GetTerminationTimeout (), " seconds");
+						{
+              std::chrono::seconds timeout = session->GetTerminationTimeout<std::chrono::seconds>();
+							LogPrint (eLogWarning, "SSU: no activity with ", session->GetRemoteEndpoint (), " for ", timeout.count(), " seconds");
 							session->Failed ();
 						});	
 				}
 			ScheduleTerminationV6 ();	
 		}	
-	}	
+	}
+
+  void SSUServer::ScheduleSessionTick(const bool isv6)
+  {
+    if(isv6)
+    {
+      // v6 ticks
+      ExpireTimer(m_SessionTickerTimerV6, SSU_SESSION_TICK_INTERVAL);
+      m_SessionTickerTimerV6.async_wait(std::bind(&SSUServer::Tick, this, std::placeholders::_1, m_SessionsV6, true));
+    }
+    else
+    {
+      // v4 ticks
+      ExpireTimer(m_SessionTickerTimer, SSU_SESSION_TICK_INTERVAL);
+      m_SessionTickerTimer.async_wait(std::bind(&SSUServer::Tick, this, std::placeholders::_1, m_Sessions, false));
+    }
+  }
+
+  
+  void SSUServer::Tick(const boost::system::error_code& ecode, SessionMap & sessions, const bool isv6)
+  {
+    if(ecode)
+    {
+      LogPrint(eLogWarning, "SSUServer: Failed to Tick sessions ", ecode.message());
+      return;
+    }
+    TimeDuration now = i2p::util::GetSinceEpoch<TimeDuration>();
+    for ( auto it = sessions.begin(); it != sessions.end(); )
+    {
+      if(!it->second->Tick(now))
+      {
+        // session failed to tick, let's close it
+        it->second->Close();
+        // expunge of closed session
+        it = sessions.erase(it);
+      }
+      else // next session
+        ++it;
+    }
+    // schedule next round of session ticks
+    ScheduleSessionTick(isv6);
+  }
 }
 }
 

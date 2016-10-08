@@ -101,6 +101,8 @@ namespace tunnel
       /** @brief determine if we know this tunnel's latency */
       bool LatencyIsKnown();
       
+			virtual bool IsInbound() const = 0;
+
 		protected:
 
 			void PrintHops (std::stringstream& s) const;
@@ -131,7 +133,9 @@ namespace tunnel
 			
 			// implements TunnelBase
 			void HandleTunnelDataMsg (std::shared_ptr<const i2p::I2NPMessage> tunnelMsg);
-			
+
+			virtual bool IsInbound() const { return false; }
+
 		private:
 
 			std::mutex m_SendMutex;
@@ -147,7 +151,9 @@ namespace tunnel
 			void HandleTunnelDataMsg (std::shared_ptr<const I2NPMessage> msg);
 			virtual size_t GetNumReceivedBytes () const { return m_Endpoint.GetNumReceivedBytes (); };
 			void Print (std::stringstream& s) const;
-			
+
+			virtual bool IsInbound() const { return true; }
+      
 		private:
 
 			TunnelEndpoint m_Endpoint; 

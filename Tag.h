@@ -41,6 +41,7 @@ namespace data {
 			const uint64_t * GetLL () const { return ll; };
 
 			bool operator== (const Tag<sz>& other) const { return !memcmp (m_Buf, other.m_Buf, sz); };
+			bool operator!= (const Tag<sz>& other) const { return memcmp (m_Buf, other.m_Buf, sz); }
 			bool operator< (const Tag<sz>& other) const { return memcmp (m_Buf, other.m_Buf, sz) < 0; };
 
 			bool IsZero () const
@@ -57,6 +58,11 @@ namespace data {
 			{
 				memset(m_Buf, c, sz);
 			}
+
+      void Randomize()
+      {
+        RAND_bytes(m_Buf, sz);
+      }
 			
 			std::string ToBase64 () const
 			{

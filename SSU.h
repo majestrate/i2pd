@@ -3,6 +3,7 @@
 
 #include <inttypes.h>
 #include <string.h>
+#include <chrono>
 #include <map>
 #include <list>
 #include <set>
@@ -20,11 +21,11 @@ namespace i2p
 {
 namespace transport
 {
-	const int SSU_KEEP_ALIVE_INTERVAL = 30; // 30 seconds	
-	const int SSU_PEER_TEST_TIMEOUT = 60; // 60 seconds		
-	const int SSU_TO_INTRODUCER_SESSION_DURATION = 3600; // 1 hour
-	const int SSU_TERMINATION_CHECK_TIMEOUT = 30; // 30 seconds
-	const size_t SSU_MAX_NUM_INTRODUCERS = 3;
+  const size_t SSU_MAX_NUM_INTRODUCERS = 3;
+  const std::chrono::seconds SSU_KEEP_ALIVE_INTERVAL(30);
+  const std::chrono::minutes SSU_PEER_TEST_TIMEOUT(1);
+  const std::chrono::hours SSU_TO_INTRODUCER_SESSION_DURATION(1);
+  const std::chrono::seconds SSU_TERMINATION_CHECK_TIMEOUT(30);
 
 	struct SSUPacket
 	{
@@ -37,6 +38,17 @@ namespace transport
 	{
 		public:
 
+    typedef std::chrono::milliseconds TimeDuration;
+    typedef boost::asio::deadline_timer Timer;
+
+    /** expire a timer using our time types */
+    template<typename duration>
+    static void ExpireTimer(Timer & timer, duration d)
+    {
+      boost::posix_time::milliseconds expire(std::chrono::duration_cast<std::chrono::milliseconds>(d).count());
+      timer.expires_from_now(expire);
+    }
+    
 			SSUServer (int port);
 			SSUServer (const boost::asio::ip::address & addr, int port);			// ipv6 only constructor
 			~SSUServer ();
@@ -66,8 +78,11 @@ namespace transport
 			void UpdatePeerTest (uint32_t nonce, PeerTestParticipant role);
 			void RemovePeerTest (uint32_t nonce);
       
-		private:
+    typedef std::map<boost::asio::ip::udp::endpoint, std::shared_ptr<SSUSession> > SessionMap;
 
+  private:
+
+    
 			void Run ();
 			void RunV6 ();
 			void RunReceivers ();
@@ -75,8 +90,7 @@ namespace transport
 			void ReceiveV6 ();
 			void HandleReceivedFrom (const boost::system::error_code& ecode, std::size_t bytes_transferred, SSUPacket * packet);
 			void HandleReceivedFromV6 (const boost::system::error_code& ecode, std::size_t bytes_transferred, SSUPacket * packet);
-			void HandleReceivedPackets (std::vector<SSUPacket *> packets,
-				std::map<boost::asio::ip::udp::endpoint, std::shared_ptr<SSUSession> >* sessions);
+			void HandleReceivedPackets (std::vector<SSUPacket *> packets, SessionMap* sessions);
 
 			void CreateSessionThroughIntroducer (std::shared_ptr<const i2p::data::RouterInfo> router, bool peerTest = false);			
 			template<typename Filter>
@@ -96,12 +110,16 @@ namespace transport
 			void HandleTerminationTimer (const boost::system::error_code& ecode);
 			void ScheduleTerminationV6 ();
 			void HandleTerminationTimerV6 (const boost::system::error_code& ecode);
+    
+
+    void ScheduleSessionTick(const bool isv6);
+    void Tick(const boost::system::error_code& ecode, SessionMap & sessions, const bool isv6);
 
 		private:
 
 			struct PeerTest
 			{
-				uint64_t creationTime;
+        std::chrono::milliseconds creationTime;
 				PeerTestParticipant role;
 				std::shared_ptr<SSUSession> session; // for Bob to Alice
 			};
@@ -113,10 +131,10 @@ namespace transport
 			boost::asio::io_service::work m_Work, m_WorkV6, m_ReceiversWork;
 			boost::asio::ip::udp::endpoint m_Endpoint, m_EndpointV6;
 			boost::asio::ip::udp::socket m_Socket, m_SocketV6;
-			boost::asio::deadline_timer m_IntroducersUpdateTimer, m_PeerTestsCleanupTimer,
-				m_TerminationTimer, m_TerminationTimerV6;
-			std::list<boost::asio::ip::udp::endpoint> m_Introducers; // introducers we are connected to
-			std::map<boost::asio::ip::udp::endpoint, std::shared_ptr<SSUSession> > m_Sessions, m_SessionsV6;
+			Timer m_IntroducersUpdateTimer, m_PeerTestsCleanupTimer,
+				m_TerminationTimer, m_TerminationTimerV6, m_SessionTickerTimer, m_SessionTickerTimerV6;
+			std::list<boost::asio::ip::udp::endpoint> m_Introducers; // introducers we are connected to   
+			SessionMap m_Sessions, m_SessionsV6;
 			std::map<uint32_t, boost::asio::ip::udp::endpoint> m_Relays; // we are introducer
 			std::map<uint32_t, PeerTest> m_PeerTests; // nonce -> creation time in milliseconds
 

@@ -23,6 +23,31 @@ namespace i2p
 namespace client
 {
 
+  size_t I2CPSessionConfig::FromBuffer(const uint8_t * buf, size_t len)
+  {
+    const size_t datesize = sizeof(I2CPDate);
+    size_t l = Destination.FromBuffer(buf, len);
+    if(l == 0) return 0;
+    const uint8_t * bodystart = buf + l;
+    len -= l;
+    size_t l2 = Options.FromBuffer(bodystart, len);
+    if(l2 == 0) return 0;
+    len -= l2;
+    l += l2;
+    if(len <= datesize)
+      return 0;
+    Created = buf64toh(buf + l);
+    len -= datesize;
+    l += datesize;
+    const uint8_t * bodyend = buf + l;
+    size_t siglen = Destination.GetSignatureLen();
+    if (siglen != len)
+      return 0;
+    if(Destination.Verify(bodystart, bodyend - bodystart, bodyend + siglen))
+      return l + siglen;
+    return 0;
+  }
+  
 	I2CPDestination::I2CPDestination (std::shared_ptr<I2CPSession> owner, std::shared_ptr<const i2p::data::IdentityEx> identity, bool isPublic, const std::map<std::string, std::string>& params): 
 		LeaseSetDestination (isPublic, &params), m_Owner (owner), m_Identity (identity) 
 	{
@@ -40,6 +65,23 @@ namespace client
 		m_Owner->SendMessagePayloadMessage (buf + 4, length);
 	}
 
+  bool I2CPDestination::Reconfigure(const I2CPMapping & options)
+  {
+    auto optkeys = options.Keys();
+    for ( const auto & k : optkeys)
+    {
+      I2CPString val;
+      options.Get(k, val);
+      SetI2CPOption(k, val);
+    }
+    return true;
+  }
+
+  void I2CPDestination::SetI2CPOption(const std::string & option, const std::string & value)
+  {
+    LogPrint(eLogDebug, "I2CP: setting i2cp option ", option, " to ", value);
+  }
+  
 	void I2CPDestination::CreateNewLeaseSet (std::vector<std::shared_ptr<i2p::tunnel::InboundTunnel> > tunnels) 
 	{
 		i2p::data::LocalLeaseSet ls (m_Identity, m_EncryptionPrivateKey, tunnels); // we don't care about encryption key
@@ -289,14 +331,8 @@ namespace client
 			Terminate ();
 	}
 
-	std::string I2CPSession::ExtractString (const uint8_t * buf, size_t len)
-	{
-		uint8_t l = buf[0];
-		if (l > len) l = len;
-		return std::string ((const char *)(buf + 1), l);
-	}
-
-	size_t I2CPSession::PutString (uint8_t * buf, size_t len, const std::string& str)
+ 
+	size_t PutString (uint8_t * buf, size_t len, const I2CPString& str)
 	{
 		auto l = str.length ();
 		if (l + 1 >= len) l = len - 1;
@@ -306,14 +342,24 @@ namespace client
 		return l + 1;
 	}
 
-	void I2CPSession::ExtractMapping (const uint8_t * buf, size_t len, std::map<std::string, std::string>& mapping)
-	// TODO: move to Base.cpp
+  size_t ExtractString(const uint8_t * buf, size_t len, I2CPString & str)
+  {
+		uint8_t l = buf[0];
+		if (l > len) l = len;
+		str = std::string ((const char *)(buf + 1), l);
+    return l + 1;
+  }
+
+  
+	size_t I2CPMapping::FromBuffer (const uint8_t * buf, size_t len)
 	{
 		size_t offset = 0;
 		while (offset < len)
 		{
-			std::string param = ExtractString (buf + offset, len - offset);
-			offset += param.length () + 1;
+      I2CPString param;
+      I2CPString value;
+			size_t slen = ExtractString (buf + offset, len - offset, param);
+			offset += slen + 1;
 			if (buf[offset] != '=') 
 			{
 				LogPrint (eLogWarning, "I2CP: Unexpected character ", buf[offset], " instead '=' after ", param);
@@ -321,23 +367,53 @@ namespace client
 			}				
 			offset++;
 
-			std::string value = ExtractString (buf + offset, len - offset);
-			offset += value.length () + 1;
+			slen = ExtractString (buf + offset, len - offset, value);
+			offset += slen + 1;
 			if (buf[offset] != ';') 
 			{
 				LogPrint (eLogWarning, "I2CP: Unexpected character ", buf[offset], " instead ';' after ", value);
 				break;	
 			}				
 			offset++;
-			mapping.insert (std::make_pair (param, value));
+      Set(param, value);
 		}
+    return offset;
 	}
 
-	void I2CPSession::GetDateMessageHandler (const uint8_t * buf, size_t len)
+
+  std::vector<I2CPMapping::MapKey> I2CPMapping::Keys() const
+  {
+    std::vector<I2CPMapping::MapKey> keys;
+    for (const auto & i : m_Values) keys.push_back(i.first);
+    return keys;
+  }
+  
+  bool I2CPMapping::Get(const MapKey & k, MapValue & v) const
+  {
+    auto itr = m_Values.find(k);
+    if(itr != m_Values.end()) v = itr->second;
+    return itr != m_Values.end();
+  }
+
+  void I2CPMapping::Set(const MapKey & k, const MapValue & v)
+  {
+    m_Values[k] = v;
+  }
+
+  I2CPMapping::Map I2CPMapping::GetMap() const
+  {
+    Map m;
+    for (const auto & item : m_Values)
+      m.insert(std::make_pair(item.first, item.second));
+    return m;
+  }
+  
+  void I2CPSession::GetDateMessageHandler (const uint8_t * buf, size_t len)
 	{
 		// get version
-		auto version = ExtractString (buf, len);
-		auto l = version.length () + 1 + 8;
+    I2CPString version;
+		size_t offset = ExtractString (buf, len, version);
+		auto l = offset + 8;
 		uint8_t * payload = new uint8_t[l];
 		// set date
 		auto ts = i2p::util::GetMillisecondsSinceEpoch ();
@@ -351,50 +427,27 @@ namespace client
 	void I2CPSession::CreateSessionMessageHandler (const uint8_t * buf, size_t len)
 	{
 		RAND_bytes ((uint8_t *)&m_SessionID, 2);
-		auto identity = std::make_shared<i2p::data::IdentityEx>();
-		size_t offset = identity->FromBuffer (buf, len);
-		if (!offset)
-		{
-			LogPrint (eLogError, "I2CP: create session maformed identity");	
-			SendSessionStatusMessage (3); // invalid
-			return;
-		}	
-		uint16_t optionsSize = bufbe16toh (buf + offset);
-		offset += 2;
-		if (optionsSize > len - offset)
-		{
-			LogPrint (eLogError, "I2CP: options size ", optionsSize, "exceeds message size");	
-			SendSessionStatusMessage (3); // invalid
-			return;
-		}
-		std::map<std::string, std::string> params;
-		ExtractMapping (buf + offset, optionsSize, params);		
-		offset += optionsSize; // options
-		if (params[I2CP_PARAM_MESSAGE_RELIABILITY] == "none") m_IsSendAccepted = false;
-
-		offset += 8; // date
-		if (identity->Verify (buf, offset, buf + offset)) // signature
-		{	
-			bool isPublic = true;
-			if (params[I2CP_PARAM_DONT_PUBLISH_LEASESET] == "true") isPublic = false;
-			if (!m_Destination)
-			{
-				m_Destination = std::make_shared<I2CPDestination>(shared_from_this (), identity, isPublic, params);
-				SendSessionStatusMessage (1); // created
-				LogPrint (eLogDebug, "I2CP: session ", m_SessionID, " created");
-				m_Destination->Start ();	
-			}
-			else
-			{
-				LogPrint (eLogError, "I2CP: session already exists");	
-				SendSessionStatusMessage (4); // refused
-			}
-		}
-		else
-		{
-			LogPrint (eLogError, "I2CP: create session signature verification falied");	
-			SendSessionStatusMessage (3); // invalid
-		}
+    if(m_Destination)
+    {
+      SendSessionStatusMessage(4); // already created
+      return;
+    }
+    I2CPSessionConfig config;
+    size_t offset = config.FromBuffer(buf, len);
+    if(offset == len)
+    {
+      // valid session config
+      auto options = config.Options.GetMap();
+      auto identity = std::make_shared<const i2p::data::IdentityEx>(config.Destination);
+      I2CPString k;
+      bool isPublic = config.Options.Get(I2CP_PARAM_DONT_PUBLISH_LEASESET, k) && k == "true";
+      m_Destination = std::make_shared<I2CPDestination>(shared_from_this (), identity, isPublic, options);
+      SendSessionStatusMessage (1); // created
+      LogPrint (eLogDebug, "I2CP: session ", m_SessionID, " created");
+			m_Destination->Start ();	
+    }
+    else
+      SendSessionStatusMessage(3); // invalid
 	}
 
 	void I2CPSession::DestroySessionMessageHandler (const uint8_t* /*buf*/, size_t /*len*/)
@@ -408,10 +461,20 @@ namespace client
 		}
 	}
 
-	void I2CPSession::ReconfigureSessionMessageHandler (const uint8_t* /*buf*/, size_t /*len*/)
+	void I2CPSession::ReconfigureSessionMessageHandler (const uint8_t* buf, size_t len)
 	{
-		// TODO: implement actual reconfiguration
-		SendSessionStatusMessage (2); // updated
+    uint16_t sessionID = bufbe16toh(buf);
+    if(sessionID == m_SessionID)
+    {
+      I2CPSessionConfig config;
+      size_t configlen = config.FromBuffer(buf, len);
+      if (configlen + 2 == len && m_Destination && m_Destination->Reconfigure(config.Options))
+      {
+        SendSessionStatusMessage (2); // updated, everything went okay
+        return;
+      }
+    }
+    SendSessionStatusMessage (3); // invalid, bad session id or config
 	}	
 
 	void I2CPSession::SendSessionStatusMessage (uint8_t status)
@@ -508,7 +571,8 @@ namespace client
 				break;
 				case 1: // address
 				{
-					auto name = ExtractString (buf + 11, len - 11);
+          I2CPString name;
+					ExtractString (buf + 11, len - 11, name);
 					if (!i2p::client::context.GetAddressBook ().GetIdentHash (name, ident))
 					{
 						LogPrint (eLogError, "I2CP: address ", name, " not found");

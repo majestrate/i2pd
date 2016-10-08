@@ -124,7 +124,7 @@ namespace data
 			std::shared_ptr<const Address> GetNTCPAddress (bool v4only = true) const;
 			std::shared_ptr<const Address> GetSSUAddress (bool v4only = true) const;
 			std::shared_ptr<const Address> GetSSUV6Address () const;
-			
+      void MakeHidden();
 			void AddNTCPAddress (const char * host, int port);
 			void AddSSUAddress (const char * host, int port, const uint8_t * key, int mtu = 0);
 			bool AddIntroducer (const Introducer& introducer);

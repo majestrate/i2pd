@@ -125,6 +125,13 @@ namespace i2p
 			UpdateRouterInfo ();
 	}
 
+  void RouterContext::HideRouter()
+  {
+    CreateNewRouter();
+    m_RouterInfo.MakeHidden();
+    UpdateRouterInfo();
+  }
+  
 	void RouterContext::UpdateAddress (const boost::asio::ip::address& host)
 	{
 		bool updated = false;
