@@ -18,6 +18,28 @@ namespace i2p
 namespace tunnel
 {
 
+  void TunnelStats::UpdateLatency(const uint64_t ms)
+  {
+    std::unique_lock<std::mutex> l(latencyMutex);
+    latency.push_back(ms);
+  }
+
+  bool TunnelStats::HasLatency()
+  { 
+    std::unique_lock<std::mutex> l(latencyMutex);
+    return latency.size() > 0;
+  }
+    
+  uint64_t TunnelStats::MeanLatency()
+  {
+    std::unique_lock<std::mutex> l(latencyMutex);
+    uint64_t sum = 0;
+    for (const auto & sample : latency)
+      sum += sample;
+    if(latency.size() == 0) return 0;
+    return sum / latency.size();
+  }
+  
 	Tunnel::Tunnel (std::shared_ptr<const TunnelConfig> config): 
 		TunnelBase (config->GetTunnelID (), config->GetNextTunnelID (), config->GetNextIdentHash ()),
 		m_Config (config), m_Pool (nullptr), m_State (eTunnelStatePending), m_IsRecreated (false)
@@ -194,24 +216,23 @@ namespace tunnel
 
   void Tunnel::UpdateLatency(const uint64_t ms)
   {
-    m_Stats.latency.second += 1;
-    m_Stats.latency.first = ( m_Stats.latency.first + ms ) / m_Stats.latency.second;
+    m_Stats.UpdateLatency(ms);
   }
 
-  uint64_t Tunnel::GetMeanLatency() const
+  uint64_t Tunnel::GetMeanLatency()
   {
-    return m_Stats.latency.first;
+    return m_Stats.MeanLatency();
   }
 
-  bool Tunnel::LatencyFitsRange(const uint64_t lower, const uint64_t upper) const
+  bool Tunnel::LatencyFitsRange(const uint64_t lower, const uint64_t upper)
   {
     uint64_t latency = GetMeanLatency();
     return latency >= lower && latency <= upper;
   }
 
-  bool Tunnel::LatencyIsKnown() const
+  bool Tunnel::LatencyIsKnown()
   {
-    return m_Stats.latency.second > 0;
+    return m_Stats.HasLatency();
   }
   
 	void InboundTunnel::HandleTunnelDataMsg (std::shared_ptr<const I2NPMessage> msg)

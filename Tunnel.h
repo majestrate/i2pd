@@ -44,8 +44,12 @@ namespace tunnel
   /** @brief statistical information about a tunnel */
   struct TunnelStats
   {
-    /** estimated tunnel latency, tuple of (current average, samplesize)  */
-    std::pair<uint64_t, uint64_t> latency;
+    /** tunnel latency measurements */
+    std::vector<uint64_t> latency;
+    std::mutex latencyMutex;
+    void UpdateLatency(const uint64_t ms);
+    bool HasLatency();
+    uint64_t MeanLatency();
   };
   
 	class OutboundTunnel;
@@ -89,13 +93,13 @@ namespace tunnel
       /** @brief record latency of this tunnel in milliseconds */
       void UpdateLatency(const uint64_t ms);
 
-      uint64_t GetMeanLatency() const;
+      uint64_t GetMeanLatency();
 
       /** @brief determine if this tunnel's latency fits in the range [lower, upper] */
-      bool LatencyFitsRange(const uint64_t lower, const uint64_t upper) const;
+      bool LatencyFitsRange(const uint64_t lower, const uint64_t upper);
 
       /** @brief determine if we know this tunnel's latency */
-      bool LatencyIsKnown() const;
+      bool LatencyIsKnown();
       
 		protected:
 
