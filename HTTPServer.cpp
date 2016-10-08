@@ -293,12 +293,18 @@ namespace http {
 				s << "<b>Inbound tunnels:</b><br>\r\n";
 				for (auto & it : pool->GetInboundTunnels ()) {
 					it->Print(s);
+          auto latency = it->GetMeanLatency();
+          if(latency)
+            s << " (" << latency << "ms) ";
 					ShowTunnelDetails(s, it->GetState (), it->GetNumReceivedBytes ());
 				}
 				s << "<br>\r\n";
 				s << "<b>Outbound tunnels:</b><br>\r\n";
 				for (auto & it : pool->GetOutboundTunnels ()) {
 					it->Print(s);
+          auto latency = it->GetMeanLatency();
+          if(latency)
+            s << " (" << latency << "ms) ";
 					ShowTunnelDetails(s, it->GetState (), it->GetNumSentBytes ());
 				}
 			}
@@ -394,12 +400,18 @@ namespace http {
 		s << "<b>Inbound tunnels:</b><br>\r\n";
 		for (auto & it : i2p::tunnel::tunnels.GetInboundTunnels ()) {
 			it->Print(s);
+      auto latency = it->GetMeanLatency();
+      if(latency)
+        s << " (" << latency << "ms) ";
 			ShowTunnelDetails(s, it->GetState (), it->GetNumReceivedBytes ());
 		}
 		s << "<br>\r\n";
 		s << "<b>Outbound tunnels:</b><br>\r\n";
 		for (auto & it : i2p::tunnel::tunnels.GetOutboundTunnels ()) {
 			it->Print(s);
+      auto latency = it->GetMeanLatency();
+      if(latency)
+        s << " (" << latency << "ms) ";
 			ShowTunnelDetails(s, it->GetState (), it->GetNumSentBytes ());
 		}
 		s << "<br>\r\n";

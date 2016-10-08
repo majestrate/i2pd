@@ -40,7 +40,14 @@ namespace tunnel
 		eTunnelStateFailed,
 		eTunnelStateExpiring
 	};	
-	
+
+  /** @brief statistical information about a tunnel */
+  struct TunnelStats
+  {
+    /** estimated tunnel latency, tuple of (current average, samplesize)  */
+    std::pair<uint64_t, uint64_t> latency;
+  };
+  
 	class OutboundTunnel;
 	class InboundTunnel;
 	class Tunnel: public TunnelBase
@@ -79,10 +86,20 @@ namespace tunnel
 			void SendTunnelDataMsg (std::shared_ptr<i2p::I2NPMessage> msg);
 			void EncryptTunnelMsg (std::shared_ptr<const I2NPMessage> in, std::shared_ptr<I2NPMessage> out); 
 
+      /** @brief record latency of this tunnel in milliseconds */
+      void UpdateLatency(const uint64_t ms);
+
+      uint64_t GetMeanLatency() const;
+
+      /** @brief determine if this tunnel's latency fits in the range [lower, upper] */
+      bool LatencyFitsRange(const uint64_t lower, const uint64_t upper) const;
+      
 		protected:
 
 			void PrintHops (std::stringstream& s) const;
-			
+
+      TunnelStats m_Stats;
+      
 		private:
 
 			std::shared_ptr<const TunnelConfig> m_Config;

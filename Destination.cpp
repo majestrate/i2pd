@@ -23,6 +23,8 @@ namespace client
 		int inboundTunnelsQuantity = DEFAULT_INBOUND_TUNNELS_QUANTITY;
 		int outboundTunnelsQuantity = DEFAULT_OUTBOUND_TUNNELS_QUANTITY;
 		int numTags = DEFAULT_TAGS_TO_SEND;
+    uint64_t minLatency = DEFAULT_TUNNEL_LATENCY_MIN;
+    uint64_t maxLatency = DEFAULT_TUNNEL_LATENCY_MAX;
 		std::shared_ptr<std::vector<i2p::data::IdentHash> > explicitPeers;
 		if (params)
 		{
@@ -92,11 +94,24 @@ namespace client
 				}
 				LogPrint (eLogInfo, "Destination: Explicit peers set to ", it->second);
 			}
+      it = params->find (I2CP_PARAM_TUNNEL_LATENCY_MAX);
+      if (it != params->end ())
+      {
+        maxLatency = i2p::util::lexical_cast<uint64_t>(it->second, maxLatency);
+        LogPrint (eLogInfo, "Destination: require tunnels faster than ", maxLatency, " milliseconds");
+      }      
+      it = params->find (I2CP_PARAM_TUNNEL_LATENCY_MIN);
+      if (it != params->end ())
+      {
+        minLatency = i2p::util::lexical_cast<uint64_t>(it->second, minLatency);
+        LogPrint (eLogInfo, "Destination: require tunnels slower than ", minLatency, " milliseconds");
+      }
 		}	
 		SetNumTags (numTags);
 		m_Pool = i2p::tunnel::tunnels.CreateTunnelPool (inboundTunnelLen, outboundTunnelLen, inboundTunnelsQuantity, outboundTunnelsQuantity);  
 		if (explicitPeers)
 			m_Pool->SetExplicitPeers (explicitPeers);
+    m_Pool->RequireLatency(minLatency, maxLatency);
 	}
 
 	LeaseSetDestination::~LeaseSetDestination ()

@@ -48,6 +48,12 @@ namespace client
 	const char I2CP_PARAM_TAGS_TO_SEND[] = "crypto.tagsToSend";
 	const int DEFAULT_TAGS_TO_SEND = 40;
 
+  // all in milliseconds
+  const char I2CP_PARAM_TUNNEL_LATENCY_MIN[] = "tunnel.minLatency";
+  const uint64_t DEFAULT_TUNNEL_LATENCY_MIN = 50;
+  const char I2CP_PARAM_TUNNEL_LATENCY_MAX[] = "tunnel.maxLatency";
+  const uint64_t DEFAULT_TUNNEL_LATENCY_MAX = 5000;
+  
 	typedef std::function<void (std::shared_ptr<i2p::stream::Stream> stream)> StreamRequestComplete;
 
 	class LeaseSetDestination: public i2p::garlic::GarlicDestination,

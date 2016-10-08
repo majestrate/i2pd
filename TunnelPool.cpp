@@ -8,6 +8,7 @@
 #include "Transports.h"
 #include "Log.h"
 #include "TunnelPool.h"
+#include "Destination.h"
 
 namespace i2p
 {
@@ -16,7 +17,8 @@ namespace tunnel
 	TunnelPool::TunnelPool (int numInboundHops, int numOutboundHops, int numInboundTunnels, int numOutboundTunnels):
 		m_NumInboundHops (numInboundHops), m_NumOutboundHops (numOutboundHops),
 		m_NumInboundTunnels (numInboundTunnels), m_NumOutboundTunnels (numOutboundTunnels), m_IsActive (true),
-		m_CustomPeerSelector(nullptr)
+		m_CustomPeerSelector(nullptr),
+    m_MinLatency(i2p::client::DEFAULT_TUNNEL_LATENCY_MIN), m_MaxLatency(i2p::client::DEFAULT_TUNNEL_LATENCY_MAX)
 	{
 	}
 
@@ -147,7 +149,7 @@ namespace tunnel
 		typename TTunnels::value_type tunnel = nullptr;
 		for (const auto& it: tunnels)
 		{	
-			if (it->IsEstablished () && it != excluded)
+			if (it->IsEstablished () && it != excluded && it->LatencyFitsRange(m_MinLatency, m_MaxLatency))
 			{
 				tunnel = it;
 				i++;
@@ -304,7 +306,11 @@ namespace tunnel
 				test.first->SetState (eTunnelStateEstablished);
 			if (test.second->GetState () == eTunnelStateTestFailed)
 				test.second->SetState (eTunnelStateEstablished);
-			LogPrint (eLogDebug, "Tunnels: test of ", msgID, " successful. ", i2p::util::GetMillisecondsSinceEpoch () - timestamp, " milliseconds");
+      uint64_t dlt = i2p::util::GetMillisecondsSinceEpoch () - timestamp;
+			LogPrint (eLogDebug, "Tunnels: test of ", msgID, " successful. ", dlt, " milliseconds");
+      uint64_t latency = dlt / 2;
+      test.first->UpdateLatency(latency);
+      test.second->UpdateLatency(latency);
 		}
 		else
 		{
@@ -397,7 +403,15 @@ namespace tunnel
 		}
 		return true;
 	}
-	
+
+  void TunnelPool::RequireLatency(const uint64_t min, const uint64_t max)
+  {
+    if(min)
+      m_MinLatency = min;
+    if(max)
+      m_MaxLatency = max;
+  }
+  
 	void TunnelPool::CreateInboundTunnel ()
 	{
 		auto outboundTunnel = GetNextOutboundTunnel ();

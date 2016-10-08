@@ -44,6 +44,8 @@ namespace tunnel
 			void SetLocalDestination (std::shared_ptr<i2p::garlic::GarlicDestination> destination) { m_LocalDestination = destination; };
 			void SetExplicitPeers (std::shared_ptr<std::vector<i2p::data::IdentHash> > explicitPeers);
 
+      void RequireLatency(const uint64_t min, const uint64_t max);
+      
 			void CreateTunnels ();
 			void TunnelCreated (std::shared_ptr<InboundTunnel> createdTunnel);
 			void TunnelExpired (std::shared_ptr<InboundTunnel> expiredTunnel);
@@ -55,6 +57,7 @@ namespace tunnel
 			std::shared_ptr<OutboundTunnel> GetNextOutboundTunnel (std::shared_ptr<OutboundTunnel> excluded = nullptr) const;
 			std::shared_ptr<InboundTunnel> GetNextInboundTunnel (std::shared_ptr<InboundTunnel> excluded = nullptr) const;		
 			std::shared_ptr<OutboundTunnel> GetNewOutboundTunnel (std::shared_ptr<OutboundTunnel> old) const;
+        
 			void TestTunnels ();
 			void ProcessGarlicMessage (std::shared_ptr<I2NPMessage> msg);
 			void ProcessDeliveryStatus (std::shared_ptr<I2NPMessage> msg);
@@ -94,6 +97,9 @@ namespace tunnel
 			bool m_IsActive;
 			std::mutex m_CustomPeerSelectorMutex;
 			TunnelPeerSelector m_CustomPeerSelector;
+      uint64_t m_MinLatency;
+      uint64_t m_MaxLatency;
+    
 		public:
 
 			// for HTTP only

@@ -191,6 +191,23 @@ namespace tunnel
 		}
 	}
 
+  void Tunnel::UpdateLatency(const uint64_t ms)
+  {
+    m_Stats.latency.second += 1;
+    m_Stats.latency.first = ( m_Stats.latency.first + ms ) / m_Stats.latency.second;
+  }
+
+  uint64_t Tunnel::GetMeanLatency() const
+  {
+    return m_Stats.latency.first;
+  }
+
+  bool Tunnel::LatencyFitsRange(const uint64_t lower, const uint64_t upper) const
+  {
+    uint64_t latency = GetMeanLatency();
+    return latency >= lower && latency <= upper;
+  }
+  
 	void InboundTunnel::HandleTunnelDataMsg (std::shared_ptr<const I2NPMessage> msg)
 	{
 		if (IsFailed ()) SetState (eTunnelStateEstablished); // incoming messages means a tunnel is alive
@@ -205,7 +222,7 @@ namespace tunnel
 		PrintHops (s);
 		s << " &#8658; " << GetTunnelID () << ":me";
 	}
-
+  
 	ZeroHopsInboundTunnel::ZeroHopsInboundTunnel ():
 		InboundTunnel (std::make_shared<ZeroHopsTunnelConfig> ()),
 		m_NumReceivedBytes (0)
