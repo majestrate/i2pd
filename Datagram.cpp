@@ -311,11 +311,11 @@ namespace datagram
 				outboundTunnel = routingPath->outboundTunnel;
 			}
 			else
-				outboundTunnel = m_LocalDestination->GetTunnelPool()->GetNextOutboundTunnel(routingPath->outboundTunnel); // no so we'll switch outbound tunnels
+				outboundTunnel = m_LocalDestination->GetTunnelPool()->GetNextOutboundTunnel(routingPath->outboundTunnel, false); // no so we'll switch outbound tunnels
 		}
 		// do we have an outbound tunnel that works already ?
 		if(!outboundTunnel)
-			outboundTunnel = m_LocalDestination->GetTunnelPool()->GetNextOutboundTunnel(); // no, let's get a new outbound tunnel as we probably just started
+			outboundTunnel = m_LocalDestination->GetTunnelPool()->GetNextOutboundTunnel(nullptr, false); // no, let's get a new outbound tunnel as we probably just started
 
 		if(outboundTunnel)
 		{

@@ -161,7 +161,7 @@ namespace tunnel
 		return tunnel;
 	}
 
-	std::shared_ptr<OutboundTunnel> TunnelPool::GetNewOutboundTunnel (std::shared_ptr<OutboundTunnel> old) const
+	std::shared_ptr<OutboundTunnel> TunnelPool::GetNewOutboundTunnel (std::shared_ptr<OutboundTunnel> old, bool ignoreLatency) const
 	{
 		if (old && old->IsEstablished ()) return old;
 		std::shared_ptr<OutboundTunnel> tunnel;	
@@ -171,13 +171,16 @@ namespace tunnel
 			for (const auto& it: m_OutboundTunnels)
 				if (it->IsEstablished () && old->GetEndpointIdentHash () == it->GetEndpointIdentHash ())
 				{
-					tunnel = it;
-					break;
+          if(ignoreLatency || it->LatencyFitsRange(m_MinLatency, m_MaxLatency))
+          {
+            tunnel = it;
+            break;
+          }
 				}
 		}
 	
 		if (!tunnel)
-			tunnel = GetNextOutboundTunnel ();		
+			tunnel = GetNextOutboundTunnel (nullptr, ignoreLatency);		
 		return tunnel;
 	}                                        
 

@@ -120,7 +120,7 @@ namespace client
 		}
 		if (!path || unconfirmedTags)
 		{
-			outboundTunnel = GetTunnelPool ()->GetNextOutboundTunnel ();
+			outboundTunnel = GetTunnelPool ()->GetNextOutboundTunnel (nullptr, false);
 			auto leases = remote->GetNonExpiredLeases ();
 			if (!leases.empty ())		
 				remoteLease = leases[rand () % leases.size ()];

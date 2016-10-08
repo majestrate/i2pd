@@ -54,9 +54,9 @@ namespace tunnel
 			void RecreateInboundTunnel (std::shared_ptr<InboundTunnel> tunnel);
 			void RecreateOutboundTunnel (std::shared_ptr<OutboundTunnel> tunnel);
 			std::vector<std::shared_ptr<InboundTunnel> > GetInboundTunnels (int num) const;
-    std::shared_ptr<OutboundTunnel> GetNextOutboundTunnel (std::shared_ptr<OutboundTunnel> excluded = nullptr, bool ignoreLatency=false) const;
-    std::shared_ptr<InboundTunnel> GetNextInboundTunnel (std::shared_ptr<InboundTunnel> excluded = nullptr, bool ignoreLatency=false) const;		
-			std::shared_ptr<OutboundTunnel> GetNewOutboundTunnel (std::shared_ptr<OutboundTunnel> old) const;
+    std::shared_ptr<OutboundTunnel> GetNextOutboundTunnel (std::shared_ptr<OutboundTunnel> excluded = nullptr, bool ignoreLatency=true) const;
+    std::shared_ptr<InboundTunnel> GetNextInboundTunnel (std::shared_ptr<InboundTunnel> excluded = nullptr, bool ignoreLatency=true) const;		
+    std::shared_ptr<OutboundTunnel> GetNewOutboundTunnel (std::shared_ptr<OutboundTunnel> old, bool ignoreLatency=true) const;
     
 			void TestTunnels ();
 			void ProcessGarlicMessage (std::shared_ptr<I2NPMessage> msg);
@@ -78,7 +78,7 @@ namespace tunnel
 			void CreateOutboundTunnel ();
 			void CreatePairedInboundTunnel (std::shared_ptr<OutboundTunnel> outboundTunnel);
 			template<class TTunnels>
-			typename TTunnels::value_type GetNextTunnel (TTunnels& tunnels, typename TTunnels::value_type excluded, bool ignoreLatency=false) const;
+			typename TTunnels::value_type GetNextTunnel (TTunnels& tunnels, typename TTunnels::value_type excluded, bool ignoreLatency=true) const;
 			std::shared_ptr<const i2p::data::RouterInfo> SelectNextHop (std::shared_ptr<const i2p::data::RouterInfo> prevHop) const;
 			bool SelectPeers (std::vector<std::shared_ptr<const i2p::data::IdentityEx> >& hops, bool isInbound);
 			bool SelectExplicitPeers (std::vector<std::shared_ptr<const i2p::data::IdentityEx> >& hops, bool isInbound);			

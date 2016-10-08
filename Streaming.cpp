@@ -629,7 +629,7 @@ namespace stream
 			}	
 		}	
 		if (!m_CurrentOutboundTunnel || !m_CurrentOutboundTunnel->IsEstablished ())
-			m_CurrentOutboundTunnel = m_LocalDestination.GetOwner ()->GetTunnelPool ()->GetNewOutboundTunnel (m_CurrentOutboundTunnel);
+			m_CurrentOutboundTunnel = m_LocalDestination.GetOwner ()->GetTunnelPool ()->GetNewOutboundTunnel (m_CurrentOutboundTunnel, false);
 		if (!m_CurrentOutboundTunnel)
 		{
 			LogPrint (eLogError, "Streaming: No outbound tunnels in the pool, sSID=", m_SendStreamID);
@@ -718,7 +718,7 @@ namespace stream
 					case 3:
 						// pick another outbound tunnel 
 						if (m_RoutingSession) m_RoutingSession->SetSharedRoutingPath (nullptr);
-						m_CurrentOutboundTunnel = m_LocalDestination.GetOwner ()->GetTunnelPool ()->GetNextOutboundTunnel (m_CurrentOutboundTunnel); 
+						m_CurrentOutboundTunnel = m_LocalDestination.GetOwner ()->GetTunnelPool ()->GetNextOutboundTunnel (m_CurrentOutboundTunnel, false); 
 						LogPrint (eLogWarning, "Streaming: Another outbound tunnel has been selected for stream with sSID=", m_SendStreamID);
 					break;
 					default: ;	

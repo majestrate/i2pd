@@ -440,13 +440,13 @@ namespace client
 			LogPrint (eLogDebug, "Destination: Publishing LeaseSet is pending");
 			return;
 		}
-		auto outbound = m_Pool->GetNextOutboundTunnel (nullptr, true);
+		auto outbound = m_Pool->GetNextOutboundTunnel ();
 		if (!outbound)
 		{
 			LogPrint (eLogError, "Destination: Can't publish LeaseSet. No outbound tunnels");
 			return;
 		}
-		auto inbound = m_Pool->GetNextInboundTunnel (nullptr, true);
+		auto inbound = m_Pool->GetNextInboundTunnel ();
 		if (!inbound)
 		{
 			LogPrint (eLogError, "Destination: Can't publish LeaseSet. No inbound tunnels");
