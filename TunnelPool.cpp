@@ -129,28 +129,29 @@ namespace tunnel
 		return v;
 	}
 
-	std::shared_ptr<OutboundTunnel> TunnelPool::GetNextOutboundTunnel (std::shared_ptr<OutboundTunnel> excluded) const
+	std::shared_ptr<OutboundTunnel> TunnelPool::GetNextOutboundTunnel (std::shared_ptr<OutboundTunnel> excluded, bool ignoreLatency) const
 	{
 		std::unique_lock<std::mutex> l(m_OutboundTunnelsMutex);	
-		return GetNextTunnel (m_OutboundTunnels, excluded);
+		return GetNextTunnel (m_OutboundTunnels, excluded, ignoreLatency);
 	}	
 
-	std::shared_ptr<InboundTunnel> TunnelPool::GetNextInboundTunnel (std::shared_ptr<InboundTunnel> excluded) const
+	std::shared_ptr<InboundTunnel> TunnelPool::GetNextInboundTunnel (std::shared_ptr<InboundTunnel> excluded, bool ignoreLatency) const
 	{
 		std::unique_lock<std::mutex> l(m_InboundTunnelsMutex);	
-		return GetNextTunnel (m_InboundTunnels, excluded);
+		return GetNextTunnel (m_InboundTunnels, excluded, ignoreLatency);
 	}
 
 	template<class TTunnels>
-	typename TTunnels::value_type TunnelPool::GetNextTunnel (TTunnels& tunnels, typename TTunnels::value_type excluded) const
+	typename TTunnels::value_type TunnelPool::GetNextTunnel (TTunnels& tunnels, typename TTunnels::value_type excluded, bool ignoreLatency) const
 	{
 		if (tunnels.empty ()) return nullptr;		
 		uint32_t ind = rand () % (tunnels.size ()/2 + 1), i = 0;
 		typename TTunnels::value_type tunnel = nullptr;
 		for (const auto& it: tunnels)
 		{	
-			if (it->IsEstablished () && it != excluded && it->LatencyFitsRange(m_MinLatency, m_MaxLatency))
+			if (it->IsEstablished () && it != excluded)
 			{
+        if(it->LatencyFitsRange(m_MinLatency, m_MaxLatency) && !ignoreLatency) continue; // latency check
 				tunnel = it;
 				i++;
 			}
@@ -178,7 +179,7 @@ namespace tunnel
 		if (!tunnel)
 			tunnel = GetNextOutboundTunnel ();		
 		return tunnel;
-	}
+	}                                        
 
 	void TunnelPool::CreateTunnels ()
 	{

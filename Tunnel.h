@@ -93,6 +93,9 @@ namespace tunnel
 
       /** @brief determine if this tunnel's latency fits in the range [lower, upper] */
       bool LatencyFitsRange(const uint64_t lower, const uint64_t upper) const;
+
+      /** @brief determine if we know this tunnel's latency */
+      bool LatencyIsKnown() const;
       
 		protected:
 

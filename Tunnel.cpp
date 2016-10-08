@@ -11,6 +11,7 @@
 #include "Transports.h"
 #include "NetDb.h"
 #include "Tunnel.h"
+#include "Destination.h"
 
 namespace i2p
 {
@@ -206,6 +207,11 @@ namespace tunnel
   {
     uint64_t latency = GetMeanLatency();
     return latency >= lower && latency <= upper;
+  }
+
+  bool Tunnel::LatencyIsKnown() const
+  {
+    return m_Stats.latency.second > 0;
   }
   
 	void InboundTunnel::HandleTunnelDataMsg (std::shared_ptr<const I2NPMessage> msg)
