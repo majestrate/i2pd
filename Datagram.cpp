@@ -283,6 +283,8 @@ namespace datagram
 
 	bool DatagramSession::ShouldSwitchLease() const
 	{
+		auto now = i2p::util::GetMillisecondsSinceEpoch();
+		if(now - m_LastPathChange < DATAGRAM_SESSION_PATH_MIN_LIFETIME ) return false;
 		std::shared_ptr<i2p::garlic::GarlicRoutingPath> routingPath = nullptr;
 		std::shared_ptr<const i2p::data::Lease> currentLease = nullptr;
 		if(m_RoutingSession)
