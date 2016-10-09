@@ -39,7 +39,7 @@ namespace tunnel
     if(latency.size() == 0) return 0;
     return sum / latency.size();
   }
-  
+
 	Tunnel::Tunnel (std::shared_ptr<const TunnelConfig> config): 
 		TunnelBase (config->GetTunnelID (), config->GetNextTunnelID (), config->GetNextIdentHash ()),
 		m_Config (config), m_Pool (nullptr), m_State (eTunnelStatePending), m_IsRecreated (false)
