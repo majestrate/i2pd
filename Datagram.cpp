@@ -21,6 +21,7 @@ namespace datagram
 	DatagramDestination::~DatagramDestination ()
 	{
 		m_Sessions.clear();
+		m_Owner->SetLeaseSetListener(nullptr);
 	}
 	
 	void DatagramDestination::SendDatagramTo (const uint8_t * payload, size_t len, const i2p::data::IdentHash& ident, uint16_t fromPort, uint16_t toPort)
@@ -118,6 +119,15 @@ namespace datagram
 		return msg;
 	}
 
+	void DatagramDestination::InformNewLeaseSet(std::shared_ptr<const i2p::data::LeaseSet> ls)
+	{
+		std::unique_lock<std::mutex> lock(m_SessionsMutex);
+		auto ih = ls->GetIdentHash();
+		for ( auto & s : m_Sessions)
+			if (s.first == ih)
+				s.second->GotNewLeaseSet(ls);
+	}
+	
 	void DatagramDestination::CleanUp ()
 	{			
 		if (m_Sessions.empty ()) return;
@@ -206,6 +216,11 @@ namespace datagram
 		LogPrint(eLogDebug, "DatagramSession: lease sent to remote destination");
 	}
 
+	void DatagramSession::GotNewLeaseSet(std::shared_ptr<const i2p::data::LeaseSet> & ls)
+	{
+		HandleGotLeaseSet(ls, nullptr);
+	}
+  
 	DatagramSession::Info DatagramSession::GetSessionInfo() const
 	{
 		if(!m_RoutingSession)
