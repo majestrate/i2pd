@@ -257,6 +257,14 @@ namespace data
 	{
 		auto ts = i2p::util::GetMillisecondsSinceEpoch ();
 		return ts > m_ExpirationTime;
-	}	
+	}
+
+	bool LocalLeaseSet::ExpiresSoon(const uint64_t dlt, const uint64_t fudge) const
+	{
+		auto now = i2p::util::GetMillisecondsSinceEpoch ();
+		if (fudge) now += rand() % fudge;
+		if (now >= m_ExpirationTime) return true;
+		return	m_ExpirationTime - now <= dlt;
+	}
 }		
 }	

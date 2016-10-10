@@ -194,6 +194,8 @@ namespace client
 			~I2PUDPServerTunnel();
 			/** expire stale udp conversations */
 			void ExpireStale(const uint64_t delta=I2P_UDP_SESSION_TIMEOUT);
+			/** check if we need to do LeaseSet Update and do it if it needs to be done */
+			void Tick();
 			void Start();
 			const char * GetName() const { return m_Name.c_str(); }
 			std::vector<std::shared_ptr<DatagramSessionInfo> > GetSessions();
@@ -224,7 +226,7 @@ namespace client
 			void Start();
 			const char * GetName() const { return m_Name.c_str(); }
 			std::vector<std::shared_ptr<DatagramSessionInfo> > GetSessions();
-			
+			void Tick();
 			bool IsLocalDestination(const i2p::data::IdentHash & destination) const { return destination == m_LocalDest->GetIdentHash(); }
 
 			std::shared_ptr<ClientDestination> GetLocalDestination () const { return m_LocalDest; }

@@ -88,6 +88,9 @@ namespace client
 			bool RequestDestination (const i2p::data::IdentHash& dest, RequestComplete requestComplete = nullptr);
 			void CancelDestinationRequest (const i2p::data::IdentHash& dest, bool notify = true);	
 
+			bool LeaseSetExpiresWithin(const uint64_t threshold, const uint64_t fudge=0) const;
+
+    
 			// implements GarlicDestination
 			std::shared_ptr<const i2p::data::LocalLeaseSet> GetLeaseSet ();
 			std::shared_ptr<i2p::tunnel::TunnelPool> GetTunnelPool () const { return m_Pool; }

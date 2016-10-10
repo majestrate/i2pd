@@ -78,7 +78,7 @@ namespace data
 			const IdentHash& GetIdentHash () const { return m_Identity->GetIdentHash (); };
 			const uint8_t * GetEncryptionPublicKey () const { return m_EncryptionKey; };
 			bool IsDestination () const { return true; };
-
+      
 		private:
 
 			void ReadFromBuffer (bool readIdentity = true);
@@ -115,8 +115,8 @@ namespace data
 			void SetExpirationTime (uint64_t expirationTime) { m_ExpirationTime = expirationTime; };
 			bool operator== (const LeaseSet& other) const 
 			{ return m_BufferLen == other.GetBufferLen ()  && !memcmp (other.GetBuffer (), other.GetBuffer (), m_BufferLen); }; 
-
-
+			bool ExpiresSoon(const uint64_t dlt=1000 * 5, const uint64_t fudge = 0) const ;
+      
 		private:
 			
 			uint64_t m_ExpirationTime; // in milliseconds

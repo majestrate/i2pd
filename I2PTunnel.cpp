@@ -544,6 +544,15 @@ namespace client
       return now - u->LastActivity >= delta;
     });
   }
+
+	void I2PUDPServerTunnel::Tick()
+	{
+		m_LocalDest->GetService().post([&] {
+				if(!m_LocalDest->LeaseSetExpiresWithin(5000, 1000)) return;
+				auto dgram = m_LocalDest->GetDatagramDestination();
+				if(dgram) dgram->BroadcastLeaseSetChange();
+		});
+	}
   
   UDPSession * I2PUDPServerTunnel::ObtainUDPSession(const i2p::data::IdentityEx& from, uint16_t localPort, uint16_t remotePort)
   {
@@ -675,6 +684,15 @@ namespace client
 		m_LocalDest->Start();
 		if (m_ResolveThread == nullptr)
 			m_ResolveThread = new std::thread(std::bind(&I2PUDPClientTunnel::TryResolving, this));
+	}
+
+	void I2PUDPClientTunnel::Tick()
+	{
+		m_LocalDest->GetService().post([&] {
+				if(!m_LocalDest->LeaseSetExpiresWithin(5000, 1000)) return;
+				auto dgram = m_LocalDest->GetDatagramDestination();
+				if(dgram) dgram->BroadcastLeaseSetChange();
+		});
 	}
 
 	std::vector<std::shared_ptr<DatagramSessionInfo> > I2PUDPClientTunnel::GetSessions()

@@ -535,6 +535,12 @@ namespace client
 				}	
 			});				
 	}
+
+	bool LeaseSetDestination::LeaseSetExpiresWithin(const uint64_t threshold, const uint64_t fudge) const
+	{
+		if(m_LeaseSet) return m_LeaseSet->ExpiresSoon(threshold, fudge);
+		return true; // no lease set
+	}
 		
 	void LeaseSetDestination::RequestLeaseSet (const i2p::data::IdentHash& dest, RequestComplete requestComplete)
 	{

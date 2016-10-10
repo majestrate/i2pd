@@ -38,6 +38,8 @@ namespace datagram
 		DatagramSession(i2p::client::ClientDestination * localDestination,
 										const i2p::data::IdentHash & remoteIdent);
 
+		/** send the remote destination our LeaseSet */
+		void SendLeaseSet(const std::shared_ptr<const i2p::data::LocalLeaseSet> & ls) const;
 		/** send an i2np message to remote endpoint for this session */
 		void SendMsg(std::shared_ptr<I2NPMessage> msg);
 		/** get the last time in milliseconds for when we used this datagram session */
@@ -128,6 +130,9 @@ namespace datagram
 			// clean up stale sessions
 			void CleanUp ();
 
+			/** give updated lease set to every UDP session */
+			void BroadcastLeaseSetChange();
+    
 		private:
 						
 			std::shared_ptr<DatagramSession> ObtainSession(const i2p::data::IdentHash & ident);

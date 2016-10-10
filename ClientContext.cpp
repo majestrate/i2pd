@@ -555,8 +555,8 @@ namespace client
 	{
 		if (m_CleanupUDPTimer)
 		{
-			// schedule cleanup in 17 seconds
-			m_CleanupUDPTimer->expires_from_now (boost::posix_time::seconds (17));
+			// schedule cleanup in 5 seconds
+			m_CleanupUDPTimer->expires_from_now (boost::posix_time::seconds (5));
 			m_CleanupUDPTimer->async_wait(std::bind(&ClientContext::CleanupUDP, this, std::placeholders::_1));
 		}
 	}
@@ -566,7 +566,15 @@ namespace client
 		if(!ecode)
 		{
 			std::lock_guard<std::mutex> lock(m_ForwardsMutex);
-			for (auto & s : m_ServerForwards ) s.second->ExpireStale();
+			for (auto & s : m_ServerForwards ) {			 
+				s.second->ExpireStale();
+				s.second->Tick();
+			}
+			
+			for ( auto & c : m_ClientForwards ) {
+				c.second->Tick();
+			}
+			
 			ScheduleCleanupUDP();
 		}
 	}

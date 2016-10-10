@@ -137,6 +137,17 @@ namespace datagram
 				it++;
 		}
 	}
+
+	void DatagramDestination::BroadcastLeaseSetChange()
+	{
+		LogPrint(eLogDebug, "DatagramDestination: broadcast LeaseSet change");
+		m_Owner->SetLeaseSetUpdated();
+		const auto ls = m_Owner->GetLeaseSet();
+		std::lock_guard<std::mutex> lock(m_SessionsMutex);
+		for (const auto & s : m_Sessions)
+			s.second->SendLeaseSet(ls);
+	}
+  
 	
 	std::shared_ptr<DatagramSession> DatagramDestination::ObtainSession(const i2p::data::IdentHash & ident)
 	{
@@ -179,6 +190,20 @@ namespace datagram
 		m_LastUse = i2p::util::GetMillisecondsSinceEpoch();
 		// schedule send
 		m_LocalDestination->GetService().post(std::bind(&DatagramSession::HandleSend, this, msg));
+	}
+
+	void DatagramSession::SendLeaseSet(const std::shared_ptr<const i2p::data::LocalLeaseSet> & ls) const
+	{
+		if(!m_RoutingSession) return;
+		auto path = m_RoutingSession->GetSharedRoutingPath();
+		if(!path) return;
+		auto outboundTunnel = path->outboundTunnel;
+		auto m = m_RoutingSession->WrapSingleMessage(i2p::CreateDatabaseStoreMsg(ls));
+		outboundTunnel->SendTunnelDataMsg({i2p::tunnel::TunnelMessageBlock{
+					i2p::tunnel::eDeliveryTypeTunnel,
+					path->remoteLease->tunnelGateway, path->remoteLease->tunnelID,
+					m}});
+		LogPrint(eLogDebug, "DatagramSession: lease sent to remote destination");
 	}
 
 	DatagramSession::Info DatagramSession::GetSessionInfo() const
