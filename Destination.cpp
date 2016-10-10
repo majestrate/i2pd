@@ -186,7 +186,7 @@ namespace client
   
 	std::shared_ptr<const i2p::data::LeaseSet> LeaseSetDestination::FindLeaseSet (const i2p::data::IdentHash& ident)
 	{
-		std::unique_lock<std::mutex> lock(m_RemoteLeaseSetsMutex);
+		std::lock_guard<std::mutex> lock(m_RemoteLeaseSetsMutex);
 		auto it = m_RemoteLeaseSets.find (ident);
 		if (it != m_RemoteLeaseSets.end ())
 		{
@@ -200,8 +200,10 @@ namespace client
 						if(ls && !ls->IsExpired())
 						{
 							ls->PopulateLeases();
-							std::unique_lock<std::mutex> lock(m_RemoteLeaseSetsMutex);
-							m_RemoteLeaseSets[ident] = ls;
+							{
+								std::lock_guard<std::mutex> _lock(m_RemoteLeaseSetsMutex);
+								m_RemoteLeaseSets[ident] = ls;
+							}
 						}
 					});
 				}
@@ -275,7 +277,7 @@ namespace client
 		m_Service.post (std::bind (&LeaseSetDestination::HandleDeliveryStatusMessage, shared_from_this (), msg)); 
 	}
 
-	void LeaseSetDestination::HandleI2NPMessage (const uint8_t * buf, size_t /*len*/, std::shared_ptr<i2p::tunnel::InboundTunnel> from)
+	void LeaseSetDestination::HandleI2NPMessage (const uint8_t * buf, size_t len, std::shared_ptr<i2p::tunnel::InboundTunnel> from)
 	{
 		uint8_t typeID = buf[I2NP_HEADER_TYPEID_OFFSET];
 		switch (typeID)
@@ -363,7 +365,7 @@ namespace client
 		}	
 	}
 
-	void LeaseSetDestination::HandleDatabaseSearchReplyMessage (const uint8_t * buf, size_t /*len*/)
+	void LeaseSetDestination::HandleDatabaseSearchReplyMessage (const uint8_t * buf, size_t len)
 	{
 		i2p::data::IdentHash key (buf);
 		int num = buf[32]; // num
@@ -747,7 +749,7 @@ namespace client
 			ScheduleCheckForReady(p);
 	}
 	
-	void ClientDestination::HandleDataMessage (const uint8_t * buf, size_t /*len*/)
+	void ClientDestination::HandleDataMessage (const uint8_t * buf, size_t len)
 	{
 		uint32_t length = bufbe32toh (buf);
 		buf += 4;
