@@ -245,8 +245,9 @@ namespace datagram
 		// do we have a routing session?
 		if(m_RoutingSession)
 		{
+			auto routingPath = m_RoutingSession->GetSharedRoutingPath ();
 			// should we switch paths?
-			if(ShouldUpdateRoutingPath ())
+			if(ShouldUpdateRoutingPath () || routingPath == nullptr)
 			{
 				LogPrint(eLogDebug, "DatagramSession: try getting new routing path");
 				// try switching paths
@@ -256,11 +257,12 @@ namespace datagram
 				else
 					ResetRoutingPath();
 			}
-			auto routingPath = m_RoutingSession->GetSharedRoutingPath ();
+			routingPath = m_RoutingSession->GetSharedRoutingPath ();
 			// make sure we have a routing path
+			std::shared_ptr<i2p::tunnel::OutboundTunnel> outboundTunnel;
 			if (routingPath)
 			{
-				auto outboundTunnel = routingPath->outboundTunnel;
+				outboundTunnel = routingPath->outboundTunnel;
 				if (outboundTunnel)
 				{
 					if(outboundTunnel->IsEstablished())
@@ -274,11 +276,17 @@ namespace datagram
 							routingPath->remoteLease->tunnelGateway, routingPath->remoteLease->tunnelID,
 							m
 						}});
+						LogPrint(eLogDebug, "DatagramSession: sent message via ", outboundTunnel->GetEndpointIdentHash().ToBase64());
 						return;
 					}
 				}
 			}
+			std::string obep("null");
+			if (outboundTunnel) obep = outboundTunnel->GetEndpointIdentHash().ToBase64();
+			LogPrint(eLogWarning, "DatagramSession: message not sent, routing path: ", (routingPath ? "exists": "null"),	" outboundTunnel: ", obep);
+			return;
 		}
+		LogPrint(eLogWarning, "DatagramSession: message not sent, no routing path");
 	}
 
 	void DatagramSession::UpdateRoutingPath(const std::shared_ptr<i2p::garlic::GarlicRoutingPath> & path)
