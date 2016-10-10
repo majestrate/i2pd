@@ -339,7 +339,10 @@ namespace client
 					}
 				}
 				else
+				{
 					LogPrint (eLogDebug, "Remote LeaseSet is older. Not updated");
+					if(m_LeaseSetListener) m_Service.post([&, &leaseSet] () { m_LeaseSetListener(leaseSet); });
+				}
 			}
 			else
 			{	
@@ -350,6 +353,7 @@ namespace client
 					{
 						LogPrint (eLogDebug, "New remote LeaseSet added");
 						m_RemoteLeaseSets[buf + DATABASE_STORE_KEY_OFFSET] = leaseSet;
+						if(m_LeaseSetListener) m_Service.post([&, &leaseSet] () { m_LeaseSetListener(leaseSet); });
 					}
 					else
 						LogPrint (eLogDebug, "Own remote LeaseSet dropped");
