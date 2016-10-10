@@ -237,6 +237,7 @@ namespace datagram
 			if(m_RemoteLeaseSet) m_RoutingSession = m_LocalDestination->GetRoutingSession(m_RemoteLeaseSet, true);
 			else
 			{
+				LogPrint(eLogInfo, "DatagramSession: no routing path, updating LeaseSet");
 				UpdateLeaseSet(msg);
 				return;
 			}
@@ -278,7 +279,6 @@ namespace datagram
 				}
 			}
 		}
-		UpdateLeaseSet(msg);
 	}
 
 	void DatagramSession::UpdateRoutingPath(const std::shared_ptr<i2p::garlic::GarlicRoutingPath> & path)
@@ -438,8 +438,6 @@ namespace datagram
 	
 	void DatagramSession::UpdateLeaseSet(std::shared_ptr<I2NPMessage> msg)
 	{
-		if(m_RemoteLeaseSet != nullptr && (!m_RemoteLeaseSet->ExpiresSoon(DATAGRAM_SESSION_LEASE_HANDOVER_WINDOW, DATAGRAM_SESSION_LEASE_HANDOVER_FUDGE)))
-			return; // no update needed
 		LogPrint(eLogInfo, "DatagramSession: updating lease set");
 		m_LocalDestination->RequestDestination(m_RemoteIdentity, std::bind(&DatagramSession::HandleGotLeaseSet, this, std::placeholders::_1, msg));
 	}
