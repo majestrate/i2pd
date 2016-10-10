@@ -438,6 +438,8 @@ namespace datagram
 	
 	void DatagramSession::UpdateLeaseSet(std::shared_ptr<I2NPMessage> msg)
 	{
+		if(m_RemoteLeaseSet != nullptr && (!m_RemoteLeaseSet->ExpiresSoon(DATAGRAM_SESSION_LEASE_HANDOVER_WINDOW, DATAGRAM_SESSION_LEASE_HANDOVER_FUDGE)))
+			return; // no update needed
 		LogPrint(eLogInfo, "DatagramSession: updating lease set");
 		m_LocalDestination->RequestDestination(m_RemoteIdentity, std::bind(&DatagramSession::HandleGotLeaseSet, this, std::placeholders::_1, msg));
 	}
@@ -453,12 +455,15 @@ namespace datagram
 			// clear invalid IBGW as we have a new lease set
 			m_InvalidIBGW.clear();
 			m_RemoteLeaseSet = remoteIdent;
-			// update routing path
-			auto path = GetNextRoutingPath();
-			if (path)
-				UpdateRoutingPath(path);
-			else
-				ResetRoutingPath();
+			if(ShouldUpdateRoutingPath())
+			{	 
+				// update routing path
+				auto path = GetNextRoutingPath();
+				if (path)
+					UpdateRoutingPath(path);
+				else
+					ResetRoutingPath();
+			}
 			// send the message that was queued if it was provided
 			if(msg)
 				HandleSend(msg);
