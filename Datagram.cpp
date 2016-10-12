@@ -428,18 +428,19 @@ namespace datagram
 		if(remoteIdent)
 		{
 			// update routing session
-			if(m_RoutingSession)
-				m_RoutingSession = nullptr;
-			m_RoutingSession = m_LocalDestination->GetRoutingSession(remoteIdent, true);
-			// clear invalid IBGW as we have a new lease set
-			m_InvalidIBGW.clear();
-			m_RemoteLeaseSet = remoteIdent;
+			if(remoteIdent != m_RemoteLeaseSet)
+			{
+				if(m_RoutingSession)
+					m_RoutingSession = nullptr;
+				m_RoutingSession = m_LocalDestination->GetRoutingSession(remoteIdent, true);
+				// clear invalid IBGW as we have a new lease set
+				m_InvalidIBGW.clear();
+				m_RemoteLeaseSet = remoteIdent;
+			}
 			// update routing path
 			auto path = GetNextRoutingPath();
 			if (path)
 				UpdateRoutingPath(path);
-			else
-				ResetRoutingPath();
 			// send the message that was queued if it was provided
 			if(msg)
 				HandleSend(msg);
