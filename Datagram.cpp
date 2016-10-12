@@ -416,7 +416,11 @@ namespace datagram
 	void DatagramSession::UpdateLeaseSet(std::shared_ptr<I2NPMessage> msg)
 	{
 		LogPrint(eLogInfo, "DatagramSession: updating lease set");
-		m_LocalDestination->RequestDestination(m_RemoteIdentity, std::bind(&DatagramSession::HandleGotLeaseSet, this, std::placeholders::_1, msg));
+		auto ls = m_LocalDestination->FindLeaseSet(m_RemoteIdentity);
+		if(ls)
+			HandleGotLeaseSet(ls, msg);
+		else
+			m_LocalDestination->RequestDestination(m_RemoteIdentity, std::bind(&DatagramSession::HandleGotLeaseSet, this, std::placeholders::_1, msg));
 	}
 
 	void DatagramSession::HandleGotLeaseSet(std::shared_ptr<const i2p::data::LeaseSet> remoteIdent, std::shared_ptr<I2NPMessage> msg)
