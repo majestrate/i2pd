@@ -418,7 +418,7 @@ namespace datagram
 		LogPrint(eLogInfo, "DatagramSession: updating lease set");
 		auto ls = m_LocalDestination->FindLeaseSet(m_RemoteIdentity);
 		if(ls)
-			HandleGotLeaseSet(ls, msg);
+			HandleGotLeaseSet(ls, nullptr);
 		else
 			m_LocalDestination->RequestDestination(m_RemoteIdentity, std::bind(&DatagramSession::HandleGotLeaseSet, this, std::placeholders::_1, msg));
 	}
