@@ -440,10 +440,12 @@ namespace datagram
 			// update routing path
 			auto path = GetNextRoutingPath();
 			if (path)
+			{
 				UpdateRoutingPath(path);
-			// send the message that was queued if it was provided
-			if(msg)
-				HandleSend(msg);
+				// send the message that was queued if it was provided
+				if(msg)
+					HandleSend(msg);
+			}
 		}
 	}
 }
