@@ -210,11 +210,6 @@ namespace datagram
 		{
 			// try to get one
 			if(m_RemoteLeaseSet) m_RoutingSession = m_LocalDestination->GetRoutingSession(m_RemoteLeaseSet, true);
-			else
-			{
-				UpdateLeaseSet(msg);
-				return;
-			}
 		}
 		// do we have a routing session?
 		if(m_RoutingSession)
@@ -257,17 +252,15 @@ namespace datagram
 		// if this path looks dead reset the routing path since we didn't seem to be able to get a path in time
 		if (m_LastPathChange && now - m_LastPathChange >= DATAGRAM_SESSION_PATH_TIMEOUT ) ResetRoutingPath();
 		UpdateLeaseSet(msg);
-		
 	}
 
 	void DatagramSession::UpdateRoutingPath(const std::shared_ptr<i2p::garlic::GarlicRoutingPath> & path)
 	{
+		m_LastPathChange = i2p::util::GetMillisecondsSinceEpoch ();
 		if(m_RoutingSession == nullptr && m_RemoteLeaseSet)
 			m_RoutingSession = m_LocalDestination->GetRoutingSession(m_RemoteLeaseSet, true);
 		if(!m_RoutingSession) return;
-		// set routing path and update time we last updated the routing path
 		m_RoutingSession->SetSharedRoutingPath (path);
-		m_LastPathChange = i2p::util::GetMillisecondsSinceEpoch ();
 	}
 
 	bool DatagramSession::ShouldUpdateRoutingPath() const
@@ -418,7 +411,7 @@ namespace datagram
 		LogPrint(eLogInfo, "DatagramSession: updating lease set");
 		auto ls = m_LocalDestination->FindLeaseSet(m_RemoteIdentity);
 		if(ls)
-			HandleGotLeaseSet(ls, nullptr);
+			HandleGotLeaseSet(ls, msg);
 		else
 			m_LocalDestination->RequestDestination(m_RemoteIdentity, std::bind(&DatagramSession::HandleGotLeaseSet, this, std::placeholders::_1, msg));
 	}
@@ -438,14 +431,11 @@ namespace datagram
 				m_RemoteLeaseSet = remoteIdent;
 			}
 			// update routing path
-			auto path = GetNextRoutingPath();
-			if (path)
-			{
-				UpdateRoutingPath(path);
-				// send the message that was queued if it was provided
-				if(msg)
-					HandleSend(msg);
-			}
+			UpdateRoutingPath(GetNextRoutingPath());
+			// send the message that was queued if it was provided
+			if(msg)
+				HandleSend(msg);
+			
 		}
 	}
 }
