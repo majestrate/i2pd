@@ -85,8 +85,10 @@ namespace i2p
 
 			// implements LocalDestination
 			std::shared_ptr<const i2p::data::IdentityEx> GetIdentity () const { return m_Keys.GetPublic (); };
-			const uint8_t * GetEncryptionPrivateKey () const { return m_Keys.GetPrivateKey (); };
+			//const uint8_t * GetEncryptionPrivateKey () const { return m_Keys.GetPrivateKey (); };
 			const uint8_t * GetEncryptionPublicKey () const { return GetIdentity ()->GetStandardIdentity ().publicKey; };
+			bool TunnelDecrypt(const uint8_t * inbuf, uint8_t * outbuf) const;
+
 			void Sign (const uint8_t * buf, int len, uint8_t * signature) const { m_Keys.Sign (buf, len, signature); }; 
 			void SetLeaseSetUpdated () {};
 

@@ -149,6 +149,11 @@ namespace client
 		}	
 	}
 
+	bool I2CPDestination::TunnelDecrypt(const uint8_t * inbuf, uint8_t * outbuf) const
+	{
+		return i2p::crypto::ElGamalDecrypt(m_EncryptionPrivateKey, inbuf, outbuf, true);
+	}
+	
 	I2CPSession::I2CPSession (I2CPServer& owner, std::shared_ptr<proto::socket> socket):
 		m_Owner (owner), m_Socket (socket), m_Payload (nullptr),
 		m_SessionID (0xFFFF), m_MessageID (0), m_IsSendAccepted (true)

@@ -83,6 +83,11 @@ namespace i2p
 		m_RouterInfo.Update (routerInfo.GetBuffer (), routerInfo.GetBufferLen ());
 	}
 
+	bool RouterContext::TunnelDecrypt(const uint8_t * inbuf, uint8_t * outbuf) const
+	{
+		return i2p::crypto::ElGamalDecrypt(m_Keys.GetPrivateKey(), inbuf, outbuf);
+	}
+	
 	void RouterContext::UpdateRouterInfo ()
 	{
 		m_RouterInfo.CreateBuffer (m_Keys);
