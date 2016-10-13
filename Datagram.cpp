@@ -290,6 +290,7 @@ namespace datagram
 	void DatagramSession::UpdateRoutingPath(const std::shared_ptr<i2p::garlic::GarlicRoutingPath> & path)
 	{
 		m_LastPathChange = i2p::util::GetMillisecondsSinceEpoch ();
+		if(!m_RemoteLeaseSet) m_RemoteLeaseSet = m_LocalDestination->FindLeaseSet(m_RemoteIdentity);
 		if(m_RemoteLeaseSet) 
 		{
 			m_RoutingSession = m_LocalDestination->GetRoutingSession(m_RemoteLeaseSet, true);	 
@@ -306,7 +307,7 @@ namespace datagram
 		// we need to rotate paths becuase the routing path is too old
 		// if (now - m_LastPathChange >= DATAGRAM_SESSION_PATH_SWITCH_INTERVAL) return true;
 		// too fast switching paths
-		if (now - m_LastPathChange < DATAGRAM_SESSION_PATH_MIN_LIFETIME ) return dead;
+		if (now - m_LastPathChange < DATAGRAM_SESSION_PATH_MIN_LIFETIME ) return false;
 		// path looks dead
 		if (now - m_LastSuccess >= DATAGRAM_SESSION_PATH_TIMEOUT) return true;
 		// if we have a routing session and routing path we don't need to switch paths
