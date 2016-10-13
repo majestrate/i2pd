@@ -133,6 +133,8 @@ namespace data
 			size_t FromBase64(const std::string& s);
 			std::string ToBase64 () const;
 
+			SigningKeyType GetSigningKeyType() const { return m_Public->GetSigningKeyType(); }
+			
 			static PrivateKeys CreateRandomKeys (SigningKeyType type = SIGNING_KEY_TYPE_DSA_SHA1);
 	
 		private:
@@ -182,7 +184,8 @@ namespace data
 		public:
 
 			virtual ~LocalDestination() {};
-			virtual const uint8_t * GetEncryptionPrivateKey () const = 0; 
+			// virtual const uint8_t * GetEncryptionPrivateKey () const = 0;
+			virtual bool TunnelDecrypt(const uint8_t * inbuf, uint8_t * outbuf) const = 0;
 			virtual std::shared_ptr<const IdentityEx> GetIdentity () const = 0;
 
 			const IdentHash& GetIdentHash () const { return GetIdentity ()->GetIdentHash (); };  

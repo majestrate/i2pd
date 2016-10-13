@@ -31,7 +31,9 @@ namespace client
 	const char I2P_CLIENT_TUNNEL_DESTINATION[] = "destination";
 	const char I2P_CLIENT_TUNNEL_KEYS[] = "keys";
 	const char I2P_CLIENT_TUNNEL_SIGNATURE_TYPE[] = "signaturetype";
-	const char I2P_CLIENT_TUNNEL_DESTINATION_PORT[] = "destinationport";	
+	const char I2P_CLIENT_TUNNEL_DESTINATION_PORT[] = "destinationport";
+	/** how often to rotate client destination keys, tunnel lifespans */
+	const char I2P_CLIENT_TUNNEL_IDENTITY_LIFESPAN[] = "identityLifespan";  
 	const char I2P_SERVER_TUNNEL_HOST[] = "host";	
 	const char I2P_SERVER_TUNNEL_HOST_OVERRIDE[] = "hostoverride";	
 	const char I2P_SERVER_TUNNEL_PORT[] = "port";

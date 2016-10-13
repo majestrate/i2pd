@@ -313,14 +313,21 @@ namespace i2p
 
 	bool HandleBuildRequestRecords (int num, uint8_t * records, uint8_t * clearText)
 	{
+		auto ourIdent = i2p::context.GetRouterInfo ().GetIdentHash ();
 		for (int i = 0; i < num; i++)
 		{	
 			uint8_t * record = records + i*TUNNEL_BUILD_RECORD_SIZE;
-			if (!memcmp (record + BUILD_REQUEST_RECORD_TO_PEER_OFFSET, (const uint8_t *)i2p::context.GetRouterInfo ().GetIdentHash (), 16))
+			if (!memcmp (record + BUILD_REQUEST_RECORD_TO_PEER_OFFSET, (const uint8_t *)ourIdent, 16))
 			{	
 				LogPrint (eLogDebug, "I2NP: Build request record ", i, " is ours");
 			
-				i2p::crypto::ElGamalDecrypt (i2p::context.GetEncryptionPrivateKey (), record + BUILD_REQUEST_RECORD_ENCRYPTED_OFFSET, clearText);
+				//i2p::crypto::ElGamalDecrypt (i2p::context.GetEncryptionPrivateKey (), record + BUILD_REQUEST_RECORD_ENCRYPTED_OFFSET, clearText);
+				if(!i2p::context.TunnelDecrypt(record + BUILD_REQUEST_RECORD_ENCRYPTED_OFFSET, clearText))
+				{
+					// bad decryption
+					record[BUILD_RESPONSE_RECORD_RET_OFFSET] = 30;
+					return false;
+				}
 				// replace record to reply			
 				if (i2p::context.AcceptsTunnels () && 
 					i2p::tunnel::tunnels.GetTransitTunnels ().size () <= g_MaxNumTransitTunnels &&

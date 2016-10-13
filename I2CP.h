@@ -112,7 +112,9 @@ namespace client
 			void SendMsgTo (const uint8_t * payload, size_t len, const i2p::data::IdentHash& ident, uint32_t nonce); // called from I2CPSession
 
 			// implements LocalDestination
-			const uint8_t * GetEncryptionPrivateKey () const { return m_EncryptionPrivateKey; };
+			bool TunnelDecrypt(const uint8_t * inbuf, uint8_t * outbuf) const;
+			void TunnelEncrypt(const uint8_t * inbuf, uint8_t * outbuf) const;
+			// const uint8_t * GetEncryptionPrivateKey () const { return m_EncryptionPrivateKey; };
 			std::shared_ptr<const i2p::data::IdentityEx> GetIdentity () const { return m_Identity; };
 
       
