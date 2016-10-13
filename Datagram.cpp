@@ -260,9 +260,7 @@ namespace datagram
 			{
 				LogPrint(eLogDebug, "DatagramSession: try getting new routing path");
 				// try switching paths
-        auto path = GetNextRoutingPath();
-        if(path)
-          UpdateRoutingPath (path);
+				UpdateRoutingPath(GetNextRoutingPath());
 			}
 			auto routingPath = m_RoutingSession->GetSharedRoutingPath ();
 			// make sure we have a routing path
