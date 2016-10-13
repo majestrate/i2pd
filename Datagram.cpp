@@ -310,8 +310,12 @@ namespace datagram
 		if (now - m_LastPathChange < DATAGRAM_SESSION_PATH_MIN_LIFETIME ) return false;
 		// path looks dead
 		if (now - m_LastSuccess >= DATAGRAM_SESSION_PATH_TIMEOUT) return true;
-		// if we have a routing session and routing path we don't need to switch paths
-		return dead;
+		if(dead) { // we are dead, we should switch paths
+			return true;
+		}
+		// we are alive still let's check if our lease should change
+		auto path = m_RoutingSession->GetSharedRoutingPath();
+		return path && path->remoteLease && path->remoteLease->ExpiresWithin(DATAGRAM_SESSION_LEASE_HANDOVER_WINDOW);
 	}
 
 
