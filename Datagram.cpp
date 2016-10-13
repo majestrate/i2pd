@@ -189,6 +189,7 @@ namespace datagram
 		m_LocalDestination(localDestination),
 		m_RemoteIdentity(remoteIdent),
 		m_LastUse(i2p::util::GetMillisecondsSinceEpoch ()),
+		m_LastLeaseChange(0),
 		m_LastPathChange(0),
 		m_LastSuccess(0)
 	{
@@ -288,6 +289,7 @@ namespace datagram
 	void DatagramSession::UpdateRoutingPath(const std::shared_ptr<i2p::garlic::GarlicRoutingPath> & path)
 	{
 		m_LastPathChange = i2p::util::GetMillisecondsSinceEpoch ();
+		if(!path) return;
 		if(!m_RemoteLeaseSet) m_RemoteLeaseSet = m_LocalDestination->FindLeaseSet(m_RemoteIdentity);
 		if(m_RemoteLeaseSet) 
 		{
@@ -316,7 +318,7 @@ namespace datagram
 	bool DatagramSession::ShouldSwitchLease() const
 	{
 		auto now = i2p::util::GetMillisecondsSinceEpoch();
-		if(now - m_LastPathChange < DATAGRAM_SESSION_PATH_MIN_LIFETIME ) return false;
+		if(now - m_LastLeaseChange < DATAGRAM_SESSION_PATH_MIN_LIFETIME ) return false;
 		std::shared_ptr<i2p::garlic::GarlicRoutingPath> routingPath = nullptr;
 		std::shared_ptr<const i2p::data::Lease> currentLease = nullptr;
 		if(m_RoutingSession)
@@ -399,8 +401,6 @@ namespace datagram
 					0
 				});
 			}
-			else // we don't have a new routing path to give
-				routingPath = nullptr;
 		}
 		return routingPath;
 	}
@@ -426,6 +426,7 @@ namespace datagram
 	std::shared_ptr<const i2p::data::Lease> DatagramSession::GetNextLease()
 	{
 		auto now = i2p::util::GetMillisecondsSinceEpoch ();
+		m_LastLeaseChange = now;
 		std::shared_ptr<const i2p::data::Lease> next = nullptr;
 		
 		if(m_RemoteLeaseSet)

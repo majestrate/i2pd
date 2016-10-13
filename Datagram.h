@@ -103,6 +103,7 @@ namespace datagram
 		std::shared_ptr<const i2p::data::LeaseSet> m_RemoteLeaseSet;
 		uint64_t m_LastUse;
 		uint64_t m_LastPathChange;
+		uint64_t m_LastLeaseChange;
 		uint64_t m_LastSuccess;
 	};
 	
