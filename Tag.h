@@ -32,9 +32,11 @@ public:
 	uint8_t * operator()() { return m_Buf; }
 	const uint8_t * operator()() const { return m_Buf; }
 
-  bool operator== (const Tag<sz>& other) const { return !memcmp (m_Buf, other.m_Buf, sz); };
-  bool operator!= (const Tag<sz>& other) const { return memcmp (m_Buf, other.m_Buf, sz); }
-  bool operator< (const Tag<sz>& other) const { return memcmp (m_Buf, other.m_Buf, sz) < 0; };
+	operator uint8_t * () { return m_Buf; }
+	operator const uint8_t * () const { return m_Buf; }
+
+	
+	bool operator!= (const Tag<sz>& other) const { return memcmp (m_Buf, other.m_Buf, sz); }
 
 	const uint8_t * data() const { return m_Buf; }
 	const uint64_t * GetLL () const { return ll; }
@@ -46,16 +48,16 @@ public:
 		return true;
 	}
 
-      /** fill with a value */
-			void Fill(uint8_t c)
-			{
-				memset(m_Buf, c, sz);
-			}
-
-      void Randomize()
-      {
-        RAND_bytes(m_Buf, sz);
-      }
+	/** fill with a value */
+	void Fill(uint8_t c)
+	{
+		memset(m_Buf, c, sz);
+	}
+	
+	void Randomize()
+	{
+		RAND_bytes(m_Buf, sz);
+	}
 
 			
 	std::string ToBase64 () const
