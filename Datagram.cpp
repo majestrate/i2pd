@@ -290,7 +290,7 @@ namespace datagram
 	void DatagramSession::UpdateRoutingPath(const std::shared_ptr<i2p::garlic::GarlicRoutingPath> & path)
 	{
 		m_LastPathChange = i2p::util::GetMillisecondsSinceEpoch ();
-		if(m_RemoteLeaseSet && m_RoutingSession == nullptr) 
+		if(m_RemoteLeaseSet) 
 		{
 			m_RoutingSession = m_LocalDestination->GetRoutingSession(m_RemoteLeaseSet, true);	 
 			// set routing path and update time we last updated the routing path
