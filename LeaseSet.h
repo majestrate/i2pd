@@ -71,9 +71,10 @@ namespace data
 			bool IsEmpty () const { return m_Leases.empty (); };
 			uint64_t GetExpirationTime () const { return m_ExpirationTime; };
 			bool ExpiresSoon(const uint64_t dlt=1000 * 5, const uint64_t fudge = 0) const ;
-			bool operator== (const LeaseSet& other) const 
+			bool operator== (const LeaseSet& other) const
 			{ return m_BufferLen == other.m_BufferLen && !memcmp (m_Buffer, other.m_Buffer, m_BufferLen); }; 
-
+			bool operator!= (const LeaseSet& other) const
+			{ return m_BufferLen != other.m_BufferLen || memcmp (m_Buffer, other.m_Buffer, m_BufferLen); }; 
 			// implements RoutingDestination
 			const IdentHash& GetIdentHash () const { return m_Identity->GetIdentHash (); };
 			const uint8_t * GetEncryptionPublicKey () const { return m_EncryptionKey; };
