@@ -53,6 +53,9 @@ namespace client
   const uint64_t DEFAULT_TUNNEL_LATENCY_MIN = 50;
   const char I2CP_PARAM_TUNNEL_LATENCY_MAX[] = "tunnel.maxLatency";
   const uint64_t DEFAULT_TUNNEL_LATENCY_MAX = 5000;
+
+	const char I2CP_PARAM_TUNNEL_KEY_LIFESPAN[] = "tunnel.keyRotateInterval";
+	const int DEFAULT_KEY_ROTATE_INTERVAL = 10; // in tunnel lifespans
   
 	typedef std::function<void (std::shared_ptr<i2p::stream::Stream> stream)> StreamRequestComplete;
 
@@ -126,12 +129,15 @@ namespace client
 			void HandleRequestTimoutTimer (const boost::system::error_code& ecode, const i2p::data::IdentHash& dest);
 			void HandleCleanupTimer (const boost::system::error_code& ecode);
 			void CleanupRemoteLeaseSets ();			
-			
+
+
+		protected:
+			boost::asio::io_service m_Service;
+		
 		private:
 
 			volatile bool m_IsRunning;
 			std::thread * m_Thread;	
-			boost::asio::io_service m_Service;
 			boost::asio::io_service::work m_Work;
 			mutable std::mutex m_RemoteLeaseSetsMutex;
 			std::map<i2p::data::IdentHash, std::shared_ptr<i2p::data::LeaseSet> > m_RemoteLeaseSets;
@@ -157,20 +163,20 @@ namespace client
 		public:
 			// type for informing that a client destination is ready
 			typedef std::promise<std::shared_ptr<ClientDestination> > ReadyPromise;
-		
+    
 			ClientDestination (const i2p::data::PrivateKeys& keys, bool isPublic, const std::map<std::string, std::string> * params = nullptr);
 			~ClientDestination ();
 			
-			bool Start ();
-			bool Stop ();
+			virtual bool Start ();
+			virtual bool Stop ();
      
 			// informs promise with shared_from_this() when this destination is ready to use
 			// if cancelled before ready, informs promise with nullptr
 			void Ready(ReadyPromise & p);
-			
+    
 			const i2p::data::PrivateKeys& GetPrivateKeys () const { return m_Keys; };
-			void Sign (const uint8_t * buf, int len, uint8_t * signature) const { m_Keys.Sign (buf, len, signature); };	
-			
+			void Sign (const uint8_t * buf, int len, uint8_t * signature) const { m_Keys.Sign (buf, len, signature); };
+    
 			// streaming
 			std::shared_ptr<i2p::stream::StreamingDestination> CreateStreamingDestination (int port, bool gzip = true); // additional
 			std::shared_ptr<i2p::stream::StreamingDestination> GetStreamingDestination (int port = 0) const;
@@ -185,42 +191,75 @@ namespace client
       i2p::datagram::DatagramDestination * GetDatagramDestination () const { return m_DatagramDestination; };
       i2p::datagram::DatagramDestination * CreateDatagramDestination ();
 			
-			// implements LocalDestination		
-			const uint8_t * GetEncryptionPrivateKey () const { return m_EncryptionPrivateKey; };
+			// implements LocalDestination
+			bool TunnelDecrypt(const uint8_t * inbuf, uint8_t * outbuf) const;
+			// const uint8_t * GetEncryptionPrivateKey () const { return m_EncryptionPrivateKey; };
 			std::shared_ptr<const i2p::data::IdentityEx> GetIdentity () const { return m_Keys.GetPublic (); };			
 
 		protected:
 			
 			void CleanupDestination ();
 			// I2CP
-			void HandleDataMessage (const uint8_t * buf, size_t len);
+			virtual void HandleDataMessage (const uint8_t * buf, size_t len);
 			void CreateNewLeaseSet (std::vector<std::shared_ptr<i2p::tunnel::InboundTunnel> > tunnels);
-			
+
+			/** regenerate tunnel encryption keys, keep old keys for handover */
+			void RotateTunnelEncryptionKeys();
+		
 		private:
 
 			std::shared_ptr<ClientDestination> GetSharedFromThis ()
-			{ return std::static_pointer_cast<ClientDestination>(shared_from_this ()); }   
+			{ return std::static_pointer_cast<ClientDestination>(shared_from_this ()); }	 
 			void PersistTemporaryKeys ();
 
 			void ScheduleCheckForReady(ReadyPromise * p);
 			void HandleCheckForReady(const boost::system::error_code & ecode, ReadyPromise * p);
-      
-		private:
+
+			void ScheduleTunnelKeyRotation();
+			void HandleTunnelKeyRotation(const boost::system::error_code & ecode);
+		
+		protected:
 
 			i2p::data::PrivateKeys m_Keys;
+			
+		private:
 			uint8_t m_EncryptionPublicKey[256], m_EncryptionPrivateKey[256];
-
+			uint8_t m_OldEncryptionPublicKey[256], m_OldEncryptionPrivateKey[256];
+						
 			std::shared_ptr<i2p::stream::StreamingDestination> m_StreamingDestination; // default
 			std::map<uint16_t, std::shared_ptr<i2p::stream::StreamingDestination> > m_StreamingDestinationsByPorts;
       i2p::datagram::DatagramDestination * m_DatagramDestination;
 
+			uint32_t m_TunnelKeyRotateInterval;
 			boost::asio::deadline_timer m_ReadyChecker;
-			
+			boost::asio::deadline_timer m_TunnelKeyRotationTimer;
+		
 		public:
 
 			// for HTTP only
 			std::vector<std::shared_ptr<const i2p::stream::Stream> > GetAllStreams () const;
-	};	
+	};
+
+	/** client destination that rotates destination signing keys every $interval */
+	class EphemeralClientDestination : public ClientDestination
+	{
+	public:
+		EphemeralClientDestination(const i2p::data::SigningKeyType keytype, const uint32_t interval, const std::map<std::string, std::string> * params = nullptr);
+		~EphemeralClientDestination();
+
+		bool Start ();
+		bool Stop ();
+		
+	protected:
+		void HandleDataMessage (const uint8_t * buf, size_t len);
+	private:
+		void ScheduleIdentityRotation();
+		void HandleRotateIdentiy(const boost::system::error_code & ecode);
+	private:
+		i2p::data::PrivateKeys m_OldKeys;
+		const uint32_t m_RotateInterval;
+		boost::asio::deadline_timer m_IdentityRotateTimer;
+	};
 }	
 }	
 

@@ -350,7 +350,7 @@ namespace crypto
 	}
 	
 	bool ElGamalDecrypt (const uint8_t * key, const uint8_t * encrypted, 
-		uint8_t * data, bool zeroPadding)
+    uint8_t * data, bool zeroPadding, bool logFail)
 	{
 		BN_CTX * ctx = BN_CTX_new ();
 		BIGNUM * x = BN_new (), * a = BN_new (), * b = BN_new ();
@@ -369,7 +369,8 @@ namespace crypto
 		SHA256 (m + 33, 222, hash);
 		if (memcmp (m + 1, hash, 32))
 		{
-			LogPrint (eLogError, "ElGamal decrypt hash doesn't match");
+      if(logFail)
+        LogPrint (eLogError, "ElGamal decrypt hash doesn't match");
 			return false;
 		}	
 		memcpy (data, m + 33, 222);

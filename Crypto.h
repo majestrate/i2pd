@@ -60,7 +60,7 @@ namespace crypto
 			BIGNUM * a, * b1;
 	};
 
-	bool ElGamalDecrypt (const uint8_t * key, const uint8_t * encrypted, uint8_t * data, bool zeroPadding = false);
+	bool ElGamalDecrypt (const uint8_t * key, const uint8_t * encrypted, uint8_t * data, bool zeroPadding = false, bool logFail=true);
 	void GenerateElGamalKeyPair (uint8_t * priv, uint8_t * pub);
 
 	// HMAC

@@ -8,6 +8,7 @@
 #include "NetDb.h"
 #include "Destination.h"
 #include "util.h"
+#include "Tunnel.h"
 
 namespace i2p
 {
@@ -186,28 +187,35 @@ namespace client
   
 	std::shared_ptr<const i2p::data::LeaseSet> LeaseSetDestination::FindLeaseSet (const i2p::data::IdentHash& ident)
 	{
-		std::lock_guard<std::mutex> lock(m_RemoteLeaseSetsMutex);
-		auto it = m_RemoteLeaseSets.find (ident);
-		if (it != m_RemoteLeaseSets.end ())
+		std::shared_ptr<i2p::data::LeaseSet> remoteLS;
 		{
-			if (!it->second->IsExpired ())
+			std::lock_guard<std::mutex> lock(m_RemoteLeaseSetsMutex);
+			auto it = m_RemoteLeaseSets.find (ident);
+			if (it != m_RemoteLeaseSets.end ())
+				remoteLS = it->second;
+		}
+
+		if (remoteLS)	
+		{
+			if (!remoteLS->IsExpired ())
 			{
-				if (it->second->ExpiresSoon())
+				if (remoteLS->ExpiresSoon())
 				{
 					LogPrint(eLogDebug, "Destination: Lease Set expires soon, updating before expire");
 					// update now before expiration for smooth handover
-					RequestDestination(ident, [this, ident] (std::shared_ptr<i2p::data::LeaseSet> ls) {
+					auto s = shared_from_this ();
+					RequestDestination(ident, [s, ident] (std::shared_ptr<i2p::data::LeaseSet> ls) {
 						if(ls && !ls->IsExpired())
 						{
 							ls->PopulateLeases();
 							{
-								std::lock_guard<std::mutex> _lock(m_RemoteLeaseSetsMutex);
-								m_RemoteLeaseSets[ident] = ls;
+								std::lock_guard<std::mutex> _lock(s->m_RemoteLeaseSetsMutex);
+								s->m_RemoteLeaseSets[ident] = ls;
 							}
 						}
 					});
 				}
-				return it->second;
+				return remoteLS;
 			}
 			else
 				LogPrint (eLogWarning, "Destination: remote LeaseSet expired");
@@ -218,6 +226,7 @@ namespace client
 			if (ls && !ls->IsExpired ())
 			{
 				ls->PopulateLeases (); // since we don't store them in netdb
+				std::lock_guard<std::mutex> _lock(m_RemoteLeaseSetsMutex);
 				m_RemoteLeaseSets[ident] = ls;
 				return ls;
 			}	
@@ -697,12 +706,32 @@ namespace client
 	ClientDestination::ClientDestination (const i2p::data::PrivateKeys& keys, bool isPublic, const std::map<std::string, std::string> * params):
 		LeaseSetDestination (isPublic, params),
 		m_Keys (keys), m_DatagramDestination (nullptr),
-		m_ReadyChecker(GetService())
+		m_ReadyChecker(m_Service),
+		m_TunnelKeyRotationTimer(m_Service)
 	{
-		if (isPublic)	
-			PersistTemporaryKeys ();
+		m_TunnelKeyRotateInterval = 0;
+		if(params)
+		{
+			auto it = params->find (I2CP_PARAM_TUNNEL_KEY_LIFESPAN);
+			if (it != params->end())
+			{
+				m_TunnelKeyRotateInterval = i2p::util::lexical_cast<int>(it->second, DEFAULT_KEY_ROTATE_INTERVAL);
+      }
+		}
+		if(m_TunnelKeyRotateInterval)
+		{
+      LogPrint(eLogInfo, "Destination: will rotate tunnel encryption keys every ", m_TunnelKeyRotateInterval, " tunnel cycles");
+      i2p::crypto::GenerateElGamalKeyPair(m_EncryptionPrivateKey, m_EncryptionPublicKey);
+      i2p::crypto::GenerateElGamalKeyPair(m_OldEncryptionPrivateKey, m_OldEncryptionPublicKey);
+		}
 		else
-			i2p::crypto::GenerateElGamalKeyPair(m_EncryptionPrivateKey, m_EncryptionPublicKey);
+		{
+			if (isPublic)	
+				PersistTemporaryKeys ();
+			else
+				i2p::crypto::GenerateElGamalKeyPair(m_EncryptionPrivateKey, m_EncryptionPublicKey);
+		}
+		
 		if (isPublic)
 			LogPrint (eLogInfo, "Destination: Local address ", GetIdentHash().ToBase32 (), " created");
 	}	
@@ -719,25 +748,59 @@ namespace client
 			m_StreamingDestination->Start ();	
 			for (auto& it: m_StreamingDestinationsByPorts)
 				it.second->Start ();
+			if(m_TunnelKeyRotateInterval)
+				ScheduleTunnelKeyRotation();
 			return true;
 		}	
 		else
 			return false;
-	}	
-		
+	}
+
+	void ClientDestination::HandleTunnelKeyRotation(const boost::system::error_code & ecode)
+	{
+		if(ecode) return; // error or cancelled
+
+		RotateTunnelEncryptionKeys();
+		ScheduleTunnelKeyRotation();
+	}
+
+	void ClientDestination::RotateTunnelEncryptionKeys()
+	{
+		memcpy(m_OldEncryptionPublicKey, m_EncryptionPublicKey, 256);
+		memcpy(m_OldEncryptionPrivateKey, m_EncryptionPrivateKey, 256);
+		i2p::crypto::GenerateElGamalKeyPair(m_EncryptionPrivateKey, m_EncryptionPublicKey);
+		LogPrint(eLogDebug, "Destination: rotated tunnel encryption keys");
+    SetLeaseSetUpdated();
+	}
+
+	bool ClientDestination::TunnelDecrypt(const uint8_t * inbuf, uint8_t * outbuf) const
+	{
+		// try current key and then old key as fallback
+		return i2p::crypto::ElGamalDecrypt(m_EncryptionPrivateKey, inbuf, outbuf, true, false) ||
+			i2p::crypto::ElGamalDecrypt(m_OldEncryptionPrivateKey, inbuf, outbuf, true, false);
+	}
+
+	void ClientDestination::ScheduleTunnelKeyRotation()
+	{
+		boost::posix_time::seconds s(m_TunnelKeyRotateInterval * i2p::tunnel::TUNNEL_EXPIRATION_TIMEOUT);
+		m_TunnelKeyRotationTimer.expires_from_now(s);
+		m_TunnelKeyRotationTimer.async_wait(std::bind(&ClientDestination::HandleTunnelKeyRotation, this, std::placeholders::_1));
+	}
+	
 	bool ClientDestination::Stop ()
 	{
 		if (LeaseSetDestination::Stop ())
 		{
+			m_TunnelKeyRotationTimer.cancel();
 			m_ReadyChecker.cancel();
 			m_StreamingDestination->Stop ();
 			m_StreamingDestination = nullptr;
 			for (auto& it: m_StreamingDestinationsByPorts)
 				it.second->Stop ();
-      if(m_DatagramDestination)
-        delete m_DatagramDestination;
-      m_DatagramDestination = nullptr;
-  		return true;
+			if(m_DatagramDestination)
+				delete m_DatagramDestination;
+			m_DatagramDestination = nullptr;
+			return true;
 		}
 		else
 			return false;
@@ -928,6 +991,53 @@ namespace client
 	{
 		if (m_DatagramDestination) m_DatagramDestination->CleanUp ();
 	}
+	
+	bool EphemeralClientDestination::Start()
+	{
+		if(!ClientDestination::Start())
+			return false;
+		ScheduleIdentityRotation();
+		return true;
+	}
 
+	bool EphemeralClientDestination::Stop()
+	{
+		m_IdentityRotateTimer.cancel();
+		return ClientDestination::Stop();
+	}
+
+	
+	EphemeralClientDestination::EphemeralClientDestination(const i2p::data::SigningKeyType keytype, const uint32_t interval, const std::map<std::string, std::string> * params) :
+		ClientDestination(i2p::data::PrivateKeys::CreateRandomKeys(keytype), false, params),
+		m_OldKeys(i2p::data::PrivateKeys::CreateRandomKeys(keytype)),
+		m_RotateInterval(interval),
+		m_IdentityRotateTimer(m_Service)
+	{
+	}
+
+	EphemeralClientDestination::~EphemeralClientDestination()
+	{
+	}
+	
+	void EphemeralClientDestination::ScheduleIdentityRotation()
+	{
+		m_IdentityRotateTimer.expires_from_now(boost::posix_time::seconds(m_RotateInterval * i2p::tunnel::TUNNEL_CREATION_TIMEOUT));
+		m_IdentityRotateTimer.async_wait(std::bind(&EphemeralClientDestination::HandleRotateIdentiy, this, std::placeholders::_1));
+	}
+
+	void EphemeralClientDestination::HandleRotateIdentiy(const boost::system::error_code & ecode)
+	{
+		if(ecode) return; // error / cancelled
+
+		// rotate destination keys
+		m_OldKeys = m_Keys;
+		m_Keys = i2p::data::PrivateKeys::CreateRandomKeys(m_Keys.GetSigningKeyType());
+	}
+
+	void EphemeralClientDestination::HandleDataMessage(const uint8_t * buf, size_t len)
+	{
+		// TODO: handle smooth handover for identity
+		ClientDestination::HandleDataMessage(buf, len);
+	}
 }
 }

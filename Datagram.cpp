@@ -246,13 +246,12 @@ namespace datagram
 	
 	void DatagramSession::HandleSend(std::shared_ptr<I2NPMessage> msg)
 	{
+    if(!m_RemoteLeaseSet) {
+      UpdateLeaseSet(msg);
+      return;
+    }
 		if(!m_RoutingSession && m_RemoteLeaseSet)
 			m_RoutingSession = m_LocalDestination->GetRoutingSession(m_RemoteLeaseSet, true);
-		else if (!m_RemoteLeaseSet)
-		{
-			UpdateLeaseSet(msg);
-			return;
-		}
 		// do we have a routing session?
 		if(m_RoutingSession)
 		{
@@ -261,7 +260,9 @@ namespace datagram
 			{
 				LogPrint(eLogDebug, "DatagramSession: try getting new routing path");
 				// try switching paths
-				UpdateRoutingPath (GetNextRoutingPath());
+        auto path = GetNextRoutingPath();
+        if(path)
+          UpdateRoutingPath (path);
 			}
 			auto routingPath = m_RoutingSession->GetSharedRoutingPath ();
 			// make sure we have a routing path
@@ -284,7 +285,6 @@ namespace datagram
 				return;
 			}
 		}
-		LogPrint(eLogWarning, "DatagramSession: message not sent, no routing path");
 	}
 
 	void DatagramSession::UpdateRoutingPath(const std::shared_ptr<i2p::garlic::GarlicRoutingPath> & path)
@@ -459,7 +459,11 @@ namespace datagram
 	void DatagramSession::UpdateLeaseSet(std::shared_ptr<I2NPMessage> msg)
 	{
 		LogPrint(eLogInfo, "DatagramSession: updating lease set");
-		m_LocalDestination->RequestDestination(m_RemoteIdentity, std::bind(&DatagramSession::HandleGotLeaseSet, this, std::placeholders::_1, msg)); 
+    auto ls = m_LocalDestination->FindLeaseSet(m_RemoteIdentity);
+    if(ls)
+      HandleGotLeaseSet(ls, msg);
+    else
+      m_LocalDestination->RequestDestination(m_RemoteIdentity, std::bind(&DatagramSession::HandleGotLeaseSet, this, std::placeholders::_1, msg)); 
 	}
 
 	void DatagramSession::HandleGotLeaseSet(std::shared_ptr<const i2p::data::LeaseSet> remoteIdent, std::shared_ptr<I2NPMessage> msg)
@@ -467,14 +471,15 @@ namespace datagram
 		if(remoteIdent)
 		{
 			// update routing session
-			if(m_RoutingSession)
-				m_RoutingSession = nullptr;
-			m_RoutingSession = m_LocalDestination->GetRoutingSession(remoteIdent, true);
-			// clear invalid IBGW as we have a new lease set
-			m_InvalidIBGW.clear();
-			m_RemoteLeaseSet = remoteIdent;
-			if(ShouldUpdateRoutingPath())
-				UpdateRoutingPath(GetNextRoutingPath());
+      if(remoteIdent != m_RemoteLeaseSet)
+      {
+        m_RoutingSession = m_LocalDestination->GetRoutingSession(remoteIdent, true);
+        // clear invalid IBGW as we have a new lease set
+        m_InvalidIBGW.clear();
+        m_RemoteLeaseSet = remoteIdent;
+      }
+      if(ShouldUpdateRoutingPath())
+        UpdateRoutingPath(GetNextRoutingPath());
 			// send the message that was queued if it was provided
 			if(msg)
 				HandleSend(msg);

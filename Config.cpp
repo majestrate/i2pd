@@ -150,6 +150,7 @@ namespace config {
 	
 	options_description reseed("Reseed options");	
 	reseed.add_options()
+	  ("reseed.verify", value<bool>()->default_value(false), "Verify .su3 signature")	
 	  ("reseed.file", value<std::string>()->default_value(""),  "Path to .su3 file")
 #ifdef MESHNET
 	  ("reseed.urls", value<std::string>()->default_value("https://reseed.i2p.rocks:8443/"),  "Reseed URLs, separated by comma")
@@ -163,12 +164,20 @@ namespace config {
 		"https://i2p.manas.ca:8443/,"
 		"https://i2p-0.manas.ca:8443/,"
 		"https://reseed.i2p.vzaws.com:8443/,"
-		"https://user.mx24.eu/,"
 		"https://download.xxlspeed.com/,"
-		"https://reseed-ru.lngserv.ru/"
+		"https://reseed-ru.lngserv.ru/,"
+	    "https://reseed.atomike.ninja/"                                                   
 		),  "Reseed URLs, separated by comma")
 #endif
 	  ;	
+
+  	options_description addressbook("AddressBook options");
+  	addressbook.add_options()
+      ("addressbook.defaulturl", value<std::string>()->default_value(
+                "http://joajgazyztfssty4w2on5oaqksz6tqoxbduy553y34mf4byv6gpq.b32.i2p/export/alive-hosts.txt"
+                ), "AddressBook subscription URL for initial setup")
+      ("addressbook.subscriptions", value<std::string>()->default_value(""), 
+                "AddressBook subscriptions URLs, separated by comma");
 
   	options_description trust("Trust options");
   	trust.add_options()
@@ -176,7 +185,7 @@ namespace config {
       ("trust.family", value<std::string>()->default_value(""), "Router Familiy to trust for first hops")
       ("trust.routerInfo", value<std::string>()->default_value(""), "Path to routerInfo of floodfill to use with floodfill friend mode")
       ("trust.hidden", value<bool>()->default_value(true), "should we hide our router from other routers?");
-  
+
     m_OptionsDesc
       .add(general)
 	  .add(limits)	
@@ -190,6 +199,7 @@ namespace config {
       .add(upnp)
 	  .add(precomputation)
 	  .add(reseed) 
+      .add(addressbook)	
       .add(trust)	
       ;
   }
