@@ -335,23 +335,8 @@ namespace datagram
 		// get existing routing path if we have one
 		if(m_RoutingSession)
 			routingPath = m_RoutingSession->GetSharedRoutingPath();
-		if(routingPath == nullptr)
-		{
-			// no existing routing path, get a new one
-			uint32_t now = i2p::util::GetSecondsSinceEpoch();
-			auto lease = GetNextLease();
-			if(!lease) return nullptr;
-			outboundTunnel = m_LocalDestination->GetTunnelPool()->GetNextOutboundTunnel(nullptr, false);
-			return std::make_shared<i2p::garlic::GarlicRoutingPath>(i2p::garlic::GarlicRoutingPath{
-					outboundTunnel,
-					lease,
-					0,
-					now,
-					0
-				});
-		}
-		// do we have an existing outbound tunnel ?
-		if(routingPath->outboundTunnel)
+		// do we have an existing outbound tunnel and routing path?
+		if(routingPath && routingPath->outboundTunnel)
 		{
 			// is the outbound tunnel we are using good?
 			if (routingPath->outboundTunnel->IsEstablished())
@@ -428,9 +413,6 @@ namespace datagram
 	{
 		auto now = i2p::util::GetMillisecondsSinceEpoch ();
 		std::shared_ptr<const i2p::data::Lease> next = nullptr;
-		// get it if it's not there
-		if(!m_RemoteLeaseSet) m_RemoteLeaseSet = m_LocalDestination->FindLeaseSet(m_RemoteIdentity);
-		
 		if(m_RemoteLeaseSet)
 		{
 			std::vector<i2p::data::IdentHash> exclude;
@@ -483,6 +465,8 @@ namespace datagram
 				auto path = GetNextRoutingPath();
 				if (path)
 					UpdateRoutingPath(path);
+				else
+					ResetRoutingPath();
 			}
 			// send the message that was queued if it was provided
 			if(msg)
