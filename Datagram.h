@@ -110,6 +110,7 @@ namespace datagram
 		uint64_t m_LastPathChange;
 		uint64_t m_LastSuccess;
     uint64_t m_LastLeaseChange;
+    uint64_t m_LastLSLookup;
 	};
 	
 	const size_t MAX_DATAGRAM_SIZE = 32768;	 

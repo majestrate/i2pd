@@ -170,7 +170,8 @@ namespace datagram
 		m_LastUse(i2p::util::GetMillisecondsSinceEpoch ()),
 		m_LastPathChange(0),
 		m_LastSuccess(0),
-    m_LastLeaseChange(0)
+    m_LastLeaseChange(0),
+    m_LastLSLookup(0)
 	{
 	}
 
@@ -229,7 +230,7 @@ namespace datagram
         m_RemoteLeaseSet = m_LocalDestination->FindLeaseSet(m_RemoteIdentity);
         if(!m_RemoteLeaseSet)
         {
-          LogPrint(eLogWarning, "DatagramSession: drop message, no lease set");
+          UpdateLeaseSet();
           return;
         }
         else
@@ -434,6 +435,9 @@ namespace datagram
 	
 	void DatagramSession::UpdateLeaseSet(std::shared_ptr<I2NPMessage> msg)
 	{
+    auto now = i2p::util::GetMillisecondsSinceEpoch();
+    if(now - m_LastLSLookup >= 5000) return;
+    m_LastLSLookup = now;
 		LogPrint(eLogInfo, "DatagramSession: updating lease set");
 		m_LocalDestination->RequestDestination(m_RemoteIdentity, std::bind(&DatagramSession::HandleGotLeaseSet, this, std::placeholders::_1, msg));
 	}
