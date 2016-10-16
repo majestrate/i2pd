@@ -228,12 +228,7 @@ namespace datagram
       if(!m_RemoteLeaseSet)
       {
         m_RemoteLeaseSet = m_LocalDestination->FindLeaseSet(m_RemoteIdentity);
-        if(!m_RemoteLeaseSet)
-        {
-          UpdateLeaseSet();
-          return;
-        }
-        else
+        if (m_RemoteLeaseSet)
           m_RoutingSession = m_LocalDestination->GetRoutingSession(m_RemoteLeaseSet, true);
       }
       else
@@ -274,8 +269,7 @@ namespace datagram
 				}
 			}
 		}
-    UpdateRoutingPath(GetNextRoutingPath());
-    SendMsg(msg);
+    UpdateLeaseSet(msg);
 	}
 
 	void DatagramSession::UpdateRoutingPath(const std::shared_ptr<i2p::garlic::GarlicRoutingPath> & path)
