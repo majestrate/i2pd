@@ -329,7 +329,7 @@ namespace client
 					if (leaseSet->IsValid ())
           {
 						LogPrint (eLogDebug, "Remote LeaseSet updated");
-            if(m_LeaseSetListener) m_LeaseSetListener(leaseSet);
+						if(m_LeaseSetListener) m_Service.post([&, &leaseSet] () { m_LeaseSetListener(leaseSet); });
 					}
 					else
 					{
