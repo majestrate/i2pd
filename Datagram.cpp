@@ -229,7 +229,7 @@ namespace datagram
         m_RemoteLeaseSet = m_LocalDestination->FindLeaseSet(m_RemoteIdentity);
         if(!m_RemoteLeaseSet)
         {
-          UpdateLeaseSet();
+          LogPrint(eLogWarning, "DatagramSession: drop message, no lease set");
           return;
         }
         else
