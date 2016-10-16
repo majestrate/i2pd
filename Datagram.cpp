@@ -351,6 +351,12 @@ namespace datagram
 					now,
 					0
 				});
+			// no routing session made yet?
+			if(m_RoutingSession == nullptr)
+			{
+				// ensure routing session is there
+				UpdateRoutingPath(routingPath);
+			}
 		}
 		// do we have an existing outbound tunnel ?
 		if(routingPath->outboundTunnel)
