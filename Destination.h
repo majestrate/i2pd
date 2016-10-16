@@ -89,7 +89,7 @@ namespace client
 			void CancelDestinationRequest (const i2p::data::IdentHash& dest, bool notify = true);	
 
 			bool LeaseSetExpiresWithin(const uint64_t threshold, const uint64_t fudge=0) const;
-			void SetLeaseSetListener(RequestComplete listener);
+
     
 			// implements GarlicDestination
 			std::shared_ptr<const i2p::data::LocalLeaseSet> GetLeaseSet ();
@@ -136,8 +136,7 @@ namespace client
 			mutable std::mutex m_RemoteLeaseSetsMutex;
 			std::map<i2p::data::IdentHash, std::shared_ptr<i2p::data::LeaseSet> > m_RemoteLeaseSets;
 			std::map<i2p::data::IdentHash, std::shared_ptr<LeaseSetRequest> > m_LeaseSetRequests;
-			RequestComplete m_LeaseSetListener;
-		
+
 			std::shared_ptr<i2p::tunnel::TunnelPool> m_Pool;
 			std::shared_ptr<i2p::data::LocalLeaseSet> m_LeaseSet;
 			bool m_IsPublic;
@@ -145,7 +144,7 @@ namespace client
 			std::set<i2p::data::IdentHash> m_ExcludedFloodfills; // for publishing
 	
 			boost::asio::deadline_timer m_PublishConfirmationTimer, m_PublishVerificationTimer, m_CleanupTimer;
-    
+
 		public:
 			
 			// for HTTP only
