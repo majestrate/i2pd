@@ -282,10 +282,6 @@ namespace datagram
 			std::string obep("null");
 			if (outboundTunnel) obep = outboundTunnel->GetEndpointIdentHash().ToBase64();
 			LogPrint(eLogWarning, "DatagramSession: message not sent, routing path: ", (routingPath ? "exists": "null"),	" outboundTunnel: ", obep);
-			m_LocalDestination->RequestDestination(m_RemoteIdentity, [&, msg] (std::shared_ptr<i2p::data::LeaseSet> ls) {
-					if(ls)
-						HandleGotLeaseSet(ls, msg);
-			});
 			return;
 		}
 		LogPrint(eLogWarning, "DatagramSession: message not sent, no routing path");
@@ -440,6 +436,8 @@ namespace datagram
 	{
 		auto now = i2p::util::GetMillisecondsSinceEpoch ();
 		std::shared_ptr<const i2p::data::Lease> next = nullptr;
+		// get it if it's not there
+		if(!m_RemoteLeaseSet) m_RemoteLeaseSet = m_LocalDestination->FindLeaseSet(m_RemoteIdentity);
 		
 		if(m_RemoteLeaseSet)
 		{
@@ -464,6 +462,18 @@ namespace datagram
 				uint32_t idx = rand() % leases.size();
 				next = leases[idx];
 			}
+			else
+			{
+				m_RemoteLeaseSet = m_LocalDestination->FindLeaseSet(m_RemoteIdentity);
+				if(m_RemoteLeaseSet == nullptr) return nullptr; // no lease set
+				auto leases = m_RemoteLeaseSet->GetNonExpiredLeases();
+				if(leases.size())
+				{
+					// pick random valid next lease
+					uint32_t idx = rand() % leases.size();
+					next = leases[idx];
+				}
+			}
 		}
 		return next;
 	}
@@ -484,8 +494,7 @@ namespace datagram
 			m_RoutingSession = m_LocalDestination->GetRoutingSession(remoteIdent, true);
 			// clear invalid IBGW as we have a new lease set
 			m_InvalidIBGW.clear();
-			m_RemoteLeaseSet = remoteIdent; 
-			UpdateRoutingPath(GetNextRoutingPath());
+			m_RemoteLeaseSet = remoteIdent;
 			// send the message that was queued if it was provided
 			if(msg)
 				HandleSend(msg);
