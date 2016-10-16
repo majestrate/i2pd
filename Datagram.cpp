@@ -344,7 +344,7 @@ namespace datagram
 			auto lease = GetNextLease();
 			if(!lease) return nullptr;
 			outboundTunnel = m_LocalDestination->GetTunnelPool()->GetNextOutboundTunnel(nullptr, false);
-			return std::make_shared<i2p::garlic::GarlicRoutingPath>(i2p::garlic::GarlicRoutingPath{
+			routingPath = std::make_shared<i2p::garlic::GarlicRoutingPath>(i2p::garlic::GarlicRoutingPath{
 					outboundTunnel,
 					lease,
 					0,
