@@ -121,6 +121,7 @@ namespace tunnel
 		uint64_t min = 10000000;
     for (const auto & it : m_InboundTunnels)
     {
+      if(!it->LatencyIsKnown() || !it->IsEstablished()) continue;
       auto l = it->GetMeanLatency();
       if(l > min) continue;
       min = l;
