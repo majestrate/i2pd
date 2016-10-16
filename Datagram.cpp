@@ -455,17 +455,7 @@ namespace datagram
 				next = leases[idx];
 			}
 			else
-			{
-				m_RemoteLeaseSet = m_LocalDestination->FindLeaseSet(m_RemoteIdentity);
-				if(m_RemoteLeaseSet == nullptr) return nullptr; // no lease set
-				auto leases = m_RemoteLeaseSet->GetNonExpiredLeases();
-				if(leases.size())
-				{
-					// pick random valid next lease
-					uint32_t idx = rand() % leases.size();
-					next = leases[idx];
-				}
-			}
+				LogPrint(eLogWarning, "DatagramDestination: no leases to use");
 		}
 		return next;
 	}
