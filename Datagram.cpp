@@ -265,7 +265,9 @@ namespace datagram
 			{
 				LogPrint(eLogDebug, "DatagramSession: try getting new routing path");
 				// try switching paths
-				UpdateRoutingPath (GetNextRoutingPath());
+				auto path = GetNextRoutingPath();
+				if(path)
+					UpdateRoutingPath (path);
 			}
 			auto routingPath = m_RoutingSession->GetSharedRoutingPath ();
 			// make sure we have a routing path
@@ -278,20 +280,29 @@ namespace datagram
 				outboundTunnel = routingPath->outboundTunnel;
 				if (outboundTunnel)
 				{
-					m_LastSuccess = i2p::util::GetMillisecondsSinceEpoch ();
-					// we have a routing path and routing session and the outbound tunnel we are using is good
-					// wrap message with routing session and send down routing path's outbound tunnel wrapped for the IBGW
-					auto m = m_RoutingSession->WrapSingleMessage(msg);
-					routingPath->outboundTunnel->SendTunnelDataMsg({i2p::tunnel::TunnelMessageBlock{
-								i2p::tunnel::eDeliveryTypeTunnel,
-								routingPath->remoteLease->tunnelGateway, routingPath->remoteLease->tunnelID,
-								m
-								}});
-					LogPrint(eLogDebug, "DatagramSession: sent message via ", outboundTunnel->GetEndpointIdentHash().ToBase64());
-					return;
+					if(outboundTunnel->IsEstablished())
+					{
+						m_LastSuccess = i2p::util::GetMillisecondsSinceEpoch ();
+						// we have a routing path and routing session and the outbound tunnel we are using is good
+						// wrap message with routing session and send down routing path's outbound tunnel wrapped for the IBGW
+						auto m = m_RoutingSession->WrapSingleMessage(msg);
+						routingPath->outboundTunnel->SendTunnelDataMsg({i2p::tunnel::TunnelMessageBlock{
+							i2p::tunnel::eDeliveryTypeTunnel,
+							routingPath->remoteLease->tunnelGateway, routingPath->remoteLease->tunnelID,
+							m
+						}});
+						LogPrint(eLogDebug, "DatagramSession: sent message via ", outboundTunnel->GetEndpointIdentHash().ToBase64());
+						return;
+					}
 				}
 			}
-			UpdateLeaseSet(msg);
+			std::string obep("null");
+			if (outboundTunnel) obep = outboundTunnel->GetEndpointIdentHash().ToBase64();
+			LogPrint(eLogWarning, "DatagramSession: message not sent, routing path: ", (routingPath ? "exists": "null"),	" outboundTunnel: ", obep);
+			m_LocalDestination->RequestDestination(m_RemoteIdentity, [&, msg] (std::shared_ptr<i2p::data::LeaseSet> ls) {
+					if(ls)
+						HandleGotLeaseSet(ls, msg);
+			});
 			return;
 		}
 		LogPrint(eLogWarning, "DatagramSession: message not sent, no routing path");
