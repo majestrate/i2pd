@@ -431,7 +431,7 @@ namespace datagram
 				next = leases[idx];
 			}
 			else
-				LogPrint(eLogWarning, "DatagramDestination: no leases to use");
+        UpdateLeaseSet();
 		}
 		return next;
 	}
