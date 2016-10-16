@@ -254,8 +254,6 @@ namespace datagram
 				auto path = GetNextRoutingPath();
 				if(path)
 					UpdateRoutingPath (path);
-				else
-					ResetRoutingPath();
 			}
 			routingPath = m_RoutingSession->GetSharedRoutingPath ();
 			// make sure we have a routing path
