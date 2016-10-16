@@ -259,6 +259,9 @@ namespace datagram
 			std::shared_ptr<i2p::tunnel::OutboundTunnel> outboundTunnel;
 			if (routingPath)
 			{
+				if(routingPath->outboundTunnel == nullptr)
+					routingPath->outboundTunnel = m_LocalDestination->GetTunnelPool()->GetNextOutboundTunnel(nullptr, false);
+					                                           
 				outboundTunnel = routingPath->outboundTunnel;
 				if (outboundTunnel)
 				{
