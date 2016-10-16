@@ -472,8 +472,9 @@ namespace datagram
 			m_RoutingSession = m_LocalDestination->GetRoutingSession(remoteIdent, true);
 			// clear invalid IBGW as we have a new lease set
 			m_InvalidIBGW.clear();
-			m_RemoteLeaseSet = remoteIdent; 
-			UpdateRoutingPath(GetNextRoutingPath());
+			m_RemoteLeaseSet = remoteIdent;
+			if(ShouldUpdateRoutingPath())
+				UpdateRoutingPath(GetNextRoutingPath());
 			// send the message that was queued if it was provided
 			if(msg)
 				HandleSend(msg);
