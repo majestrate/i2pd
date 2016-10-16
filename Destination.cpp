@@ -326,7 +326,7 @@ namespace client
 			if (it != m_RemoteLeaseSets.end ())
 			{
 				leaseSet = it->second;
-				if (leaseSet->IsNewer (buf + offset, len - offset))
+				if (leaseSet->IsNewer (buf + offset, len - offset) || true)
 				{	
 					leaseSet->Update (buf + offset, len - offset); 
 					if (leaseSet->IsValid ())
