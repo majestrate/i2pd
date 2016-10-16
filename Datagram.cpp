@@ -222,20 +222,21 @@ namespace datagram
 	
 	void DatagramSession::HandleSend(std::shared_ptr<I2NPMessage> msg)
 	{
-    if(ShouldSendLeaseSet())
-    {
-      auto ls = m_LocalDestination->CreateLowestLatencyLeaseSet();
-      if(ls) SendLeaseSet(ls);
-    }
 		if(!m_RoutingSession)
 		{
-			// try to get one
-			if(m_RemoteLeaseSet) m_RoutingSession = m_LocalDestination->GetRoutingSession(m_RemoteLeaseSet, true);
-			else
-			{
-				UpdateLeaseSet(msg);
-				return;
-			}
+      if(!m_RemoteLeaseSet)
+      {
+        m_RemoteLeaseSet = m_LocalDestination->FindLeaseSet(m_RemoteIdentity);
+        if(!m_RemoteLeaseSet)
+        {
+          UpdateLeaseSet(msg);
+          return;
+        }
+        else
+          m_RoutingSession = m_LocalDestination->GetRoutingSession(m_RemoteLeaseSet, true);
+      }
+      else
+        m_RoutingSession = m_LocalDestination->GetRoutingSession(m_RemoteLeaseSet, true);
 		}
 		// do we have a routing session?
 		if(m_RoutingSession)
@@ -245,11 +246,7 @@ namespace datagram
 			{
 				LogPrint(eLogDebug, "DatagramSession: try getting new routing path");
 				// try switching paths
-				auto path = GetNextRoutingPath();
-				if(path)
-					UpdateRoutingPath (path);
-				else
-					ResetRoutingPath();
+				UpdateRoutingPath(GetNextRoutingPath());
 			}
 			auto routingPath = m_RoutingSession->GetSharedRoutingPath ();
 			// make sure we have a routing path
@@ -258,23 +255,26 @@ namespace datagram
 				auto outboundTunnel = routingPath->outboundTunnel;
 				if (outboundTunnel)
 				{
-					if(outboundTunnel->IsEstablished())
-					{
-						m_LastSuccess = i2p::util::GetMillisecondsSinceEpoch ();
-						// we have a routing path and routing session and the outbound tunnel we are using is good
-						// wrap message with routing session and send down routing path's outbound tunnel wrapped for the IBGW
-						auto m = m_RoutingSession->WrapSingleMessage(msg);
-						routingPath->outboundTunnel->SendTunnelDataMsg({i2p::tunnel::TunnelMessageBlock{
-							i2p::tunnel::eDeliveryTypeTunnel,
-							routingPath->remoteLease->tunnelGateway, routingPath->remoteLease->tunnelID,
-							m
-						}});
-						return;
-					}
+          m_LastSuccess = i2p::util::GetMillisecondsSinceEpoch ();
+          // we have a routing path and routing session and the outbound tunnel we are using is good
+          // wrap message with routing session and send down routing path's outbound tunnel wrapped for the IBGW
+          auto m = m_RoutingSession->WrapSingleMessage(msg);
+          routingPath->outboundTunnel->SendTunnelDataMsg({i2p::tunnel::TunnelMessageBlock{
+            i2p::tunnel::eDeliveryTypeTunnel,
+             routingPath->remoteLease->tunnelGateway, routingPath->remoteLease->tunnelID,
+             m
+          }});
+          if(ShouldSendLeaseSet())
+          {
+            auto ls = m_LocalDestination->CreateLowestLatencyLeaseSet();
+            if(ls) SendLeaseSet(ls);
+          }
+          return;
 				}
 			}
 		}
-		UpdateLeaseSet(msg);
+    UpdateRoutingPath(GetNextRoutingPath());
+    SendMsg(msg);
 	}
 
 	void DatagramSession::UpdateRoutingPath(const std::shared_ptr<i2p::garlic::GarlicRoutingPath> & path)
@@ -450,18 +450,13 @@ namespace datagram
 		if(remoteIdent)
 		{
 			// update routing session
-			if(m_RoutingSession)
-				m_RoutingSession = nullptr;
 			m_RoutingSession = m_LocalDestination->GetRoutingSession(remoteIdent, true);
 			// clear invalid IBGW as we have a new lease set
 			m_InvalidIBGW.clear();
 			m_RemoteLeaseSet = remoteIdent;
 			// update routing path
 			auto path = GetNextRoutingPath();
-			if (path)
-				UpdateRoutingPath(path);
-			else
-				ResetRoutingPath();
+      UpdateRoutingPath(path);
 			// send the message that was queued if it was provided
 			if(msg)
 				HandleSend(msg);
