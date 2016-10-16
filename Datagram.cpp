@@ -440,7 +440,8 @@ namespace datagram
   bool DatagramSession::ShouldSendLeaseSet()
   {
     auto now = i2p::util::GetMillisecondsSinceEpoch();
-    return now - m_LastLeaseChange >= DATAGRAM_SESSION_LEASE_UPDATE_INTERVAL;
+    if(now - m_LastLeaseChange <= DATAGRAM_SESSION_LEASE_UPDATE_INTERVAL) return false;
+    return ShouldUpdateRoutingPath();
   }
 
 	void DatagramSession::HandleGotLeaseSet(std::shared_ptr<const i2p::data::LeaseSet> remoteIdent, std::shared_ptr<I2NPMessage> msg)
