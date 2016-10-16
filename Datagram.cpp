@@ -436,7 +436,7 @@ namespace datagram
 	void DatagramSession::UpdateLeaseSet(std::shared_ptr<I2NPMessage> msg)
 	{
     auto now = i2p::util::GetMillisecondsSinceEpoch();
-    if(now - m_LastLSLookup >= 5000) return;
+    if(now - m_LastLSLookup <= 5000) return;
     m_LastLSLookup = now;
 		LogPrint(eLogInfo, "DatagramSession: updating lease set");
 		m_LocalDestination->RequestDestination(m_RemoteIdentity, std::bind(&DatagramSession::HandleGotLeaseSet, this, std::placeholders::_1, msg));
