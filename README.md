@@ -1,21 +1,28 @@
 i2pd
 ====
 
-i2pd is a full-featured C++ implementation of 
-[I2P](https://geti2p.net/en/about/intro) client.
+[Русская версия](https://github.com/PurpleI2P/i2pd_docs_ru/blob/master/README.md)
 
-I2P (Invisible Internet Project) is anonymous network which works on top of 
-public Internet. Privacy and anonymity are achieved by strong encryption and 
-bouncing your traffic through thousands of I2P nodes all around the world.
+i2pd (I2P Daemon) is a full-featured C++ implementation of I2P client.
 
-We are building network which helps people to communicate and share information 
+I2P (Invisible Internet Protocol) is a universal anonymous network layer. 
+All communications over I2P are anonymous and end-to-end encrypted, participants
+don't reveal their real IP addresses. 
+
+I2P client is a software used for building and using anonymous I2P 
+networks. Such networks are commonly used for anonymous peer-to-peer 
+applications (filesharing, cryptocurrencies) and anonymous client-server 
+applications (websites, instant messengers, chat-servers).
+
+I2P allows people from all around the world to communicate and share information
 without restrictions.
 
 * [Website](http://i2pd.website)
 * [Documentation](https://i2pd.readthedocs.io/en/latest/)
 * [Wiki](https://github.com/PurpleI2P/i2pd/wiki)
 * [Tickets/Issues](https://github.com/PurpleI2P/i2pd/issues)
-* [Twitter](https://twitter.com/i2porignal)
+* [Specifications](https://geti2p.net/spec)
+* [Twitter](https://twitter.com/hashtag/i2pd)
 
 Installing
 ----------
@@ -32,11 +39,12 @@ i2pd from source on your OS.
 * Mac OS X
 * FreeBSD
 * Android 
+* iOS
 
 Using i2pd
 ----------
 
-See [documentation](https://i2pd.readthedocs.io/en/latest/) and 
+See [documentation](https://i2pd.readthedocs.io/en/latest/usage.html) and 
 [example config file](https://github.com/PurpleI2P/i2pd/blob/openssl/docs/i2pd.conf).
 
 Donations
