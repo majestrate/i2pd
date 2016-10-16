@@ -65,6 +65,7 @@ namespace datagram
 
 		Info GetSessionInfo() const;
 
+		void GotNewLeaseSet(std::shared_ptr<const i2p::data::LeaseSet> & ls);
 		
 	private:
 
@@ -134,7 +135,9 @@ namespace datagram
 			void BroadcastLeaseSetChange();
     
 		private:
-						
+
+			void InformNewLeaseSet(std::shared_ptr<const i2p::data::LeaseSet> ls);
+		
 			std::shared_ptr<DatagramSession> ObtainSession(const i2p::data::IdentHash & ident);
 			
 			std::shared_ptr<I2NPMessage> CreateDataMessage (const uint8_t * payload, size_t len, uint16_t fromPort, uint16_t toPort);

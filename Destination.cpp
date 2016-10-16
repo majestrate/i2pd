@@ -300,6 +300,11 @@ namespace client
 		}		
 	}	
 
+	void LeaseSetDestination::SetLeaseSetListener(RequestComplete l)
+	{
+		m_LeaseSetListener = l;
+	}
+	
 	void LeaseSetDestination::HandleDatabaseStoreMessage (const uint8_t * buf, size_t len)
 	{
 		uint32_t replyToken = bufbe32toh (buf + DATABASE_STORE_REPLY_TOKEN_OFFSET);
@@ -322,7 +327,10 @@ namespace client
 				{	
 					leaseSet->Update (buf + offset, len - offset); 
 					if (leaseSet->IsValid ())
+          {
 						LogPrint (eLogDebug, "Remote LeaseSet updated");
+            if(m_LeaseSetListener) m_LeaseSetListener(leaseSet);
+					}
 					else
 					{
 						LogPrint (eLogDebug, "Remote LeaseSet update failed");
