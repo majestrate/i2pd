@@ -183,7 +183,7 @@ namespace client
 		else
 			return false;
 	}	
-  
+
 	std::shared_ptr<const i2p::data::LeaseSet> LeaseSetDestination::FindLeaseSet (const i2p::data::IdentHash& ident)
 	{
 		std::shared_ptr<i2p::data::LeaseSet> remoteLS;
@@ -739,6 +739,17 @@ namespace client
 			return false;
 	}	
 
+  std::shared_ptr<i2p::data::LocalLeaseSet> ClientDestination::CreateLowestLatencyLeaseSet()
+  {
+    auto tun = GetTunnelPool()->GetLowestLatencyInboundTunnel();
+    if(!tun) return nullptr;
+    auto tuns = {tun};
+		auto leaseSet = std::make_shared<i2p::data::LocalLeaseSet> (GetIdentity (), m_EncryptionPublicKey, tuns);
+		Sign (leaseSet->GetBuffer (), leaseSet->GetBufferLen () - leaseSet->GetSignatureLen (), leaseSet->GetSignature ());
+    return leaseSet;
+  }
+  
+  
 	void ClientDestination::Ready(ReadyPromise & p)
 	{
 		ScheduleCheckForReady(&p);

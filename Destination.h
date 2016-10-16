@@ -101,7 +101,7 @@ namespace client
 			void ProcessGarlicMessage (std::shared_ptr<I2NPMessage> msg);
 			void ProcessDeliveryStatusMessage (std::shared_ptr<I2NPMessage> msg);	
 			void SetLeaseSetUpdated ();
-
+      
 		protected:
 
 			void SetLeaseSet (i2p::data::LocalLeaseSet * newLeaseSet);
@@ -163,7 +163,12 @@ namespace client
 			bool Start ();
 			bool Stop ();
      
-			// informs promise with shared_from_this() when this destination is ready to use
+
+
+      /** create a new lease set from the lowest latency tunnel we have, does not publish this lease set but does sign it*/
+    std::shared_ptr<i2p::data::LocalLeaseSet> CreateLowestLatencyLeaseSet();
+    
+      // informs promise with shared_from_this() when this destination is ready to use
 			// if cancelled before ready, informs promise with nullptr
 			void Ready(ReadyPromise & p);
 			

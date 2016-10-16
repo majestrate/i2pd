@@ -67,6 +67,8 @@ namespace tunnel
     std::shared_ptr<OutboundTunnel> GetNextOutboundTunnel (std::shared_ptr<OutboundTunnel> excluded = nullptr, bool ignoreLatency=true) const;
     std::shared_ptr<InboundTunnel> GetNextInboundTunnel (std::shared_ptr<InboundTunnel> excluded = nullptr, bool ignoreLatency=true) const;		
     std::shared_ptr<OutboundTunnel> GetNewOutboundTunnel (std::shared_ptr<OutboundTunnel> old, bool ignoreLatency=true) const;
+
+    std::shared_ptr<InboundTunnel> GetLowestLatencyInboundTunnel() const;
     
 			void TestTunnels ();
 			void ProcessGarlicMessage (std::shared_ptr<I2NPMessage> msg);

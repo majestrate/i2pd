@@ -137,17 +137,6 @@ namespace datagram
 				it++;
 		}
 	}
-
-	void DatagramDestination::BroadcastLeaseSetChange()
-	{
-		LogPrint(eLogDebug, "DatagramDestination: broadcast LeaseSet change");
-		m_Owner->SetLeaseSetUpdated();
-		const auto ls = m_Owner->GetLeaseSet();
-		std::lock_guard<std::mutex> lock(m_SessionsMutex);
-		for (const auto & s : m_Sessions)
-			s.second->SendLeaseSet(ls);
-	}
-  
 	
 	std::shared_ptr<DatagramSession> DatagramDestination::ObtainSession(const i2p::data::IdentHash & ident)
 	{
@@ -180,7 +169,8 @@ namespace datagram
 		m_RemoteIdentity(remoteIdent),
 		m_LastUse(i2p::util::GetMillisecondsSinceEpoch ()),
 		m_LastPathChange(0),
-		m_LastSuccess(0)
+		m_LastSuccess(0),
+    m_LastLeaseChange(0)
 	{
 	}
 
@@ -192,7 +182,7 @@ namespace datagram
 		m_LocalDestination->GetService().post(std::bind(&DatagramSession::HandleSend, this, msg));
 	}
 
-	void DatagramSession::SendLeaseSet(const std::shared_ptr<const i2p::data::LocalLeaseSet> & ls) const
+	void DatagramSession::SendLeaseSet(const std::shared_ptr<i2p::data::LocalLeaseSet> & ls)
 	{
 		if(!m_RoutingSession) return;
 		auto path = m_RoutingSession->GetSharedRoutingPath();
@@ -204,6 +194,7 @@ namespace datagram
 					path->remoteLease->tunnelGateway, path->remoteLease->tunnelID,
 					m}});
 		LogPrint(eLogDebug, "DatagramSession: lease sent to remote destination");
+    m_LastLeaseChange = i2p::util::GetMillisecondsSinceEpoch();
 	}
 
 	DatagramSession::Info DatagramSession::GetSessionInfo() const
@@ -231,6 +222,11 @@ namespace datagram
 	
 	void DatagramSession::HandleSend(std::shared_ptr<I2NPMessage> msg)
 	{
+    if(ShouldSendLeaseSet())
+    {
+      auto ls = m_LocalDestination->CreateLowestLatencyLeaseSet();
+      if(ls) SendLeaseSet(ls);
+    }
 		if(!m_RoutingSession)
 		{
 			// try to get one
@@ -441,6 +437,13 @@ namespace datagram
 		LogPrint(eLogInfo, "DatagramSession: updating lease set");
 		m_LocalDestination->RequestDestination(m_RemoteIdentity, std::bind(&DatagramSession::HandleGotLeaseSet, this, std::placeholders::_1, msg));
 	}
+
+
+  bool DatagramSession::ShouldSendLeaseSet()
+  {
+    auto now = i2p::util::GetMillisecondsSinceEpoch();
+    return now - m_LastLeaseChange >= DATAGRAM_SESSION_LEASE_UPDATE_INTERVAL;
+  }
 
 	void DatagramSession::HandleGotLeaseSet(std::shared_ptr<const i2p::data::LeaseSet> remoteIdent, std::shared_ptr<I2NPMessage> msg)
 	{

@@ -31,7 +31,10 @@ namespace datagram
 	const uint64_t DATAGRAM_SESSION_LEASE_HANDOVER_FUDGE = 1000;
   // milliseconds minimum time between path switches
   const uint64_t DATAGRAM_SESSION_PATH_MIN_LIFETIME = 5 * 1000;
-	
+  // milliseconds how often to send remote endpoint a new lease with lowest latency
+  const uint64_t DATAGRAM_SESSION_LEASE_UPDATE_INTERVAL = 10 * 1000;
+
+  
 	class DatagramSession
 	{
 	public:
@@ -39,7 +42,7 @@ namespace datagram
 										const i2p::data::IdentHash & remoteIdent);
 
 		/** send the remote destination our LeaseSet */
-		void SendLeaseSet(const std::shared_ptr<const i2p::data::LocalLeaseSet> & ls) const;
+		void SendLeaseSet(const std::shared_ptr<i2p::data::LocalLeaseSet> & ls);
 		/** send an i2np message to remote endpoint for this session */
 		void SendMsg(std::shared_ptr<I2NPMessage> msg);
 		/** get the last time in milliseconds for when we used this datagram session */
@@ -92,7 +95,10 @@ namespace datagram
 		void HandleGotLeaseSet(std::shared_ptr<const i2p::data::LeaseSet> remoteIdent,
 													 std::shared_ptr<I2NPMessage> msg);
 		void UpdateLeaseSet(std::shared_ptr<I2NPMessage> msg=nullptr);
-		
+
+    /** return true if we should send remote a new lease set */
+    bool ShouldSendLeaseSet();
+    
 	private:
 		i2p::client::ClientDestination * m_LocalDestination;
 		i2p::data::IdentHash m_RemoteIdentity;
@@ -103,6 +109,7 @@ namespace datagram
 		uint64_t m_LastUse;
 		uint64_t m_LastPathChange;
 		uint64_t m_LastSuccess;
+    uint64_t m_LastLeaseChange;
 	};
 	
 	const size_t MAX_DATAGRAM_SIZE = 32768;	 
@@ -129,9 +136,6 @@ namespace datagram
 		
 			// clean up stale sessions
 			void CleanUp ();
-
-			/** give updated lease set to every UDP session */
-			void BroadcastLeaseSetChange();
     
 		private:
 						

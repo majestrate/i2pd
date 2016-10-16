@@ -113,7 +113,22 @@ namespace tunnel
 			m_OutboundTunnels.erase (expiredTunnel);
 		}
 	}
-		
+
+  std::shared_ptr<InboundTunnel> TunnelPool::GetLowestLatencyInboundTunnel() const
+  {
+    std::shared_ptr<InboundTunnel> tunnel = nullptr;
+    std::unique_lock<std::mutex> l(m_InboundTunnelsMutex);
+		uint64_t min = 10000000;
+    for (const auto & it : m_InboundTunnels)
+    {
+      auto l = it->GetMeanLatency();
+      if(l > min) continue;
+      min = l;
+      tunnel = it;
+    }
+    return tunnel;
+  }
+  
 	std::vector<std::shared_ptr<InboundTunnel> > TunnelPool::GetInboundTunnels (int num) const
 	{
 		std::vector<std::shared_ptr<InboundTunnel> > v;
