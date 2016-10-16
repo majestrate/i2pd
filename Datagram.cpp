@@ -245,9 +245,8 @@ namespace datagram
 		// do we have a routing session?
 		if(m_RoutingSession)
 		{
-			auto routingPath = m_RoutingSession->GetSharedRoutingPath ();
 			// should we switch paths?
-			if(ShouldUpdateRoutingPath () || routingPath == nullptr)
+			if(ShouldUpdateRoutingPath ())
 			{
 				LogPrint(eLogDebug, "DatagramSession: try getting new routing path");
 				// try switching paths
@@ -255,7 +254,7 @@ namespace datagram
 				if(path)
 					UpdateRoutingPath (path);
 			}
-			routingPath = m_RoutingSession->GetSharedRoutingPath ();
+			auto routingPath = m_RoutingSession->GetSharedRoutingPath ();
 			// make sure we have a routing path
 			std::shared_ptr<i2p::tunnel::OutboundTunnel> outboundTunnel;
 			if (routingPath)
