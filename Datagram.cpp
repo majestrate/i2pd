@@ -290,13 +290,13 @@ namespace datagram
 	void DatagramSession::UpdateRoutingPath(const std::shared_ptr<i2p::garlic::GarlicRoutingPath> & path)
 	{
 		m_LastPathChange = i2p::util::GetMillisecondsSinceEpoch ();
-		if(m_RemoteLeaseSet && m_RoutingSession == nullptr) 
+		if(!m_RemoteLeaseSet) m_RemoteLeaseSet = m_LocalDestination->FindLeaseSet(m_RemoteIdentity);
+		if(m_RemoteLeaseSet)
 		{
 			m_RoutingSession = m_LocalDestination->GetRoutingSession(m_RemoteLeaseSet, true);	 
 			// set routing path and update time we last updated the routing path
-		}
-		if(m_RoutingSession)
 			m_RoutingSession->SetSharedRoutingPath (path);
+		}
 	}
 
 	bool DatagramSession::ShouldUpdateRoutingPath() const
@@ -473,7 +473,7 @@ namespace datagram
 			// clear invalid IBGW as we have a new lease set
 			m_InvalidIBGW.clear();
 			m_RemoteLeaseSet = remoteIdent; 
-			UpdateRoutingPath(GetNextRoutingPath());
+			m_RoutingSession->SetSharedRoutingPath(GetNextRoutingPath());
 			// send the message that was queued if it was provided
 			if(msg)
 				HandleSend(msg);
