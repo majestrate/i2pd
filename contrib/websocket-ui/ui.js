@@ -38,7 +38,7 @@ function nodeRecv(ident, n) {
 }
 
 
-var ws = new WebSocket("ws://127.0.0.1:7665/");
+var ws = new WebSocket("ws://127.0.0.1:7666/");
 ws.onmessage = function(ev) {
   var j = JSON.parse(ev.data);
   if (j) {
