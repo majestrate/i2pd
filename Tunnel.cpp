@@ -17,7 +17,7 @@ namespace i2p
 {
 namespace tunnel
 {
-
+  
   void TunnelStats::UpdateLatency(const uint64_t ms)
   {
     std::unique_lock<std::mutex> l(latencyMutex);
@@ -52,12 +52,14 @@ namespace tunnel
 
 	void Tunnel::Build (uint32_t replyMsgID, std::shared_ptr<OutboundTunnel> outboundTunnel)
 	{
+#ifdef WITH_EVENTS
+    std::string peers = i2p::context.GetIdentity()->GetIdentHash().ToBase64();
+#endif
 		auto numHops = m_Config->GetNumHops ();
 		int numRecords = numHops <= STANDARD_NUM_RECORDS ? STANDARD_NUM_RECORDS : numHops; 
 		auto msg = NewI2NPShortMessage ();
 		*msg->GetPayload () = numRecords;
 		msg->len += numRecords*TUNNEL_BUILD_RECORD_SIZE + 1;
-
 		// shuffle records
 		std::vector<int> recordIndicies;
 		for (int i = 0; i < numRecords; i++) recordIndicies.push_back(i);
@@ -78,8 +80,15 @@ namespace tunnel
 			hop->CreateBuildRequestRecord (records + idx*TUNNEL_BUILD_RECORD_SIZE, msgID); 
 			hop->recordIndex = idx; 
 			i++;
+#ifdef WITH_EVENTS
+      peers += ":" + hop->ident->GetIdentHash().ToBase64();
+#endif
 			hop = hop->next;
 		}
+#ifdef WITH_EVENTS
+    EmitTunnelEvent("tunnel.build", this, peers);
+#endif
+    
 		// fill up fake records with random data
 		for (int i = numHops; i < numRecords; i++)
 		{
@@ -205,6 +214,13 @@ namespace tunnel
 		return ret;
 	}
 
+  void Tunnel::SetState(TunnelState state)
+  {
+    m_State = state;
+    EmitTunnelEvent("tunnel.state", this, state);
+  }
+  
+
 	void Tunnel::PrintHops (std::stringstream& s) const
 	{
 		for (auto& it: m_Hops)
@@ -216,6 +232,7 @@ namespace tunnel
 
   void Tunnel::UpdateLatency(const uint64_t ms)
   {
+    EmitTunnelEvent("tunnel.latency", this, ms);
     m_Stats.UpdateLatency(ms);
   }
 
@@ -826,9 +843,9 @@ namespace tunnel
 
 	std::shared_ptr<InboundTunnel> Tunnels::CreateInboundTunnel (std::shared_ptr<TunnelConfig> config, std::shared_ptr<OutboundTunnel> outboundTunnel)
 	{
-		if (config)
+		if (config) 
 			return CreateTunnel<InboundTunnel>(config, outboundTunnel);
-		else
+    else 
 			return CreateZeroHopsInboundTunnel ();
 	}
 
