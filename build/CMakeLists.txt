@@ -19,6 +19,7 @@ option(WITH_MESHNET "Build for cjdns test network" OFF)
 option(WITH_ADDRSANITIZER "Build with address sanitizer unix only" OFF)
 option(WITH_THREADSANITIZER "Build with thread sanitizer unix only" OFF)
 option(WITH_WEBSOCKETS "Build with websocket ui" OFF)
+option(WITH_I2LUA "Build for i2lua" OFF)
 
 
 # paths
@@ -68,6 +69,10 @@ if (WITH_WEBSOCKETS)
 endif ()  
 if (WITH_WEBSOCKETS)
   list (APPEND LIBI2PD_SRC "${CMAKE_SOURCE_DIR}/Event.cpp")
+endif ()
+
+if (WITH_I2LUA)
+  add_definiations(-DI2LUA)
 endif ()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows" OR MSYS)
