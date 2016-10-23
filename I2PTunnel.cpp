@@ -745,9 +745,6 @@ namespace client
 			m_ResolveThread = new std::thread(std::bind(&I2PUDPClientTunnel::TryResolving, this));
 	}
 
-	void I2PUDPClientTunnel::Tick()
-	{
-	}
 
 	std::vector<std::shared_ptr<DatagramSessionInfo> > I2PUDPClientTunnel::GetSessions()
 	{
