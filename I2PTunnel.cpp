@@ -546,6 +546,10 @@ namespace client
       return now - u->LastActivity >= delta;
     });
   }
+
+	void I2PUDPServerTunnel::Tick()
+	{
+	}
   
   UDPSessionPtr I2PUDPServerTunnel::ObtainUDPSession(const i2p::data::IdentityEx& from, uint16_t localPort, uint16_t remotePort)
   {
@@ -561,7 +565,7 @@ namespace client
     }
     /** create new udp session */
     boost::asio::ip::udp::endpoint ep(m_LocalAddress, 0);
-    m_Sessions.push_back(std::make_shared<UDPSession>(m_LocalDest, m_RemoteEndpoint, &ih, localPort, remotePort));
+    m_Sessions.push_back(std::make_shared<UDPSession>(ep, m_LocalDest, m_RemoteEndpoint, &ih, localPort, remotePort));
     return m_Sessions.back();
   }
 
@@ -743,6 +747,10 @@ namespace client
 		m_LocalDest->Start();
 		if (m_ResolveThread == nullptr)
 			m_ResolveThread = new std::thread(std::bind(&I2PUDPClientTunnel::TryResolving, this));
+	}
+
+	void I2PUDPClientTunnel::Tick()
+	{
 	}
 
 	std::vector<std::shared_ptr<DatagramSessionInfo> > I2PUDPClientTunnel::GetSessions()
