@@ -534,6 +534,7 @@ namespace client
   {
     std::lock_guard<std::mutex> lock(m_SessionsMutex);
     auto session = ObtainUDPSession(from, fromPort, toPort);
+    LogPrint(eLogDebug, "UDP Server: forwarding ", len, " from ", from.GetIdentHash().ToBase32(), ":", fromPort, " to ", m_RemoteEndpoint);
     session->IPSocket->send_to(boost::asio::buffer(buf, len), m_RemoteEndpoint);
     session->LastActivity = i2p::util::GetMillisecondsSinceEpoch();
     
@@ -646,7 +647,7 @@ namespace client
 	I2PUDPServerTunnel::~I2PUDPServerTunnel()
 	{
 		auto dgram = m_LocalDest->GetDatagramDestination();
-		if (dgram) dgram->ResetReceiver();
+		if (dgram) dgram->ResetReceiver(LocalPort);
 		LogPrint(eLogInfo, "UDPServer: done");
 	}
 
@@ -714,6 +715,7 @@ namespace client
         auto s = ObtainSession(NextEndpoint);
         if(s)
         {
+          LogPrint(eLogDebug, "UDP Client: send ", len, " to ", m_RemoteIdent->ToBase32(), ":", RemotePort, " for ", s->Endpoint);
           s->m_Destination->SendDatagramTo(m_Buffer, len, *m_RemoteIdent, s->LocalPort, RemotePort);
         }
         else
