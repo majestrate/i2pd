@@ -534,7 +534,7 @@ namespace client
   {
     std::lock_guard<std::mutex> lock(m_SessionsMutex);
     auto session = ObtainUDPSession(from, fromPort, toPort);
-    session->IPSocket.send_to(boost::asio::buffer(buf, len), m_RemoteEndpoint);
+    session->IPSocket->send_to(boost::asio::buffer(buf, len), m_RemoteEndpoint);
     session->LastActivity = i2p::util::GetMillisecondsSinceEpoch();
     
   }
@@ -555,7 +555,7 @@ namespace client
       if ( s->Identity == ih)
       {
         /** found existing session */
-        LogPrint(eLogDebug, "UDPServer: found session ", s->IPSocket.local_endpoint(), " ", ih.ToBase32());
+        LogPrint(eLogDebug, "UDPServer: found session ", s->IPSocket->local_endpoint(), " ", ih.ToBase32());
         return s;
       }
     }
@@ -570,7 +570,7 @@ namespace client
     uint16_t ourPort, uint16_t theirPort) :
     m_Destination(localDestination->GetDatagramDestination()),
     m_Service(localDestination->GetService()),
-		IPSocket(localDestination->GetService(), socket_ep),
+		IPSocket(std::make_shared<boost::asio::ip::udp::socket>(localDestination->GetService(), socket_ep)),
 		Endpoint(endpoint),
 		LastActivity(i2p::util::GetMillisecondsSinceEpoch()),
 		LocalPort(ourPort),
@@ -585,7 +585,7 @@ namespace client
     uint16_t ourPort, uint16_t theirPort) :
     m_Destination(localDestination->GetDatagramDestination()),
     m_Service(localDestination->GetService()),
-		IPSocket(localDestination->GetService()),
+		IPSocket(nullptr),
 		Endpoint(endpoint),
 		LastActivity(i2p::util::GetMillisecondsSinceEpoch()),
 		LocalPort(ourPort),
@@ -597,14 +597,15 @@ namespace client
 
   UDPSession::~UDPSession()
   {
-    if(IPSocket.is_open())
-      IPSocket.close();
+    if(IPSocket && IPSocket->is_open())
+      IPSocket->close();
   }
   
 
 	void UDPSession::Receive() {
 		LogPrint(eLogDebug, "UDPSession: Receive");
-		IPSocket.async_receive_from(boost::asio::buffer(m_Buffer, I2P_UDP_MAX_MTU),
+    if(IPSocket)
+      IPSocket->async_receive_from(boost::asio::buffer(m_Buffer, I2P_UDP_MAX_MTU),
                                 RecvFromEndpoint,
                                 std::bind(&UDPSession::HandleReceived, this, std::placeholders::_1, std::placeholders::_2));
 	}

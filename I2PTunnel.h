@@ -142,7 +142,7 @@ namespace client
 	{
 		i2p::datagram::DatagramDestination * m_Destination;
 		boost::asio::io_service & m_Service;
-		boost::asio::ip::udp::socket IPSocket;
+    std::shared_ptr<boost::asio::ip::udp::socket> IPSocket;
 		i2p::data::IdentHash Identity;
 		boost::asio::ip::udp::endpoint Endpoint;
     // for recv from
