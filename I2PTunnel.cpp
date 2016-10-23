@@ -547,10 +547,6 @@ namespace client
     });
   }
 
-	void I2PUDPServerTunnel::Tick()
-	{
-	}
-  
   UDPSessionPtr I2PUDPServerTunnel::ObtainUDPSession(const i2p::data::IdentityEx& from, uint16_t localPort, uint16_t remotePort)
   {
     auto ih = from.GetIdentHash();
