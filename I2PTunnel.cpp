@@ -548,7 +548,7 @@ namespace client
     });
   }
 
-  UDPSessionPtr I2PUDPServerTunnel::ObtainUDPSession(const i2p::data::IdentityEx& from, uint16_t localPort, uint16_t remotePort)
+  UDPSessionPtr I2PUDPServerTunnel::ObtainUDPSession(const i2p::data::IdentityEx& from, uint16_t fromPort, uint16_t remotePort)
   {
     auto ih = from.GetIdentHash();
     for ( auto & s : m_Sessions )
@@ -562,7 +562,7 @@ namespace client
     }
     /** create new udp session */
     boost::asio::ip::udp::endpoint ep(m_LocalAddress, 0);
-    m_Sessions.push_back(std::make_shared<UDPSession>(ep, m_LocalDest, m_RemoteEndpoint, &ih, LocalPort, remotePort));
+    m_Sessions.push_back(std::make_shared<UDPSession>(ep, m_LocalDest, m_RemoteEndpoint, &ih, LocalPort, fromPort));
     return m_Sessions.back();
   }
 
