@@ -380,6 +380,7 @@ message(STATUS "  MESHNET          : ${WITH_MESHNET}")
 message(STATUS "  ADDRSANITIZER    : ${WITH_ADDRSANITIZER}")
 message(STATUS "  THEADSANITIZER   : ${WITH_THREADSANITIZER}")
 message(STATUS "  WEBSOCKETS       : ${WITH_WEBSOCKETS}")
+message(STATUS "  I2LUA            : ${WITH_I2LUA}")
 message(STATUS "---------------------------------------")
 
 #Handle paths nicely
