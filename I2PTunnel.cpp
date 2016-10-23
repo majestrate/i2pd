@@ -63,7 +63,8 @@ namespace client
 	{
 		I2PTunnelSetSocketOptions(m_Socket);
 		if (m_Socket) {
-#ifdef __linux__ 			
+#ifdef __linux__
+#ifndef DISABLE_I2PTUNNEL_LOOPBACK
 			// bind to 127.x.x.x address 
 			// where x.x.x are first three bytes from ident
 
@@ -78,6 +79,7 @@ namespace client
 				boost::asio::ip::address ourIP = boost::asio::ip::address_v4 (bytes);
 				m_Socket->bind (boost::asio::ip::tcp::endpoint (ourIP, 0));
 			}
+#endif
 #endif
  			m_Socket->async_connect (m_RemoteEndpoint, std::bind (&I2PTunnelConnection::HandleConnect,
 				shared_from_this (), std::placeholders::_1));
