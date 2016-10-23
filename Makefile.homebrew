@@ -1,7 +1,7 @@
 # root directory holding homebrew
 BREWROOT = /usr/local/
 BOOSTROOT = ${BREWROOT}/opt/boost
-SSLROOT = ${BREWROOT}/opt/libressl
+SSLROOT = ${BREWROOT}/opt/openssl
 CXX = clang++
 CXXFLAGS = -g -Wall -std=c++11 -DMAC_OSX
 INCFLAGS = -I${SSLROOT}/include -I${BOOSTROOT}/include
