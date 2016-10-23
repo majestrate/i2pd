@@ -81,7 +81,7 @@ namespace datagram
 
 	DatagramDestination::Receiver DatagramDestination::FindReceiver(uint16_t port)
 	{
-		std::lock_guard<std::mutex> lock(m_ReceiversMutex);
+		std::unique_lock<std::mutex> lock(m_ReceiversMutex);
 		Receiver r = m_Receiver;
 		auto itr = m_ReceiversByPorts.find(port);
 		if (itr != m_ReceiversByPorts.end())
@@ -141,7 +141,7 @@ namespace datagram
 	std::shared_ptr<DatagramSession> DatagramDestination::ObtainSession(const i2p::data::IdentHash & ident)
 	{
 		std::shared_ptr<DatagramSession> session = nullptr;
-		std::lock_guard<std::mutex> lock(m_SessionsMutex);
+		std::unique_lock<std::mutex> lock(m_SessionsMutex);
 		auto itr = m_Sessions.find(ident);
 		if (itr == m_Sessions.end()) {
 			// not found, create new session
@@ -155,7 +155,7 @@ namespace datagram
 
 	std::shared_ptr<DatagramSession::Info> DatagramDestination::GetInfoForRemote(const i2p::data::IdentHash & remote)
 	{
-		std::lock_guard<std::mutex> lock(m_SessionsMutex);
+		std::unique_lock<std::mutex> lock(m_SessionsMutex);
 		for ( auto & item : m_Sessions)
 		{
 			if(item.first == remote) return std::make_shared<DatagramSession::Info>(item.second->GetSessionInfo());

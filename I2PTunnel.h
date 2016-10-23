@@ -245,8 +245,13 @@ namespace client
 
       UDPSessionPtr FindSession(const uint16_t port);
 
+    void Receive();
+    void HandleReceived(const boost::system::error_code & ecode, size_t len);
+
+    UDPSessionPtr ObtainSession(const boost::asio::ip::udp::endpoint & ep);
+    
     /** add new session for remote endpoint */
-      void AddSession(const boost::asio::ip::udp::endpoint & remoteEndpoint);
+      UDPSessionPtr AddSession(const boost::asio::ip::udp::endpoint & remoteEndpoint);
     
 			void HandleRecvFromI2P(const i2p::data::IdentityEx& from, uint16_t fromPort, uint16_t toPort, const uint8_t * buf, size_t len);
 			void TryResolving();
@@ -260,7 +265,9 @@ namespace client
 
       const std::string m_RemoteDest;
 			std::shared_ptr<i2p::client::ClientDestination> m_LocalDest;
-      boost::asio::ip::udp::socket m_Socket;
+    boost::asio::ip::udp::endpoint NextEndpoint;
+    uint8_t m_Buffer[I2P_UDP_MAX_MTU];
+    std::shared_ptr<boost::asio::ip::udp::socket> m_Socket;
 			i2p::data::IdentHash * m_RemoteIdent;
 			std::thread * m_ResolveThread;
 			uint16_t RemotePort;
