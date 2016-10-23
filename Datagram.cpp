@@ -105,7 +105,7 @@ namespace datagram
 		size_t size = m_Deflator.Deflate (payload, len, buf, msg->maxLen - msg->len);
 		if (size)
 		{
-			htobe32buf (buf, size); // length
+			htobe32buf (msg->GetPayload(), size); // length
 			htobe16buf (buf + 4, fromPort); // source port
 			htobe16buf (buf + 6, toPort); // destination port 
 			buf[9] = i2p::client::PROTOCOL_TYPE_DATAGRAM; // datagram protocol
