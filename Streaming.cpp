@@ -670,7 +670,7 @@ namespace stream
 				auto msg = m_RoutingSession->WrapSingleMessage (nullptr);
 				auto outboundTunnel = m_LocalDestination.GetOwner ()->GetTunnelPool ()->GetNextOutboundTunnel ();
 				if (outboundTunnel)
-					m_CurrentOutboundTunnel->SendTunnelDataMsg (
+					outboundTunnel->SendTunnelDataMsg (
 						{
 							i2p::tunnel::TunnelMessageBlock 
 							{ 
