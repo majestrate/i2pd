@@ -82,11 +82,10 @@ namespace datagram
 	DatagramDestination::Receiver DatagramDestination::FindReceiver(uint16_t port)
 	{
 		std::unique_lock<std::mutex> lock(m_ReceiversMutex);
-		Receiver r = m_Receiver;
 		auto itr = m_ReceiversByPorts.find(port);
 		if (itr != m_ReceiversByPorts.end())
-			r = itr->second;
-		return r;
+			return itr->second;
+		return m_Receiver;
 	}
 
 	void DatagramDestination::HandleDataMessagePayload (uint16_t fromPort, uint16_t toPort, const uint8_t * buf, size_t len)
@@ -106,7 +105,7 @@ namespace datagram
 		size_t size = m_Deflator.Deflate (payload, len, buf, msg->maxLen - msg->len);
 		if (size)
 		{
-			htobe32buf (msg->GetPayload (), size); // length
+			htobe32buf (buf, size); // length
 			htobe16buf (buf + 4, fromPort); // source port
 			htobe16buf (buf + 6, toPort); // destination port 
 			buf[9] = i2p::client::PROTOCOL_TYPE_DATAGRAM; // datagram protocol
