@@ -483,7 +483,7 @@ namespace client
 						// TODO: hostnames
 						auto localAddress = boost::asio::ip::address::from_string(address);
 						boost::asio::ip::udp::endpoint endpoint(boost::asio::ip::address::from_string(host), port);
-						I2PUDPServerTunnel * serverTunnel = new I2PUDPServerTunnel(name, localDestination, localAddress, endpoint, port);
+						I2PUDPServerTunnel * serverTunnel = new I2PUDPServerTunnel(name, localDestination, localAddress, endpoint, inPort);
 						std::lock_guard<std::mutex> lock(m_ForwardsMutex);
 						if(m_ServerForwards.insert(
 							std::make_pair(
