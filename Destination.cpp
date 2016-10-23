@@ -747,8 +747,8 @@ namespace client
 		uint32_t length = bufbe32toh (buf);
 		buf += 4;
 		// we assume I2CP payload
-		uint16_t fromPort = bufbe16toh (buf ), // source
-			toPort = bufbe16toh (buf + 2); // destination 
+		uint16_t fromPort = bufbe16toh (buf + 4), // source
+			toPort = bufbe16toh (buf + 6); // destination 
 		switch (buf[9])
 		{
 			case PROTOCOL_TYPE_STREAMING:
