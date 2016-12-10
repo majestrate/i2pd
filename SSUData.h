@@ -31,8 +31,8 @@ namespace transport
 	const size_t SSU_V6_MAX_PACKET_SIZE = SSU_MTU_V6 - IPV6_HEADER_SIZE - UDP_HEADER_SIZE; // 1424
 	const int RESEND_INTERVAL = 3; // in seconds
 	const int MAX_NUM_RESENDS = 5;
-	const int DECAY_INTERVAL = 20; // in seconds
-	const int INCOMPLETE_MESSAGES_CLEANUP_TIMEOUT = 30; // in seconds
+	const int DECAY_INTERVAL = 5; // in seconds
+	const int INCOMPLETE_MESSAGES_CLEANUP_TIMEOUT = 10; // in seconds
 	const unsigned int MAX_NUM_RECEIVED_MESSAGES = 1000; // how many msgID we store for duplicates check
 	const int MAX_OUTGOING_WINDOW_SIZE = 200; // how many unacked message we can store
 	// data flags

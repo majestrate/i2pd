@@ -499,8 +499,7 @@ namespace transport
 					++it;
 			}	
 			// decay
-			if(i2p::util::GetSecondsSinceEpoch () > m_LastMessageReceivedTime + DECAY_INTERVAL)
-				m_InboundReplayFilter->Decay();
+			m_InboundReplayFilter->Decay();
 
 			if (m_ReceivedMessages.size () > MAX_NUM_RECEIVED_MESSAGES ||
 			    i2p::util::GetSecondsSinceEpoch () > m_LastMessageReceivedTime + DECAY_INTERVAL)
