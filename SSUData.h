@@ -35,6 +35,7 @@ namespace transport
 	const int INCOMPLETE_MESSAGES_CLEANUP_TIMEOUT = 10; // in seconds
 	const unsigned int MAX_NUM_RECEIVED_MESSAGES = 1000; // how many msgID we store for duplicates check
 	const int MAX_OUTGOING_WINDOW_SIZE = 200; // how many unacked message we can store
+  const size_t SSU_BLOOM_FILTER_SIZE = 1024; // size of ssu session bloom filter in bytes
 	// data flags
 	const uint8_t DATA_FLAG_EXTENDED_DATA_INCLUDED = 0x02;
 	const uint8_t DATA_FLAG_WANT_REPLY = 0x04;

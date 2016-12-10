@@ -30,7 +30,7 @@ namespace transport
 	SSUData::SSUData (SSUSession& session):
 		m_Session (session), m_ResendTimer (session.GetService ()), 
 		m_IncompleteMessagesCleanupTimer (session.GetService ()),
-		m_InboundReplayFilter(i2p::util::BloomFilter(512)),
+		m_InboundReplayFilter(i2p::util::BloomFilter(SSU_BLOOM_FILTER_SIZE)),
 		m_MaxPacketSize (session.IsV6 () ? SSU_V6_MAX_PACKET_SIZE : SSU_V4_MAX_PACKET_SIZE), 
 		m_PacketSize (m_MaxPacketSize), m_LastMessageReceivedTime (0)
 	{
