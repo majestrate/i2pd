@@ -20,13 +20,13 @@ namespace util
 		}
 
 		/** @brief implements IBloomFilter::~IBloomFilter */
-		~DecayingBloomFilter()
+		virtual ~DecayingBloomFilter()
 		{
 			delete [] m_Data;
 		}
 
 		/** @brief implements IBloomFilter::Add */
-		bool Add(const uint8_t * data, std::size_t len)
+		virtual bool Add(const uint8_t * data, std::size_t len)
 		{
 			std::size_t idx;
 			uint8_t mask;
@@ -37,7 +37,7 @@ namespace util
 		}
 
 		/** @brief implements IBloomFilter::Decay */
-		void Decay()
+		virtual void Decay()
 		{
 			// reset bloom filter buffer
 			memset(m_Data, 0, m_Size);

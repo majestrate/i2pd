@@ -29,7 +29,8 @@ namespace transport
 
 	SSUData::SSUData (SSUSession& session):
 		m_Session (session), m_ResendTimer (session.GetService ()), 
-		m_IncompleteMessagesCleanupTimer (session.GetService ()), 
+		m_IncompleteMessagesCleanupTimer (session.GetService ()),
+		m_InboundReplayFilter(i2p::util::BloomFilter(512)),
 		m_MaxPacketSize (session.IsV6 () ? SSU_V6_MAX_PACKET_SIZE : SSU_V4_MAX_PACKET_SIZE), 
 		m_PacketSize (m_MaxPacketSize), m_LastMessageReceivedTime (0)
 	{
@@ -233,9 +234,9 @@ namespace transport
 				msg->FromSSU (msgID);
 				if (m_Session.GetState () == eSessionStateEstablished)
 				{
-					if (!m_ReceivedMessages.count (msgID))
+					if (m_InboundReplayFilter->Add(msg->GetBuffer(), msg->GetLength()))
 					{	
-						m_ReceivedMessages.insert (msgID);
+						// filter miss
 						m_LastMessageReceivedTime = i2p::util::GetSecondsSinceEpoch ();
 						if (!msg->IsExpired ()) 
 						{
@@ -248,7 +249,7 @@ namespace transport
 							LogPrint (eLogDebug, "SSU: message expired");
 					}	
 					else
-						LogPrint (eLogWarning, "SSU: Message ", msgID, " already received");
+						LogPrint (eLogWarning, "SSU: Message ", msgID, " fit replay filter");
 				}	
 				else
 				{
@@ -498,6 +499,9 @@ namespace transport
 					++it;
 			}	
 			// decay
+			if(i2p::util::GetSecondsSinceEpoch () > m_LastMessageReceivedTime + DECAY_INTERVAL)
+				m_InboundReplayFilter->Decay();
+
 			if (m_ReceivedMessages.size () > MAX_NUM_RECEIVED_MESSAGES ||
 			    i2p::util::GetSecondsSinceEpoch () > m_LastMessageReceivedTime + DECAY_INTERVAL)
 				m_ReceivedMessages.clear ();

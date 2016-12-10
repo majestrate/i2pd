@@ -11,6 +11,7 @@
 #include "I2NPProtocol.h"
 #include "Identity.h"
 #include "RouterInfo.h"
+#include "BloomFilter.h"
 
 namespace i2p
 {
@@ -119,6 +120,7 @@ namespace transport
 			std::map<uint32_t, std::unique_ptr<IncompleteMessage> > m_IncompleteMessages;
 			std::map<uint32_t, std::unique_ptr<SentMessage> > m_SentMessages;
 			std::unordered_set<uint32_t> m_ReceivedMessages;
+    	i2p::util::BloomFilterPtr m_InboundReplayFilter;
 			boost::asio::deadline_timer m_ResendTimer, m_IncompleteMessagesCleanupTimer;
 			int m_MaxPacketSize, m_PacketSize;
 			i2p::I2NPMessagesHandler m_Handler;
