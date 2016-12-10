@@ -35,6 +35,7 @@ namespace transport
 	const int INCOMPLETE_MESSAGES_CLEANUP_TIMEOUT = 10; // in seconds
 	const unsigned int MAX_NUM_RECEIVED_MESSAGES = 1000; // how many msgID we store for duplicates check
 	const int MAX_OUTGOING_WINDOW_SIZE = 200; // how many unacked message we can store
+  const int MAX_OUTGOING_SEND_FAIL = 32; // how many failed sent message do we allow per session
   const size_t SSU_BLOOM_FILTER_SIZE = 1024; // size of ssu session bloom filter in bytes
 	// data flags
 	const uint8_t DATA_FLAG_EXTENDED_DATA_INCLUDED = 0x02;
@@ -126,6 +127,7 @@ namespace transport
 			int m_MaxPacketSize, m_PacketSize;
 			i2p::I2NPMessagesHandler m_Handler;
 			uint32_t m_LastMessageReceivedTime; // in second
+    uint32_t m_SendFail;
 	};	
 }
 }

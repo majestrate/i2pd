@@ -32,7 +32,7 @@ namespace transport
 		m_IncompleteMessagesCleanupTimer (session.GetService ()),
 		m_InboundReplayFilter(i2p::util::BloomFilter(SSU_BLOOM_FILTER_SIZE)),
 		m_MaxPacketSize (session.IsV6 () ? SSU_V6_MAX_PACKET_SIZE : SSU_V4_MAX_PACKET_SIZE), 
-		m_PacketSize (m_MaxPacketSize), m_LastMessageReceivedTime (0)
+		m_PacketSize (m_MaxPacketSize), m_LastMessageReceivedTime (0), m_SendFail(0)
 	{
 	}
 
@@ -461,6 +461,7 @@ namespace transport
 					{
 						LogPrint (eLogInfo, "SSU: message has not been ACKed after ", MAX_NUM_RESENDS, " attempts, deleted");
 						it = m_SentMessages.erase (it);
+						m_SendFail ++;
 					}	
 				}	
 				else
@@ -472,7 +473,13 @@ namespace transport
 			{
 				LogPrint (eLogError, "SSU: resend window exceeds max size. Session terminated");
 				m_Session.Close ();
-			}	
+				return;
+			}
+			if(m_SendFail > MAX_OUTGOING_SEND_FAIL)
+			{
+				LogPrint(eLogError, "SSU: failed message delivery too high, Session terminating");
+				m_Session.Failed();
+			}
 		}	
 	}	
 

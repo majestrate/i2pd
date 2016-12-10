@@ -120,7 +120,8 @@ namespace transport
 					else
 					{
 						LogPrint (eLogWarning, "SSU: MAC verification failed ", len, " bytes from ", senderEndpoint);
-						m_Server.DeleteSession (shared_from_this ()); 
+						SendSesionDestroyed();
+						m_Server.DeleteSession (shared_from_this ());
 						return;
 					}	
 				}	
