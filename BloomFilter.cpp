@@ -53,7 +53,7 @@ namespace util
 			SHA256(data, len, digest);
 			uint64_t i = buf64toh(digest);
 			idx = i % m_Size;
-			bm <<= (i % 8);
+			bm <<= (digest[16] & 0x07);
 		}
 
 		uint8_t * m_Data;

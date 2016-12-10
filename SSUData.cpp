@@ -249,7 +249,9 @@ namespace transport
 							LogPrint (eLogDebug, "SSU: message expired");
 					}	
 					else
+					{
 						LogPrint (eLogWarning, "SSU: Message ", msgID, " fit replay filter");
+					}
 				}	
 				else
 				{
@@ -499,6 +501,7 @@ namespace transport
 					++it;
 			}	
 			// decay
+			LogPrint(eLogDebug, "SSU: decay replay filter");
 			m_InboundReplayFilter->Decay();
 
 			if (m_ReceivedMessages.size () > MAX_NUM_RECEIVED_MESSAGES ||
