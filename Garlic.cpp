@@ -37,7 +37,9 @@ namespace garlic
 	}	
 
 	GarlicRoutingSession::~GarlicRoutingSession	()
-	{	
+	{
+		m_SessionTags.clear();
+		m_UnconfirmedTagsMsgs.clear();
 	}
 
 	std::shared_ptr<GarlicRoutingPath> GarlicRoutingSession::GetSharedRoutingPath ()
@@ -168,8 +170,9 @@ namespace garlic
 					tagFound = true;
 					break;
 				}	
-				else
+				else {
 					m_SessionTags.pop_front (); // remove expired tag
+				}
 			}
 		}	
 		// create message
@@ -213,7 +216,7 @@ namespace garlic
 	size_t GarlicRoutingSession::CreateAESBlock (uint8_t * buf, std::shared_ptr<const I2NPMessage> msg)
 	{
 		size_t blockSize = 0;
-		bool createNewTags = m_Owner && m_NumTags && ((int)m_SessionTags.size () <= m_NumTags*2/3);
+		bool createNewTags = m_Owner && m_NumTags && ((int)m_SessionTags.size () <= (m_NumTags*2)/3);
 		UnconfirmedTags * newTags = createNewTags ? GenerateSessionTags () : nullptr;
 		htobuf16 (buf, newTags ? htobe16 (newTags->numTags) : 0); // tag count
 		blockSize += 2;

@@ -52,6 +52,7 @@ namespace garlic
 		SessionTag () = default;
 		SessionTag (const SessionTag& ) = default;
 		SessionTag& operator= (const SessionTag& ) = default;
+		~SessionTag() = default;
 #ifndef _WIN32
 		SessionTag (SessionTag&& ) = default; 
 		SessionTag& operator= (SessionTag&& ) = default;	
@@ -81,11 +82,16 @@ namespace garlic
 		
 			struct UnconfirmedTags
 			{
-				UnconfirmedTags (int n): numTags (n), tagsCreationTime (0) { sessionTags = new SessionTag[numTags]; };
-				~UnconfirmedTags () { delete[] sessionTags; };
+				UnconfirmedTags (int n)
+				{
+					numTags = n;
+					while(n--) {
+						sessionTags.push_back({});
+					}
+				}
 				uint32_t msgID;
 				int numTags;
-				SessionTag * sessionTags;
+				std::vector<SessionTag> sessionTags;
 				uint32_t tagsCreationTime;
 			};
 
