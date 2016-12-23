@@ -177,7 +177,7 @@ namespace client
 			{
 				if (bytes_transferred > 0)
 					Write (m_StreamBuffer, bytes_transferred); // postpone termination
-				else if (ecode == boost::asio::error::timed_out && m_Stream->IsOpen ())
+				else if (ecode == boost::asio::error::timed_out && && m_Stream && m_Stream->IsOpen ())
 					StreamReceive ();
 				else
 					Terminate ();
@@ -540,7 +540,6 @@ namespace client
     auto session = ObtainUDPSession(from, toPort, fromPort);
     session->IPSocket.send_to(boost::asio::buffer(buf, len), m_RemoteEndpoint);
     session->LastActivity = i2p::util::GetMillisecondsSinceEpoch();
-    
   }
 
   void I2PUDPServerTunnel::ExpireStale(const uint64_t delta) {
@@ -554,11 +553,11 @@ namespace client
 				++itr;
 		}
   }
-  
-  UDPSession * I2PUDPServerTunnel::ObtainUDPSession(const i2p::data::IdentityEx& from, uint16_t localPort, uint16_t remotePort)
+	
+	UDPSessionPtr I2PUDPServerTunnel::ObtainUDPSession(const i2p::data::IdentityEx& from, uint16_t localPort, uint16_t remotePort)
   {
     auto ih = from.GetIdentHash();
-    for ( UDPSession * s : m_Sessions )
+    for ( UDPSessionPtr & s : m_Sessions )
     {
       if ( s->Identity == ih)
       {
@@ -640,7 +639,8 @@ namespace client
 	{
 		std::vector<std::shared_ptr<DatagramSessionInfo> > sessions;
 		std::lock_guard<std::mutex> lock(m_SessionsMutex);
-		for ( UDPSession * s : m_Sessions )
+		for ( UDPSessionPtr s : m_Sessions )
+
 		{
 			if (!s->m_Destination) continue;
 			auto info = s->m_Destination->GetInfoForRemote(s->Identity);
@@ -676,7 +676,7 @@ namespace client
 		dgram->SetReceiver(std::bind(&I2PUDPClientTunnel::HandleRecvFromI2P, this,
 																 std::placeholders::_1, std::placeholders::_2,
 																 std::placeholders::_3, std::placeholders::_4,
-																 std::placeholders::_5));		
+																 std::placeholders::_5));
 	}
 
 	
@@ -713,10 +713,9 @@ namespace client
 	
 	void I2PUDPClientTunnel::TryResolving() {
 		LogPrint(eLogInfo, "UDP Tunnel: Trying to resolve ", m_RemoteDest);
-		m_RemoteIdent = new i2p::data::IdentHash;
-		m_RemoteIdent->Fill(0);
+		i2p::data::IdentHash * h = new i2p::data::IdentHash;
 
-		while(!context.GetAddressBook().GetIdentHash(m_RemoteDest, *m_RemoteIdent) && !m_cancel_resolve)
+		while(!context.GetAddressBook().GetIdentHash(m_RemoteDest, *h) && !m_cancel_resolve)
 		{
 			LogPrint(eLogWarning, "UDP Tunnel: failed to lookup ", m_RemoteDest);
 			std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -726,12 +725,8 @@ namespace client
 			LogPrint(eLogError, "UDP Tunnel: lookup of ", m_RemoteDest, " was cancelled");
 			return;
 		}
+		m_RemoteIdent = h;
 		LogPrint(eLogInfo, "UDP Tunnel: resolved ", m_RemoteDest, " to ", m_RemoteIdent->ToBase32());
-		// delete existing session
-		if(m_Session) delete m_Session;
-		
-		boost::asio::ip::udp::endpoint ep(boost::asio::ip::address::from_string("127.0.0.1"), 0);
-		m_Session = new UDPSession(m_LocalEndpoint, m_LocalDest, ep, m_RemoteIdent, LocalPort, RemotePort);
 	}
 
 	void I2PUDPClientTunnel::HandleRecvFromI2P(const i2p::data::IdentityEx& from, uint16_t fromPort, uint16_t toPort, const uint8_t * buf, size_t len)
@@ -756,8 +751,11 @@ namespace client
 	I2PUDPClientTunnel::~I2PUDPClientTunnel() {
 		auto dgram = m_LocalDest->GetDatagramDestination();
 		if (dgram) dgram->ResetReceiver();
+		m_Sessions.clear();
+		
+		if(m_LocalSocket.is_open())
+			m_LocalSocket.close();
 
-		if (m_Session) delete m_Session;
 		m_cancel_resolve = true;
 
 		if(m_ResolveThread)
