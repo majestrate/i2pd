@@ -177,7 +177,7 @@ namespace client
 			{
 				if (bytes_transferred > 0)
 					Write (m_StreamBuffer, bytes_transferred); // postpone termination
-				else if (ecode == boost::asio::error::timed_out && && m_Stream && m_Stream->IsOpen ())
+				else if (ecode == boost::asio::error::timed_out && m_Stream && m_Stream->IsOpen ())
 					StreamReceive ();
 				else
 					Terminate ();
@@ -551,6 +551,19 @@ namespace client
 				itr = m_Sessions.erase(itr);
 			else
 				++itr;
+		}
+  }
+
+	void I2PUDPClientTunnel::ExpireStale(const uint64_t delta) {
+		std::lock_guard<std::mutex> lock(m_SessionsMutex);
+    uint64_t now = i2p::util::GetMillisecondsSinceEpoch();
+		std::vector<uint16_t> removePorts;
+		for (const auto & s : m_Sessions) {
+			if (now - s.second.second >= delta)
+				removePorts.push_back(s.first);
+		}
+		for(auto port : removePorts) {
+			m_Sessions.erase(port);
 		}
   }
 	
