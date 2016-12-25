@@ -493,7 +493,8 @@ namespace client
 					i2p::data::SigningKeyType sigType = section.second.get (I2P_SERVER_TUNNEL_SIGNATURE_TYPE, i2p::data::SIGNING_KEY_TYPE_ECDSA_SHA256_P256);
 					uint32_t maxConns = section.second.get(i2p::stream::I2CP_PARAM_STREAMING_MAX_CONNS_PER_MIN, i2p::stream::DEFAULT_MAX_CONNS_PER_MIN);
 					std::string address = section.second.get<std::string> (I2P_SERVER_TUNNEL_ADDRESS, "127.0.0.1");
-					
+					bool mapToLoopback = section.second.get(I2P_SERVER_TUNNEL_MAPTOLOOPBACK, true);
+
 					// I2CP
 					std::map<std::string, std::string> options;							 
 					ReadI2CPOptions (section, options);				
@@ -510,8 +511,12 @@ namespace client
 						// udp server tunnel
 						// TODO: hostnames
 						auto localAddress = boost::asio::ip::address::from_string(address);
-						boost::asio::ip::udp::endpoint endpoint(boost::asio::ip::address::from_string(host), port);
-						I2PUDPServerTunnel * serverTunnel = new I2PUDPServerTunnel(name, localDestination, localAddress, endpoint, port);
+						boost::asio::ip::udp::endpoint localEndpoint(boost::asio::ip::address::from_string(host), port);
+						I2PUDPServerTunnel * serverTunnel = new I2PUDPServerTunnel(name, localDestination, localAddress, localEndpoint, inPort);
+						if(!mapToLoopback) {
+							LogPrint(eLogInfo, "Clients: disabling loopback address mapping");
+						}
+						serverTunnel->SetMapToLoopback(mapToLoopback);
 						std::lock_guard<std::mutex> lock(m_ForwardsMutex);
 						if(m_ServerForwards.insert(
 							std::make_pair(
@@ -538,7 +543,9 @@ namespace client
 
 					LogPrint(eLogInfo, "Clients: Set Max Conns To ", maxConns);
 					serverTunnel->SetMaxConnsPerMinute(maxConns);
-					
+					if(!mapToLoopback)
+						LogPrint(eLogInfo, "Clients: disabling loopback address mapping");
+					serverTunnel->SetMapToLoopback(mapToLoopback);
           
 					if (accessList.length () > 0)
 					{
@@ -595,6 +602,7 @@ namespace client
 		{
 			std::lock_guard<std::mutex> lock(m_ForwardsMutex);
 			for (auto & s : m_ServerForwards ) s.second->ExpireStale();
+			for (auto & c : m_ClientForwards ) c.second->ExpireStale();
 			ScheduleCleanupUDP();
 		}
 	}
