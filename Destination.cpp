@@ -673,10 +673,7 @@ namespace client
 		m_Keys (keys), m_DatagramDestination (nullptr),
 		m_ReadyChecker(GetService())
 	{
-		if (isPublic)	
-			PersistTemporaryKeys ();
-		else
-			i2p::crypto::GenerateElGamalKeyPair(m_EncryptionPrivateKey, m_EncryptionPublicKey);
+		i2p::crypto::GenerateElGamalKeyPair(m_EncryptionPrivateKey, m_EncryptionPublicKey);
 		if (isPublic)
 			LogPrint (eLogInfo, "Destination: Local address ", GetIdentHash().ToBase32 (), " created");
 	}	
