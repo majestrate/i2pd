@@ -202,7 +202,7 @@ namespace config {
       ("websockets.enabled", value<bool>()->default_value(false), "enable websocket server")
       ("websockets.address", value<std::string>()->default_value("127.0.0.1"), "address to bind websocket server on")
       ("websockets.port", value<uint16_t>()->default_value(7666), "port to bind websocket server on");
-    
+
     m_OptionsDesc
       .add(general)
 	  .add(limits)	
