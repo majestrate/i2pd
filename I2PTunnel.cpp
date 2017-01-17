@@ -79,14 +79,14 @@ namespace client
 
 	}
 
-	void I2PTunnelConnection::Connect (bool mapToLoopback)
+	void I2PTunnelConnection::Connect (bool isUniqueLocal)
 	{
 		I2PTunnelSetSocketOptions(m_Socket);
-		if (m_Socket) {
-
+		if (m_Socket) 
+		{
 #ifdef __linux__
-			if (m_RemoteEndpoint.address ().is_v4 () &&
-				m_RemoteEndpoint.address ().to_v4 ().to_bytes ()[0] == 127 && mapToLoopback)
+			if (isUniqueLocal && m_RemoteEndpoint.address ().is_v4 () &&
+				m_RemoteEndpoint.address ().to_v4 ().to_bytes ()[0] == 127)
 			{
 				m_Socket->open (boost::asio::ip::tcp::v4 ());
 				auto ident = m_Stream->GetRemoteIdentity()->GetIdentHash();
@@ -432,7 +432,7 @@ namespace client
 
 	I2PServerTunnel::I2PServerTunnel (const std::string& name, const std::string& address, 
 	    int port, std::shared_ptr<ClientDestination> localDestination, int inport, bool gzip): 
-		I2PService (localDestination), m_MapToLoopback(true), m_Name (name), m_Address (address), m_Port (port), m_IsAccessList (false)
+		I2PService (localDestination), m_IsUniqueLocal(true), m_Name (name), m_Address (address), m_Port (port), m_IsAccessList (false)
 	{
 		m_PortDestination = localDestination->CreateStreamingDestination (inport > 0 ? inport : port, gzip);
 	}
@@ -509,15 +509,17 @@ namespace client
 					return;
 				}
 			}
-			CreateI2PConnection (stream);
+			// new connection
+			auto conn = CreateI2PConnection (stream);
+			AddHandler (conn);
+			conn->Connect (m_IsUniqueLocal);
 		}	
 	}
 
-	void I2PServerTunnel::CreateI2PConnection (std::shared_ptr<i2p::stream::Stream> stream)
+	std::shared_ptr<I2PTunnelConnection> I2PServerTunnel::CreateI2PConnection (std::shared_ptr<i2p::stream::Stream> stream)
 	{
-		auto conn = std::make_shared<I2PTunnelConnection> (this, stream, std::make_shared<boost::asio::ip::tcp::socket> (GetService ()), GetEndpoint ());
-		AddHandler (conn);
-		conn->Connect (m_MapToLoopback);
+		return std::make_shared<I2PTunnelConnection> (this, stream, std::make_shared<boost::asio::ip::tcp::socket> (GetService ()), GetEndpoint ());
+		
 	}
 
 	I2PServerTunnelHTTP::I2PServerTunnelHTTP (const std::string& name, const std::string& address, 
@@ -528,12 +530,10 @@ namespace client
 	{
 	}
 
-	void I2PServerTunnelHTTP::CreateI2PConnection (std::shared_ptr<i2p::stream::Stream> stream)
+	std::shared_ptr<I2PTunnelConnection> I2PServerTunnelHTTP::CreateI2PConnection (std::shared_ptr<i2p::stream::Stream> stream)
 	{
-		auto conn = std::make_shared<I2PTunnelConnectionHTTP> (this, stream, 
+		return std::make_shared<I2PTunnelConnectionHTTP> (this, stream, 
 			std::make_shared<boost::asio::ip::tcp::socket> (GetService ()), GetEndpoint (), m_Host);
-		AddHandler (conn);
-		conn->Connect ();
 	}
 
     I2PServerTunnelIRC::I2PServerTunnelIRC (const std::string& name, const std::string& address, 
@@ -544,11 +544,9 @@ namespace client
     {
     }
 
-    void I2PServerTunnelIRC::CreateI2PConnection (std::shared_ptr<i2p::stream::Stream> stream)
+    std::shared_ptr<I2PTunnelConnection> I2PServerTunnelIRC::CreateI2PConnection (std::shared_ptr<i2p::stream::Stream> stream)
     {
-	    auto conn = std::make_shared<I2PTunnelConnectionIRC> (this, stream, std::make_shared<boost::asio::ip::tcp::socket> (GetService ()), GetEndpoint (), this->m_WebircPass);
-	    AddHandler (conn);
-        conn->Connect ();
+	    return std::make_shared<I2PTunnelConnectionIRC> (this, stream, std::make_shared<boost::asio::ip::tcp::socket> (GetService ()), GetEndpoint (), this->m_WebircPass);
     }
 
   void I2PUDPServerTunnel::HandleRecvFromI2P(const i2p::data::IdentityEx& from, uint16_t fromPort, uint16_t toPort, const uint8_t * buf, size_t len)
@@ -598,12 +596,13 @@ namespace client
     }
 		boost::asio::ip::address addr;
 		/** create new udp session */
-		if(m_LocalAddress.is_loopback() && m_MapToLoopback) {
+		if(m_IsUniqueLocal && m_LocalAddress.is_loopback()) 
+		{
 			auto ident = from.GetIdentHash();
 			addr = GetLoopbackAddressFor(ident);
-		} else {
+		} 
+		else 
 			addr = m_LocalAddress;
-		}
 		boost::asio::ip::udp::endpoint ep(addr, 0);
     m_Sessions.push_back(std::make_shared<UDPSession>(ep, m_LocalDest, m_RemoteEndpoint, &ih, localPort, remotePort));
 		auto & back = m_Sessions.back();
@@ -649,7 +648,7 @@ namespace client
 	
 	I2PUDPServerTunnel::I2PUDPServerTunnel(const std::string & name, std::shared_ptr<i2p::client::ClientDestination> localDestination,
 		boost::asio::ip::address localAddress, boost::asio::ip::udp::endpoint forwardTo, uint16_t port) :
-		m_MapToLoopback(true),
+		m_IsUniqueLocal(true),
 		m_Name(name),
 		m_LocalAddress(localAddress),
 		m_RemoteEndpoint(forwardTo)
