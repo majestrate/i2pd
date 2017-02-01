@@ -110,9 +110,16 @@ namespace data
 
 				if (m_FloodfillBootstrap && ts - lastFloodfillReseed >= 5) // try reseed from floodfill every 5 seconds if we need to
 				{
-					// try reseed from floodfill if specified
-					ReseedFromFloodfill();
-					lastFloodfillReseed = ts;
+					auto routers = m_RouterInfos.size();
+					if (routers >= 50) {
+						// done
+						LogPrint(eLogInfo, "NetDB: we have ", (int)routers, " known routers, stopping floodfill reseed");
+						m_FloodfillBootstrap = nullptr;
+					} else {
+						// try reseed from floodfill if specified
+						ReseedFromFloodfill();
+						lastFloodfillReseed = ts;
+					}
 				}
 
 				if (ts - lastManageRequest >= 15) // manage requests every 15 seconds
