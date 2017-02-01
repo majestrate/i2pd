@@ -114,7 +114,6 @@ namespace data
 			void ManageRequests ();
 
 		void ReseedFromFloodfill(int numRouters=40, int numFloodfills=20);
-    void AddRouterInfoDirect(std::shared_ptr<RouterInfo> ri);
     	template<typename Filter>
         std::shared_ptr<const RouterInfo> GetRandomRouter (Filter filter) const;
 

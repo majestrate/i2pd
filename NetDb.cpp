@@ -240,16 +240,6 @@ namespace data
 		return updated;
 	}
 
-	void NetDb::AddRouterInfoDirect(std::shared_ptr<RouterInfo> ri)
-	{
-		if(ri)
-		{
-			std::unique_lock<std::mutex> lock(m_RouterInfosMutex);
-			i2p::data::IdentHash ident = ri->GetIdentHash();
-			m_RouterInfos[ident] = ri;
-		}
-	}
-
 	bool NetDb::AddLeaseSet (const IdentHash& ident, const uint8_t * buf, int len,
 		std::shared_ptr<i2p::tunnel::InboundTunnel> from)
 	{
