@@ -11,6 +11,7 @@
 
 #include <cstring>
 #include <map>
+#include <list>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -59,7 +60,8 @@ namespace http {
     bool is_i2p() const;
   };
 
-  struct HTTPMsg {
+  struct HTTPMsg
+  {
     std::map<std::string, std::string> headers;
 
     void add_header(const char *name, std::string & value, bool replace = false);
@@ -70,7 +72,9 @@ namespace http {
     long int content_length();
   };
 
-  struct HTTPReq : HTTPMsg {
+  struct HTTPReq
+  {
+	std::list<std::pair<std::string, std::string> > headers;
     std::string version;
     std::string method;
     std::string uri;
@@ -87,9 +91,12 @@ namespace http {
 
     /** @brief Serialize HTTP request to string */
     std::string to_string();
+    void write(std::ostream & o);
 
-		void write(std::ostream & o);
-
+	void AddHeader (const std::string& name, const std::string& value);
+	void UpdateHeader (const std::string& name, const std::string& value);
+	void RemoveHeader (const std::string& name);
+	std::string GetHeader (const std::string& name) const;
   };
 
   struct HTTPRes : HTTPMsg {

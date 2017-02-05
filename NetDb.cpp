@@ -41,7 +41,9 @@ namespace data
 		InitProfilesStorage ();
 		m_Families.LoadCertificates ();
 		Load ();
-		if (m_RouterInfos.size () < 25) // reseed if # of router less than 50
+
+		uint16_t threshold; i2p::config::GetOption("reseed.threshold", threshold);
+		if (m_RouterInfos.size () < threshold) // reseed if # of router less than threshold
 			Reseed ();
 
 		m_IsRunning = true;
@@ -110,8 +112,9 @@ namespace data
 
 				if (m_FloodfillBootstrap && ts - lastFloodfillReseed >= 5) // try reseed from floodfill every 5 seconds if we need to
 				{
+					uint16_t threshold; i2p::config::GetOption("reseed.threshold", threshold);
 					auto routers = m_RouterInfos.size();
-					if (routers >= 50) {
+					if (routers >= threshold) {
 						// done
 						LogPrint(eLogInfo, "NetDB: we have ", (int)routers, " known routers, stopping floodfill reseed");
 						m_FloodfillBootstrap = nullptr;
@@ -155,8 +158,6 @@ namespace data
 						LogPrint(eLogError, "NetDb: no known routers, reseed seems to be totally failed");
 						break;
 					}
-					else if(numRouters >= 30) // we have peers now
-						m_FloodfillBootstrap = nullptr;
 					if (numRouters < 2500 || ts - lastExploratory >= 90)
 					{
 						numRouters = 800/numRouters;
@@ -323,7 +324,6 @@ namespace data
 			m_Reseeder = new Reseeder ();
 			m_Reseeder->LoadCertificates (); // we need certificates for SU3 verification
 		}
-		int reseedRetries = 0;
 
 		// try reseeding from floodfill first if specified
 		std::string riPath;
@@ -342,11 +342,7 @@ namespace data
 				return;
 			}
 		}
-
-		while (reseedRetries < 10 && !m_Reseeder->ReseedNowSU3 ())
-			reseedRetries++;
-		if (reseedRetries >= 10)
-			LogPrint (eLogWarning, "NetDb: failed to reseed after 10 attempts");
+		m_Reseeder->Bootstrap ();
 	}
 
 	void NetDb::ReseedFromFloodfill(int numRouters, int numFloodfills)
