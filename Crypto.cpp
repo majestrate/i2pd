@@ -8,7 +8,6 @@
 #include <openssl/crypto.h>
 #include "TunnelBase.h"
 #include <openssl/ssl.h>
-#include <openssl/engine.h>
 #include "Log.h"
 #include "Crypto.h"
 
@@ -803,25 +802,53 @@ namespace crypto
 	}*/
 
 	static ENGINE * g_GostEngine = nullptr;
-	static bool InitGost ()
+	static const EVP_MD * g_Gost3411 = nullptr;
+	static EVP_PKEY * g_GostPKEY = nullptr;	
+	
+	const EVP_PKEY * GetGostPKEY ()
 	{
-		auto g_GostEngine = ENGINE_by_id ("gost");
-		if (!g_GostEngine)
-		{
-		     ENGINE_load_builtin_engines ();
+		return g_GostPKEY;
+	}	
+	
+	uint8_t * GOSTR3411 (const uint8_t * buf, size_t len, uint8_t * digest)
+	{
+		if (!g_Gost3411) return nullptr;
+		auto ctx = EVP_MD_CTX_new ();
+		EVP_DigestInit_ex (ctx, g_Gost3411, g_GostEngine);
+		EVP_DigestUpdate (ctx, buf, len);
+		EVP_DigestFinal_ex (ctx, digest, nullptr);
+		EVP_MD_CTX_free (ctx);
+		return digest;
+	}	
+	
+	bool InitGost ()
+	{
 #if OPENSSL_API_COMPAT < 0x10100000L
-		     ENGINE_load_dynamic ();
+		ENGINE_load_builtin_engines ();
+		ENGINE_load_dynamic ();
+#else
+		OPENSSL_init_crypto(OPENSSL_INIT_ENGINE_ALL_BUILTIN |, NULL);
 #endif
-		     g_GostEngine = ENGINE_by_id ("gost");
-		     if (!g_GostEngine) return false;
-		}
+		g_GostEngine = ENGINE_by_id ("gost");
+		if (!g_GostEngine) return false;
 
+		ENGINE_init (g_GostEngine);
 		ENGINE_set_default (g_GostEngine, ENGINE_METHOD_ALL);
+		g_Gost3411 = ENGINE_get_digest(g_GostEngine, NID_id_GostR3411_94);
+
+		auto ctx = EVP_PKEY_CTX_new_id(NID_id_GostR3410_2001, g_GostEngine);
+		if (!ctx) return false;
+		EVP_PKEY_keygen_init (ctx);
+		EVP_PKEY_CTX_ctrl_str (ctx, "paramset", "A"); // possible values 'A', 'B', 'C', 'XA', 'XB'
+		EVP_PKEY_keygen (ctx, &g_GostPKEY);	// it seems only way to fill with correct params
+		EVP_PKEY_CTX_free (ctx);
 		return true;
 	}
 	
-	static void TerminateGost ()
+	void TerminateGost ()
 	{
+		if (g_GostPKEY)
+			EVP_PKEY_free (g_GostPKEY);
 		if (g_GostEngine)
 		{
 			ENGINE_finish (g_GostEngine);
@@ -835,7 +862,6 @@ namespace crypto
 	void InitCrypto (bool precomputation, bool withGost)
 	{
 		SSL_library_init ();
-		if (withGost) InitGost ();
 /*		auto numLocks = CRYPTO_num_locks();
 		for (int i = 0; i < numLocks; i++)
 		     m_OpenSSLMutexes.emplace_back (new std::mutex);
@@ -865,7 +891,6 @@ namespace crypto
 			);   
 			delete[] g_ElggTable; g_ElggTable = nullptr;
 		}	
-		TerminateGost ();	
 /*		CRYPTO_set_locking_callback (nullptr);
 		m_OpenSSLMutexes.clear ();*/
 	}	
