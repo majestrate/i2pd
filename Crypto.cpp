@@ -823,11 +823,12 @@ namespace crypto
 	
 	bool InitGost ()
 	{
-#if OPENSSL_API_COMPAT < 0x10100000L
+#ifndef OPENSSL_NO_ENGINE
+#if (OPENSSL_VERSION_NUMBER < 0x010100000) || defined(LIBRESSL_VERSION_NUMBER)
 		ENGINE_load_builtin_engines ();
 		ENGINE_load_dynamic ();
 #else
-		OPENSSL_init_crypto(OPENSSL_INIT_ENGINE_ALL_BUILTIN |, NULL);
+		OPENSSL_init_crypto(OPENSSL_INIT_ENGINE_ALL_BUILTIN, NULL);
 #endif
 		g_GostEngine = ENGINE_by_id ("gost");
 		if (!g_GostEngine) return false;
@@ -843,20 +844,26 @@ namespace crypto
 		EVP_PKEY_keygen (ctx, &g_GostPKEY);	// it seems only way to fill with correct params
 		EVP_PKEY_CTX_free (ctx);
 		return true;
+#else
+		LogPrint (eLogError, "Can't initialize GOST. Engines are not supported");
+		return false;
+#endif
 	}
 	
 	void TerminateGost ()
 	{
 		if (g_GostPKEY)
 			EVP_PKEY_free (g_GostPKEY);
+#ifndef OPENSSL_NO_ENGINE
 		if (g_GostEngine)
 		{
 			ENGINE_finish (g_GostEngine);
 			ENGINE_free (g_GostEngine);
-#if OPENSSL_API_COMPAT < 0x10100000L
+#if (OPENSSL_VERSION_NUMBER < 0x010100000) || defined(LIBRESSL_VERSION_NUMBER)
 			ENGINE_cleanup();
 #endif
 		}
+#endif
 	}
 
 	void InitCrypto (bool precomputation, bool withGost)
