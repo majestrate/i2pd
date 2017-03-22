@@ -14,11 +14,10 @@ namespace crypto
 	enum GOSTR3410ParamSet
 	{
 		eGOSTR3410CryptoProA = 0,   // 1.2.643.2.2.35.1
-		eGOSTR3410CryptoProB,	    // 1.2.643.2.2.35.2
-		eGOSTR3410CryptoProC,	    // 1.2.643.2.2.35.3
-		//eGOSTR3410CryptoProXchA,    // 1.2.643.2.2.36.0
-		//eGOSTR3410CryptoProXchB,	// 1.2.643.2.2.36.1
 		// XchA = A, XchB = C
+		//eGOSTR3410CryptoProXchA,    // 1.2.643.2.2.36.0
+		//eGOSTR3410CryptoProXchB,	// 1.2.643.2.2.36.1		
+		eGOSTR3410TC26A512,		// 1.2.643.7.1.2.1.2.1
 		eGOSTR3410NumParamSets
 	};	
 	
@@ -29,6 +28,7 @@ namespace crypto
 			GOSTR3410Curve (BIGNUM * a, BIGNUM * b, BIGNUM * p, BIGNUM * q, BIGNUM * x, BIGNUM * y);
 			~GOSTR3410Curve ();			
 
+			size_t GetKeyLen () const { return m_KeyLen; }; 
 			EC_POINT * MulP (const BIGNUM * n) const;
 			bool GetXY (const EC_POINT * p, BIGNUM * x, BIGNUM * y) const;
 			EC_POINT * CreatePoint (const BIGNUM * x, const BIGNUM * y) const;
@@ -38,9 +38,13 @@ namespace crypto
 		private:
 
 			EC_GROUP * m_Group;
+			size_t m_KeyLen; // in bytes
 	};
 
 	std::unique_ptr<GOSTR3410Curve>& GetGOSTR3410Curve (GOSTR3410ParamSet paramSet);
+
+	void GOSTR3411_2012_256 (const uint8_t * buf, size_t len, uint8_t * digest);
+	void GOSTR3411_2012_512 (const uint8_t * buf, size_t len, uint8_t * digest);
 }
 }
 

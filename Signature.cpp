@@ -168,14 +168,13 @@ namespace crypto
 				
 				BN_mul (x3, p1.x, p2.x, ctx); // A = x1*x2		
 				BN_mul (y3, p1.y, p2.y, ctx); // B = y1*y2	
-				
+
+				BN_CTX_start (ctx);
 				BIGNUM * t1 = p1.t, * t2 = p2.t;
-				if (!t1) { t1 = BN_new (); BN_mul (t1, p1.x, p1.y, ctx); }
-				if (!t2) { t2 = BN_new (); BN_mul (t2, p2.x, p2.y, ctx); }
+				if (!t1) { t1 = BN_CTX_get (ctx); BN_mul (t1, p1.x, p1.y, ctx); }
+				if (!t2) { t2 = BN_CTX_get (ctx); BN_mul (t2, p2.x, p2.y, ctx); }
 				BN_mul (t3, t1, t2, ctx);
 				BN_mul (t3, t3, d, ctx);  // C = d*t1*t2
-				if (!p1.t) BN_free (t1);
-				if (!p2.t) BN_free (t2);
 
 				if (p1.z)
 				{
@@ -192,7 +191,6 @@ namespace crypto
 						BN_one (z3); // D = 1
 				}	
 
-				BN_CTX_start (ctx);
 				BIGNUM * E = BN_CTX_get (ctx), * F = BN_CTX_get (ctx), * G = BN_CTX_get (ctx), * H = BN_CTX_get (ctx);
 				BN_add (E, p1.x, p1.y);				
 				BN_add (F, p2.x, p2.y);
@@ -213,9 +211,10 @@ namespace crypto
 				return EDDSAPoint {x3, y3, z3, t3};
 			}
 
-			EDDSAPoint Double (const EDDSAPoint& p, BN_CTX * ctx) const
+			void Double (EDDSAPoint& p, BN_CTX * ctx) const
 			{
-				BIGNUM * x2 = BN_new (), * y2 = BN_new (), * z2 = BN_new (), * t2 = BN_new ();
+				BN_CTX_start (ctx);
+				BIGNUM * x2 = BN_CTX_get (ctx), * y2 = BN_CTX_get (ctx), * z2 = BN_CTX_get (ctx), * t2 = BN_CTX_get (ctx);
 				
 				BN_sqr (x2, p.x, ctx); // x2 = A = x^2		
 				BN_sqr (y2, p.y, ctx); // y2 = B = y^2	
@@ -232,7 +231,6 @@ namespace crypto
 				else
 					BN_one (z2); // z2 = 1
 
-				BN_CTX_start (ctx);
 				BIGNUM * E = BN_CTX_get (ctx), * F = BN_CTX_get (ctx), * G = BN_CTX_get (ctx), * H = BN_CTX_get (ctx);
 				// E = (x+y)*(x+y)-A-B = x^2+y^2+2xy-A-B = 2xy
 				BN_mul (E, p.x, p.y, ctx);
@@ -241,14 +239,14 @@ namespace crypto
 				BN_add (G, z2, t2); // G = D + C 
 				BN_add (H, y2, x2); // H = B + A
 
-				BN_mod_mul (x2, E, F, q, ctx); // x2 = E*F
-				BN_mod_mul (y2, G, H, q, ctx); // y2 = G*H	
-				BN_mod_mul (z2, F, G, q, ctx); // z2 = F*G	
-				BN_mod_mul (t2, E, H, q, ctx); // t2 = E*H	
+				BN_mod_mul (p.x, E, F, q, ctx); // x2 = E*F
+				BN_mod_mul (p.y, G, H, q, ctx); // y2 = G*H	
+				if (!p.z) p.z = BN_new ();
+				BN_mod_mul (p.z, F, G, q, ctx); // z2 = F*G	
+				if (!p.t) p.t = BN_new ();
+				BN_mod_mul (p.t, E, H, q, ctx); // t2 = E*H	
 
 				BN_CTX_end (ctx);
-
-				return EDDSAPoint {x2, y2, z2, t2};
 			}
 			
 			EDDSAPoint Mul (const EDDSAPoint& p, const BIGNUM * e, BN_CTX * ctx) const
@@ -261,7 +259,7 @@ namespace crypto
 					int bitCount = BN_num_bits (e);
 					for (int i = bitCount - 1; i >= 0; i--)
 					{
-						res = Double (res, ctx);
+						Double (res, ctx);
 						if (BN_is_bit_set (e, i)) res = Sum (res, p, ctx);
 					}
 				}	
@@ -492,57 +490,6 @@ namespace crypto
 	{
 		GetEd25519 ()->Sign (m_ExpandedPrivateKey, m_PublicKeyEncoded, buf, len, signature);
 	}	
-
-//----------------------------------------------
-// GOST
-
-	GOSTR3410Verifier::GOSTR3410Verifier (GOSTR3410ParamSet paramSet, const uint8_t * signingKey):
-		m_ParamSet (paramSet)
-	{ 
-		BIGNUM * x = BN_bin2bn (signingKey, GOSTR3410_PUBLIC_KEY_LENGTH/2, NULL);
-		BIGNUM * y = BN_bin2bn (signingKey + GOSTR3410_PUBLIC_KEY_LENGTH/2, GOSTR3410_PUBLIC_KEY_LENGTH/2, NULL);
-		m_PublicKey = GetGOSTR3410Curve (m_ParamSet)->CreatePoint (x, y);
-		BN_free (x); BN_free (y);
-	} 
-
-	bool GOSTR3410Verifier::Verify (const uint8_t * buf, size_t len, const uint8_t * signature) const
-	{
-		uint8_t digest[32];
-		GOSTR3411 (buf, len, digest);
-		BIGNUM * d = BN_bin2bn (digest, 32, nullptr);
-		BIGNUM * r = BN_bin2bn (signature, GetSignatureLen ()/2, NULL);
-		BIGNUM * s = BN_bin2bn (signature + GetSignatureLen ()/2, GetSignatureLen ()/2, NULL);
-		bool ret = GetGOSTR3410Curve (m_ParamSet)->Verify (m_PublicKey, d, r, s);
-		BN_free (d); BN_free (r); BN_free (s);	
-		return ret;
-	}
-
-	void GOSTR3410Signer::Sign (const uint8_t * buf, int len, uint8_t * signature) const
-	{
-		uint8_t digest[32];
-		GOSTR3411 (buf, len, digest);
-		BIGNUM * d = BN_bin2bn (digest, 32, nullptr); 
-		BIGNUM * r = BN_new (), * s = BN_new ();
-		GetGOSTR3410Curve (m_ParamSet)->Sign (m_PrivateKey, d, r, s);
-		bn2buf (r, signature, GOSTR3410_SIGNATURE_LENGTH/2);
-		bn2buf (s, signature + GOSTR3410_SIGNATURE_LENGTH/2, GOSTR3410_SIGNATURE_LENGTH/2);
-		BN_free (d); BN_free (r); BN_free (s);
-	}	
-	
-	void CreateGOSTR3410RandomKeys (GOSTR3410ParamSet paramSet, uint8_t * signingPrivateKey, uint8_t * signingPublicKey)
-	{	
-		RAND_bytes (signingPrivateKey, GOSTR3410_PUBLIC_KEY_LENGTH/2);
-		BIGNUM * priv = BN_bin2bn (signingPrivateKey, GOSTR3410_PUBLIC_KEY_LENGTH/2, nullptr);
-		const auto& curve = GetGOSTR3410Curve (paramSet);
-		auto pub = curve->MulP (priv);
-		BN_free (priv);
-		BIGNUM * x = BN_new (), * y = BN_new ();
-		curve->GetXY (pub, x, y);
-		EC_POINT_free (pub);
-		bn2buf (x, signingPublicKey, GOSTR3410_PUBLIC_KEY_LENGTH/2);
-		bn2buf (y, signingPublicKey + GOSTR3410_PUBLIC_KEY_LENGTH/2, GOSTR3410_PUBLIC_KEY_LENGTH/2);
-		BN_free (x); BN_free (y); 
-	}
 }
 }
 
