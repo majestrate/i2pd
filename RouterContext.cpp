@@ -286,6 +286,8 @@ namespace i2p
 
 	void RouterContext::SetReachable ()
 	{
+		bool ntcp; i2p::config::GetOption("ntcp", ntcp);
+		bool ssu; i2p::config::GetOption("ssu", ssu);
 		// update caps
 		uint8_t caps = m_RouterInfo.GetCaps ();
 		caps &= ~i2p::data::RouterInfo::eUnreachable;
@@ -303,7 +305,7 @@ namespace i2p
 				addr->host.is_v4 ())
 			{
 				// insert NTCP address with host/port from SSU
-				m_RouterInfo.AddNTCPAddress (addr->host.to_string ().c_str (), addr->port);
+				if (ntcp) m_RouterInfo.AddNTCPAddress (addr->host.to_string ().c_str (), addr->port);
 				break;
 			}
 		}
