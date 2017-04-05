@@ -18,7 +18,7 @@ namespace client
 	SAMSocket::SAMSocket (SAMBridge& owner):
 		m_Owner (owner), m_Socket (m_Owner.GetService ()), m_Timer (m_Owner.GetService ()),
 		m_BufferOffset (0), m_SocketType (eSAMSocketTypeUnknown), m_IsSilent (false),
-		m_Stream (nullptr), m_Session (nullptr)
+		m_IsAccepting (false), m_Stream (nullptr), m_Session (nullptr)
 	{
 	}
 
@@ -56,7 +56,7 @@ namespace client
 				if (m_Session)
 				{
 					m_Session->DelSocket (shared_from_this ());
-					if (m_Session->localDestination)
+					if (m_IsAccepting && m_Session->localDestination)
 						m_Session->localDestination->StopAcceptingStreams ();
 				}
 				break;
@@ -218,7 +218,7 @@ namespace client
 					else if (!strcmp (m_Buffer, SAM_STREAM_ACCEPT))
 						ProcessStreamAccept (separator + 1, bytes_transferred - (separator - m_Buffer) - 1);
 					else if (!strcmp (m_Buffer, SAM_DEST_GENERATE))
-						ProcessDestGenerate ();
+						ProcessDestGenerate (separator + 1, bytes_transferred - (separator - m_Buffer) - 1);
 					else if (!strcmp (m_Buffer, SAM_NAMING_LOOKUP))
 						ProcessNamingLookup (separator + 1, bytes_transferred - (separator - m_Buffer) - 1);
 					else if (!strcmp (m_Buffer, SAM_DATAGRAM_SEND))
@@ -438,7 +438,10 @@ namespace client
 			m_SocketType = eSAMSocketTypeAcceptor;
 			m_Session->AddSocket (shared_from_this ());
 			if (!m_Session->localDestination->IsAcceptingStreams ())
+			{
+				m_IsAccepting = true;	
 				m_Session->localDestination->AcceptOnce (std::bind (&SAMSocket::HandleI2PAccept, shared_from_this (), std::placeholders::_1));
+			}
 			SendMessageReply (SAM_STREAM_STATUS_OK, strlen(SAM_STREAM_STATUS_OK), false);
 		}
 		else
@@ -476,18 +479,26 @@ namespace client
 		return offset + size;
 	}
 
-	void SAMSocket::ProcessDestGenerate ()
+	void SAMSocket::ProcessDestGenerate (char * buf, size_t len)
 	{
 		LogPrint (eLogDebug, "SAM: dest generate");
-		auto keys = i2p::data::PrivateKeys::CreateRandomKeys ();
+		std::map<std::string, std::string> params;
+		ExtractParams (buf, params);
+		// extract signature type
+		i2p::data::SigningKeyType signatureType = i2p::data::SIGNING_KEY_TYPE_DSA_SHA1;
+		auto it = params.find (SAM_PARAM_SIGNATURE_TYPE);
+		if (it != params.end ())
+				// TODO: extract string values
+			signatureType = std::stoi(it->second);
+		auto keys = i2p::data::PrivateKeys::CreateRandomKeys (signatureType);
 #ifdef _MSC_VER
-		size_t len = sprintf_s (m_Buffer, SAM_SOCKET_BUFFER_SIZE, SAM_DEST_REPLY,
+		size_t l = sprintf_s (m_Buffer, SAM_SOCKET_BUFFER_SIZE, SAM_DEST_REPLY,
 			keys.GetPublic ()->ToBase64 ().c_str (), keys.ToBase64 ().c_str ());
 #else
-		size_t len = snprintf (m_Buffer, SAM_SOCKET_BUFFER_SIZE, SAM_DEST_REPLY,
+		size_t l = snprintf (m_Buffer, SAM_SOCKET_BUFFER_SIZE, SAM_DEST_REPLY,
 		    keys.GetPublic ()->ToBase64 ().c_str (), keys.ToBase64 ().c_str ());
 #endif
-		SendMessageReply (m_Buffer, len, false);
+		SendMessageReply (m_Buffer, l, false);
 	}
 
 	void SAMSocket::ProcessNamingLookup (char * buf, size_t len)
@@ -701,6 +712,7 @@ namespace client
 		{
 			LogPrint (eLogDebug, "SAM: incoming I2P connection for session ", m_ID);
 			m_SocketType = eSAMSocketTypeStream;
+			m_IsAccepting = false;
 			m_Stream = stream;
 			context.GetAddressBook ().InsertAddress (stream->GetRemoteIdentity ());
 			auto session = m_Owner.FindSession (m_ID);
@@ -710,6 +722,7 @@ namespace client
 				for (auto it: session->ListSockets ())
 					if (it->m_SocketType == eSAMSocketTypeAcceptor)
 					{
+						it->m_IsAccepting = true;
 						session->localDestination->AcceptOnce (std::bind (&SAMSocket::HandleI2PAccept, it, std::placeholders::_1));
 						break;
 					}
