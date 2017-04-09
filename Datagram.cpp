@@ -278,7 +278,7 @@ namespace datagram
 				m_CurrentOutboundTunnel = m_LocalDestination->GetTunnelPool()->GetNextOutboundTunnel(m_CurrentOutboundTunnel);
 			}
 			// switch lease if bad
-			if(m_CurrentRemoteLease == nullptr || m_CurrentRemoteLease->ExpiresWithin(DATAGRAM_SESSION_LEASE_HANDOVER_WINDOW)) {
+			if(m_CurrentRemoteLease && m_CurrentRemoteLease->ExpiresWithin(DATAGRAM_SESSION_LEASE_HANDOVER_WINDOW)) {
 				if(!m_RemoteLeaseSet) {
 					m_RemoteLeaseSet = m_LocalDestination->FindLeaseSet(m_RemoteIdent);
 				}
@@ -298,6 +298,17 @@ namespace datagram
 					// no remote lease set currently, bail
 					LogPrint(eLogWarning, "DatagramSession: no remote lease set found for ", m_RemoteIdent.ToBase32());
 					return nullptr;
+				}
+			} else if (!m_CurrentRemoteLease) {
+				if(!m_RemoteLeaseSet) m_RemoteLeaseSet = m_LocalDestination->FindLeaseSet(m_RemoteIdent);
+				if (m_RemoteLeaseSet)
+				{
+					auto ls = m_RemoteLeaseSet->GetNonExpiredLeases();
+					auto sz = ls.size();
+					if (sz) {
+						auto idx = rand() % sz;
+						m_CurrentRemoteLease = ls[idx];
+					}
 				}
 			}
 			path->outboundTunnel = m_CurrentOutboundTunnel;
