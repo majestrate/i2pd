@@ -255,9 +255,11 @@ namespace datagram
 			}
 			if(m_CurrentRemoteLease && m_CurrentRemoteLease->ExpiresWithin(DATAGRAM_SESSION_LEASE_HANDOVER_WINDOW)) {
 				// bad lease, switch to next one
+				if(m_RemoteLeaseSet && m_RemoteLeaseSet->IsExpired())
+					m_RemoteLeaseSet = m_LocalDestination->FindLeaseSet(m_RemoteIdent);
 				if(m_RemoteLeaseSet) {
 					auto ls = m_RemoteLeaseSet->GetNonExpiredLeasesExcluding([&](const i2p::data::Lease& l) -> bool {
-							return l.tunnelGateway == m_CurrentRemoteLease->tunnelGateway;
+							return l.tunnelID == m_CurrentRemoteLease->tunnelID;
 					});
 					auto sz = ls.size();
 					if (sz) {
