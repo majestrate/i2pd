@@ -31,7 +31,7 @@ namespace data
 			auto expire = i2p::util::GetMillisecondsSinceEpoch ();
 			if(fudge) expire += rand() % fudge;
 			expire /= 1000;
-			return endDate - expire >= t;
+			return endDate - expire >= (t / 1000);
 		}
 	};	
 
