@@ -346,7 +346,7 @@ namespace datagram
 
 	void DatagramSession::ScheduleFlushSendQueue()
 	{
-		boost::posix_time::milliseconds dlt(100);
+		boost::posix_time::milliseconds dlt(10);
 		m_SendQueueTimer.expires_from_now(dlt);
 		auto self = shared_from_this();
 		m_SendQueueTimer.async_wait([self](const boost::system::error_code & ec) { if(ec) return; self->FlushSendQueue(); });
