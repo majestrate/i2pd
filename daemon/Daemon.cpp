@@ -14,7 +14,7 @@
 #include "RouterContext.h"
 #include "Tunnel.h"
 #include "HTTP.h"
-#include "NetDb.h"
+#include "NetDb.hpp"
 #include "Garlic.h"
 #include "Streaming.h"
 #include "Destination.h"
@@ -140,7 +140,7 @@ namespace i2p
 			}
 			i2p::context.SetSupportsV6		 (ipv6);
 			i2p::context.SetSupportsV4		 (ipv4);
-			
+
 			bool transit; i2p::config::GetOption("notransit", transit);
 			i2p::context.SetAcceptsTunnels (!transit);
 			uint16_t transitTunnels; i2p::config::GetOption("limits.transittunnels", transitTunnels);
@@ -157,17 +157,17 @@ namespace i2p
 			/* this section also honors 'floodfill' flag, if set above */
 			std::string bandwidth; i2p::config::GetOption("bandwidth", bandwidth);
 			if (bandwidth.length () > 0)
-			{	
-				if (bandwidth[0] >= 'K' && bandwidth[0] <= 'X') 
+			{
+				if (bandwidth[0] >= 'K' && bandwidth[0] <= 'X')
 				{
 					i2p::context.SetBandwidth (bandwidth[0]);
 					LogPrint(eLogInfo, "Daemon: bandwidth set to ", i2p::context.GetBandwidthLimit (), "KBps");
-				} 
-				else 
+				}
+				else
 				{
 					auto value = std::atoi(bandwidth.c_str());
-					if (value > 0) 
-					{	
+					if (value > 0)
+					{
 						i2p::context.SetBandwidth (value);
 						LogPrint(eLogInfo, "Daemon: bandwidth set to ", i2p::context.GetBandwidthLimit (), " KBps");
 					}
@@ -175,24 +175,24 @@ namespace i2p
 					{
 						LogPrint(eLogInfo, "Daemon: unexpected bandwidth ", bandwidth, ". Set to 'low'");
 						i2p::context.SetBandwidth (i2p::data::CAPS_FLAG_LOW_BANDWIDTH2);
-					}	
-				}	
-			}	
-			else if (isFloodfill) 
+					}
+				}
+			}
+			else if (isFloodfill)
 			{
 				LogPrint(eLogInfo, "Daemon: floodfill bandwidth set to 'extra'");
 				i2p::context.SetBandwidth (i2p::data::CAPS_FLAG_EXTRA_BANDWIDTH1);
-			} 
+			}
 			else
 			{
 				LogPrint(eLogInfo, "Daemon: bandwidth set to 'low'");
 				i2p::context.SetBandwidth (i2p::data::CAPS_FLAG_LOW_BANDWIDTH2);
-			}	
+			}
 
 			std::string family; i2p::config::GetOption("family", family);
 			i2p::context.SetFamily (family);
 			if (family.length () > 0)
-				LogPrint(eLogInfo, "Daemon: family set to ", family);	
+				LogPrint(eLogInfo, "Daemon: family set to ", family);
 
       bool trust; i2p::config::GetOption("trust.enabled", trust);
       if (trust)
@@ -211,7 +211,7 @@ namespace i2p
 						fams.insert (fam.substr (pos, comma != std::string::npos ? comma - pos : std::string::npos));
 						pos = comma + 1;
 					}
-					while (comma != std::string::npos);				 
+					while (comma != std::string::npos);
 					i2p::transport::transports.RestrictRoutesToFamilies(fams);
 					restricted  = fams.size() > 0;
         }
@@ -222,11 +222,11 @@ namespace i2p
 					{
 						comma = routers.find (',', pos);
 						i2p::data::IdentHash ident;
-						ident.FromBase64 (routers.substr (pos, comma != std::string::npos ? comma - pos : std::string::npos));	
+						ident.FromBase64 (routers.substr (pos, comma != std::string::npos ? comma - pos : std::string::npos));
 						idents.insert (ident);
 						pos = comma + 1;
 					}
-					while (comma != std::string::npos);				 
+					while (comma != std::string::npos);
 					LogPrint(eLogInfo, "Daemon: setting restricted routes to use ", idents.size(), " trusted routesrs");
 					i2p::transport::transports.RestrictRoutesToRouters(idents);
 					restricted = idents.size() > 0;
@@ -242,7 +242,7 @@ namespace i2p
       }
       return true;
 		}
-			
+
 		bool Daemon_Singleton::start()
 		{
 			i2p::log::Logger().Start();
@@ -270,7 +270,7 @@ namespace i2p
 				i2p::data::netdb.Stop();
 				return false;
 			}
-						
+
 			bool http; i2p::config::GetOption("http.enabled", http);
 			if (http) {
 				std::string httpAddr; i2p::config::GetOption("http.address", httpAddr);
@@ -280,7 +280,7 @@ namespace i2p
 				d.httpServer->Start();
 			}
 
-			
+
 			LogPrint(eLogInfo, "Daemon: starting Tunnels");
 			i2p::tunnel::tunnels.Start();
 
