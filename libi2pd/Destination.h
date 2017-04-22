@@ -17,7 +17,7 @@
 #include "Crypto.h"
 #include "LeaseSet.h"
 #include "Garlic.h"
-#include "NetDb.hpp"
+#include "NetDb.h"
 #include "Streaming.h"
 #include "Datagram.h"
 

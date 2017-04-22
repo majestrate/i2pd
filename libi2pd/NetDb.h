@@ -1,6 +1,5 @@
 #ifndef NETDB_H__
 #define NETDB_H__
-// this file is called NetDb.hpp because netdb.h exists in libc and conflicts on case insensitive file systems
 
 #include <inttypes.h>
 #include <set>

@@ -2,7 +2,7 @@
 #include "Crypto.h"
 #include "RouterContext.h"
 #include "I2NPProtocol.h"
-#include "NetDb.hpp"
+#include "NetDb.h"
 #include "Transports.h"
 #include "Config.h"
 #ifdef WITH_EVENTS
