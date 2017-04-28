@@ -98,6 +98,9 @@ namespace tunnel
 		// for overriding tunnel peer selection
 		std::shared_ptr<const i2p::data::RouterInfo> SelectNextHop (std::shared_ptr<const i2p::data::RouterInfo> prevHop) const;
 
+		size_t GetOutboundTunnelLength() { return m_NumOutboundHops; };
+		size_t GetInboundTunnelLength() { return m_NumInboundHops; };
+
 		private:
 
 			void CreateInboundTunnel ();

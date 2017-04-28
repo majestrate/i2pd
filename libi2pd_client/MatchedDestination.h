@@ -19,16 +19,19 @@ namespace client
 
 		bool SelectPeers(i2p::tunnel::Path & peers, int hops, bool inbound);
 		bool OnBuildResult(const i2p::tunnel::Path & peers, bool inbound, i2p::tunnel::TunnelBuildResult result);
+		virtual void CreateStream (StreamRequestComplete streamRequestComplete, const i2p::data::IdentHash& dest, int port = 0);
 
 	private:
 		void ResolveCurrentLeaseSet();
 		void HandleFoundCurrentLeaseSet(std::shared_ptr<const i2p::data::LeaseSet> ls);
+		bool OutboundTunnelsAreReady() { return m_HasPath; };
 
 	private:
 		std::string m_RemoteName;
 		i2p::data::IdentHash m_RemoteIdent;
 		std::shared_ptr<const i2p::data::LeaseSet> m_RemoteLeaseSet;
 		std::shared_ptr<boost::asio::deadline_timer> m_ResolveTimer;
+		bool m_HasPath;
 	};
 }
 }
