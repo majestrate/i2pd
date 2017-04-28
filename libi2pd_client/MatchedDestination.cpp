@@ -9,7 +9,7 @@ namespace client
 {
 	MatchedTunnelDestination::MatchedTunnelDestination(const i2p::data::PrivateKeys & keys, const std::string & remoteName, const std::map<std::string, std::string> * params)
 		: ClientDestination(keys, false, params),
-			m_RemoteName(remoteName) {}
+			m_RemoteName(remoteName), m_HasPath(false) {}
 
 
 	void MatchedTunnelDestination::ResolveCurrentLeaseSet()
@@ -44,6 +44,13 @@ namespace client
 		}
 	}
 
+	void MatchedTunnelDestination::CreateStream (StreamRequestComplete streamRequestComplete, const i2p::data::IdentHash& dest, int port)
+	{
+			if(OutboundTunnelsAreReady())
+				ClientDestination::CreateStream(streamRequestComplete, dest, port);
+			else
+				streamRequestComplete(nullptr);
+	}
 
 	bool MatchedTunnelDestination::Start()
 	{
@@ -52,7 +59,7 @@ namespace client
 			m_ResolveTimer = std::make_shared<boost::asio::deadline_timer>(GetService());
 			GetTunnelPool()->SetCustomPeerSelector(this);
 			ResolveCurrentLeaseSet();
-  		return true;
+			return true;
 		}
 		else
 			return false;
@@ -107,6 +114,16 @@ namespace client
 
 	bool MatchedTunnelDestination::OnBuildResult(const i2p::tunnel::Path & path, bool inbound, i2p::tunnel::TunnelBuildResult result)
 	{
+		if(!inbound && result == i2p::tunnel::eBuildResultOkay)
+		{
+			auto pool = GetTunnelPool();
+			auto sz = path.size();
+			if(pool->GetOutboundTunnelLength() < sz)
+			{
+				// this is a matched tunnel
+				m_HasPath = true;
+			}
+		}
 		return true;
 	}
 }

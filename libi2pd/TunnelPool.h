@@ -32,7 +32,7 @@ namespace tunnel
 
 	typedef std::shared_ptr<const i2p::data::IdentityEx> Peer;
 	typedef std::vector<Peer> Path;
- 
+
 	/** interface for custom tunnel peer selection algorithm */
 	struct ITunnelPeerSelector
 	{
@@ -96,6 +96,9 @@ namespace tunnel
 
 		// for overriding tunnel peer selection
 		std::shared_ptr<const i2p::data::RouterInfo> SelectNextHop (std::shared_ptr<const i2p::data::RouterInfo> prevHop) const;
+
+		size_t GetOutboundTunnelLength() { return m_NumOutboundHops; };
+		size_t GetInboundTunnelLength() { return m_NumInboundHops; };
 
 		private:
 
