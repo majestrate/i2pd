@@ -942,7 +942,7 @@ namespace client
 		if (m_DatagramDestination) m_DatagramDestination->CleanUp ();
 	}
 
-	std::shared_ptr<i2p::tunnel::OutboundTunnel> ClientDestination::GetNewStreamingOutboundTunnel(const std::shared_ptr<i2p::tunnel::OutboundTunnel> & excluding, const i2p::data::IdentHash & remoteLease)
+	std::shared_ptr<i2p::tunnel::OutboundTunnel> ClientDestination::GetNewOutboundTunnelForLease(const std::shared_ptr<i2p::tunnel::OutboundTunnel> & excluding, const i2p::data::IdentHash & remoteLease)
 	{
 		return GetTunnelPool ()->GetNewOutboundTunnel(excluding);
 	}

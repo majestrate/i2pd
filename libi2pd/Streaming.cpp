@@ -666,7 +666,7 @@ namespace stream
 		if (!m_CurrentOutboundTunnel || !m_CurrentOutboundTunnel->IsEstablished ())
   	{
 			if(m_CurrentRemoteLease)
-				m_CurrentOutboundTunnel = m_LocalDestination.GetOwner ()->GetNewStreamingOutboundTunnel (m_CurrentOutboundTunnel, m_CurrentRemoteLease->tunnelGateway);
+				m_CurrentOutboundTunnel = m_LocalDestination.GetOwner ()->GetNewOutboundTunnelForLease (m_CurrentOutboundTunnel, m_CurrentRemoteLease->tunnelGateway);
 			else
 				m_CurrentOutboundTunnel = m_LocalDestination.GetOwner ()->GetTunnelPool ()->GetNewOutboundTunnel (m_CurrentOutboundTunnel);
 		}
@@ -787,7 +787,7 @@ namespace stream
 						// pick another outbound tunnel
 						if (m_RoutingSession) m_RoutingSession->SetSharedRoutingPath (nullptr);
 						if(m_CurrentRemoteLease)
-							m_CurrentOutboundTunnel = m_LocalDestination.GetOwner ()->GetNewStreamingOutboundTunnel (m_CurrentOutboundTunnel, m_CurrentRemoteLease->tunnelGateway);
+							m_CurrentOutboundTunnel = m_LocalDestination.GetOwner ()->GetNewOutboundTunnelForLease (m_CurrentOutboundTunnel, m_CurrentRemoteLease->tunnelGateway);
 						else
 							m_CurrentOutboundTunnel = m_LocalDestination.GetOwner ()->GetTunnelPool ()->GetNextOutboundTunnel(m_CurrentOutboundTunnel);
 						LogPrint (eLogWarning, "Streaming: Another outbound tunnel has been selected for stream with sSID=", m_SendStreamID);

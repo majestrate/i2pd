@@ -128,7 +128,7 @@ namespace client
 	}
 
 
-	std::shared_ptr<i2p::tunnel::OutboundTunnel> MatchedTunnelDestination::GetNewStreamingOutboundTunnel(const std::shared_ptr<i2p::tunnel::OutboundTunnel> & excluding, const i2p::data::IdentHash & remoteLease)
+	std::shared_ptr<i2p::tunnel::OutboundTunnel> MatchedTunnelDestination::GetNewOutboundTunnelForLease(const std::shared_ptr<i2p::tunnel::OutboundTunnel> & excluding, const i2p::data::IdentHash & remoteLease)
 	{
 		std::shared_ptr<i2p::tunnel::OutboundTunnel> found = nullptr;
 		auto pool = GetTunnelPool();
