@@ -132,10 +132,9 @@ namespace client
 	{
 		std::shared_ptr<i2p::tunnel::OutboundTunnel> found = nullptr;
 		auto pool = GetTunnelPool();
-		size_t tunlen = pool->GetOutboundTunnelLength();
 		std::vector<std::shared_ptr<i2p::tunnel::OutboundTunnel> > tuns;
-		tuns = pool->GetOutboundTunnelsMatching([tunlen] (const std::shared_ptr<i2p::tunnel::OutboundTunnel> &tun) -> bool {
-				return tun->GetLength() > tunlen;
+		tuns = pool->GetOutboundTunnelsMatching([remoteLease] (const std::shared_ptr<i2p::tunnel::OutboundTunnel> &tun) -> bool {
+				return tun->GetEndpointIdentHash() == remoteLease;
 		});
 		// get lowest latency
 		uint64_t minLatency = 100000000;
