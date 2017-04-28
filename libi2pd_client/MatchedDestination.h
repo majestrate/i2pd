@@ -20,7 +20,7 @@ namespace client
 		bool SelectPeers(i2p::tunnel::Path & peers, int hops, bool inbound);
 		bool OnBuildResult(const i2p::tunnel::Path & peers, bool inbound, i2p::tunnel::TunnelBuildResult result);
 		virtual void CreateStream (StreamRequestComplete streamRequestComplete, const i2p::data::IdentHash& dest, int port = 0);
-
+    virtual std::shared_ptr<i2p::tunnel::OutboundTunnel> GetNewStreamingOutboundTunnel(const std::shared_ptr<i2p::tunnel::OutboundTunnel> & excluding, const i2p::data::IdentHash & remoteLease);
 	private:
 		void ResolveCurrentLeaseSet();
 		void HandleFoundCurrentLeaseSet(std::shared_ptr<const i2p::data::LeaseSet> ls);

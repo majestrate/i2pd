@@ -593,5 +593,29 @@ namespace tunnel
 		auto peers = tunnel->GetPeers();
 		if(m_CustomPeerSelector) m_CustomPeerSelector->OnBuildResult(peers, tunnel->IsInbound(), result);
 	}
+
+	std::vector<std::shared_ptr<OutboundTunnel> > TunnelPool::GetOutboundTunnelsMatching(OutboundTunnelVisitFunc f)
+	{
+		std::vector<std::shared_ptr<OutboundTunnel> > matches;
+		{
+			std::unique_lock<std::mutex> lock(m_OutboundTunnelsMutex);
+			for(const auto & itr : m_OutboundTunnels)
+				if(f(itr))
+					matches.push_back(itr);
+		}
+		return matches;
+	}
+
+	std::vector<std::shared_ptr<InboundTunnel> > TunnelPool::GetInboundTunnelsMatching(InboundTunnelVisitFunc f)
+	{
+		std::vector<std::shared_ptr<InboundTunnel> > matches;
+		{
+			std::unique_lock<std::mutex> lock(m_InboundTunnelsMutex);
+			for(const auto & itr : m_InboundTunnels)
+				if(f(itr))
+					matches.push_back(itr);
+		}
+		return matches;
+	}
 }
 }

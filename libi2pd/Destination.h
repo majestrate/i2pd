@@ -184,6 +184,9 @@ namespace client
 			// streaming
 			std::shared_ptr<i2p::stream::StreamingDestination> CreateStreamingDestination (int port, bool gzip = true); // additional
 			std::shared_ptr<i2p::stream::StreamingDestination> GetStreamingDestination (int port = 0) const;
+
+      // used in streaming for finding next viable outbound tunnel
+      virtual std::shared_ptr<i2p::tunnel::OutboundTunnel> GetNewStreamingOutboundTunnel(const std::shared_ptr<i2p::tunnel::OutboundTunnel> & excluding, const i2p::data::IdentHash & remoteLease);
 			// following methods operate with default streaming destination
 			virtual void CreateStream (StreamRequestComplete streamRequestComplete, const i2p::data::IdentHash& dest, int port = 0);
 			std::shared_ptr<i2p::stream::Stream> CreateStream (std::shared_ptr<const i2p::data::LeaseSet> remote, int port = 0);

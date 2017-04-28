@@ -12,11 +12,11 @@ namespace i2p
 namespace stream
 {
 	void SendBufferQueue::Add (const uint8_t * buf, size_t len, SendHandler handler)
-	{	
+	{
 		m_Buffers.push_back (std::make_shared<SendBuffer>(buf, len, handler));
 		m_Size += len;
 	}
-	
+
 	size_t SendBufferQueue::Get (uint8_t * buf, size_t len)
 	{
 		size_t offset = 0;
@@ -30,7 +30,7 @@ namespace stream
 				memcpy (buf + offset, nextBuffer->GetRemaningBuffer (), rem);
 				offset += rem;
 				m_Buffers.pop_front (); // delete it
-			}	
+			}
 			else
 			{
 				// partially
@@ -38,23 +38,23 @@ namespace stream
 				memcpy (buf + offset, nextBuffer->GetRemaningBuffer (), len - offset);
 				nextBuffer->offset += (len - offset);
 				offset = len; // break
-			}	
-		}	
+			}
+		}
 		m_Size -= offset;
 		return offset;
-	}	
+	}
 
-	void SendBufferQueue::CleanUp () 
-	{ 
+	void SendBufferQueue::CleanUp ()
+	{
 		if (!m_Buffers.empty ())
-		{	
+		{
 			for (auto it: m_Buffers)
 				it->Cancel ();
-			m_Buffers.clear (); 
+			m_Buffers.clear ();
 			m_Size = 0;
-		}	
+		}
 	}
-	
+
 	Stream::Stream (boost::asio::io_service& service, StreamingDestination& local,
 		std::shared_ptr<const i2p::data::LeaseSet> remote, int port): m_Service (service),
 		m_SendStreamID (0), m_SequenceNumber (0), m_LastReceivedSequenceNumber (-1),
@@ -98,7 +98,7 @@ namespace stream
 		{
 			std::unique_lock<std::mutex> l(m_SendBufferMutex);
 			m_SendBuffer.CleanUp ();
-		}	
+		}
 		while (!m_ReceiveQueue.empty ())
 		{
 			auto packet = m_ReceiveQueue.front ();
@@ -664,7 +664,12 @@ namespace stream
 			}
 		}
 		if (!m_CurrentOutboundTunnel || !m_CurrentOutboundTunnel->IsEstablished ())
-			m_CurrentOutboundTunnel = m_LocalDestination.GetOwner ()->GetTunnelPool ()->GetNewOutboundTunnel (m_CurrentOutboundTunnel);
+  	{
+			if(m_CurrentRemoteLease)
+				m_CurrentOutboundTunnel = m_LocalDestination.GetOwner ()->GetNewStreamingOutboundTunnel (m_CurrentOutboundTunnel, m_CurrentRemoteLease->tunnelGateway);
+			else
+				m_CurrentOutboundTunnel = m_LocalDestination.GetOwner ()->GetTunnelPool ()->GetNewOutboundTunnel (m_CurrentOutboundTunnel);
+		}
 		if (!m_CurrentOutboundTunnel)
 		{
 			LogPrint (eLogError, "Streaming: No outbound tunnels in the pool, sSID=", m_SendStreamID);
@@ -759,7 +764,7 @@ namespace stream
 				}
 			}
 
-			// select tunnels if necessary and send
+			// select tutnnels if necessary and send
 			if (packets.size () > 0)
 			{
 				m_NumResendAttempts++;
@@ -781,7 +786,10 @@ namespace stream
 					case 3:
 						// pick another outbound tunnel
 						if (m_RoutingSession) m_RoutingSession->SetSharedRoutingPath (nullptr);
-						m_CurrentOutboundTunnel = m_LocalDestination.GetOwner ()->GetTunnelPool ()->GetNextOutboundTunnel (m_CurrentOutboundTunnel);
+						if(m_CurrentRemoteLease)
+							m_CurrentOutboundTunnel = m_LocalDestination.GetOwner ()->GetNewStreamingOutboundTunnel (m_CurrentOutboundTunnel, m_CurrentRemoteLease->tunnelGateway);
+						else
+							m_CurrentOutboundTunnel = m_LocalDestination.GetOwner ()->GetTunnelPool ()->GetNextOutboundTunnel(m_CurrentOutboundTunnel);
 						LogPrint (eLogWarning, "Streaming: Another outbound tunnel has been selected for stream with sSID=", m_SendStreamID);
 					break;
 					default: ;
@@ -1091,7 +1099,7 @@ namespace stream
 				}
 				else // we must save old acceptor and set it back
 				{
-					m_Acceptor = std::bind (&StreamingDestination::AcceptOnceAcceptor, this, 
+					m_Acceptor = std::bind (&StreamingDestination::AcceptOnceAcceptor, this,
 						std::placeholders::_1, acceptor, m_Acceptor);
 				}
 			});
@@ -1101,8 +1109,8 @@ namespace stream
 	{
 		m_Acceptor = prev;
 		acceptor (stream);
-	}	
-		
+	}
+
 	void StreamingDestination::HandlePendingIncomingTimer (const boost::system::error_code& ecode)
 	{
 		if (ecode != boost::asio::error::operation_aborted)

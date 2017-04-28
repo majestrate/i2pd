@@ -68,6 +68,13 @@ namespace tunnel
 			std::shared_ptr<OutboundTunnel> GetNextOutboundTunnel (std::shared_ptr<OutboundTunnel> excluded = nullptr) const;
 			std::shared_ptr<InboundTunnel> GetNextInboundTunnel (std::shared_ptr<InboundTunnel> excluded = nullptr) const;
 			std::shared_ptr<OutboundTunnel> GetNewOutboundTunnel (std::shared_ptr<OutboundTunnel> old) const;
+
+      typedef std::function<bool(const std::shared_ptr<OutboundTunnel>&)> OutboundTunnelVisitFunc;
+    std::vector<std::shared_ptr<OutboundTunnel> > GetOutboundTunnelsMatching(OutboundTunnelVisitFunc f);
+
+      typedef std::function<bool(const std::shared_ptr<InboundTunnel>&)> InboundTunnelVisitFunc;
+    std::vector<std::shared_ptr<InboundTunnel> > GetInboundTunnelsMatching(InboundTunnelVisitFunc f);
+
 			void TestTunnels ();
 			void ProcessGarlicMessage (std::shared_ptr<I2NPMessage> msg);
 			void ProcessDeliveryStatus (std::shared_ptr<I2NPMessage> msg);
@@ -97,7 +104,6 @@ namespace tunnel
 
 		// for overriding tunnel peer selection
 		std::shared_ptr<const i2p::data::RouterInfo> SelectNextHop (std::shared_ptr<const i2p::data::RouterInfo> prevHop) const;
-
 		size_t GetOutboundTunnelLength() { return m_NumOutboundHops; };
 		size_t GetInboundTunnelLength() { return m_NumInboundHops; };
 

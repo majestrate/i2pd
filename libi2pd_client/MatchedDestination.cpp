@@ -126,5 +126,31 @@ namespace client
 		}
 		return true;
 	}
+
+
+	std::shared_ptr<i2p::tunnel::OutboundTunnel> MatchedTunnelDestination::GetNewStreamingOutboundTunnel(const std::shared_ptr<i2p::tunnel::OutboundTunnel> & excluding, const i2p::data::IdentHash & remoteLease)
+	{
+		std::shared_ptr<i2p::tunnel::OutboundTunnel> found = nullptr;
+		auto pool = GetTunnelPool();
+		size_t tunlen = pool->GetOutboundTunnelLength();
+		std::vector<std::shared_ptr<i2p::tunnel::OutboundTunnel> > tuns;
+		tuns = pool->GetOutboundTunnelsMatching([tunlen] (const std::shared_ptr<i2p::tunnel::OutboundTunnel> &tun) -> bool {
+				return tun->GetLength() > tunlen;
+		});
+		// get lowest latency
+		uint64_t minLatency = 100000000;
+		for (const auto & itr : tuns)
+		{
+			if(!itr->LatencyIsKnown()) continue;
+
+			uint64_t latency = itr->GetMeanLatency() ;
+			if (latency < minLatency)
+			{
+				found = itr;
+				minLatency = latency;
+			}
+		}
+		return found;
+	}
 }
 }
