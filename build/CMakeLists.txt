@@ -8,6 +8,7 @@ project ( "i2pd" )
 
 # configurale options
 option(WITH_AESNI     "Use AES-NI instructions set" OFF)
+option(WITH_AVX       "Use AVX instructions" OFF)
 option(WITH_HARDENING "Use hardening compiler flags" OFF)
 option(WITH_LIBRARY   "Build library" ON)
 option(WITH_BINARY    "Build binary" ON)
@@ -110,7 +111,7 @@ set (CLIENT_SRC
 )
 
 if(WITH_WEBSOCKETS)
-  list (APPEND CLIENT_SRC "${LIBI2PD_SRC_DIR}/Websocket.cpp")
+  list (APPEND CLIENT_SRC "${LIBI2PD_CLIENT_SRC_DIR}/Websocket.cpp")
 endif ()
 add_library(i2pdclient ${CLIENT_SRC})
 
@@ -211,6 +212,10 @@ endif ()
 if (WITH_AESNI)
   set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -maes" )
   add_definitions ( -DAESNI )
+endif()
+
+if (WITH_AVX)
+  set ( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx" )
 endif()
 
 if (WITH_ADDRSANITIZER)
@@ -379,6 +384,7 @@ message(STATUS "Compiler path      : ${CMAKE_CXX_COMPILER}")
 message(STATUS "Install prefix:    : ${CMAKE_INSTALL_PREFIX}")
 message(STATUS "Options:")
 message(STATUS "  AESNI            : ${WITH_AESNI}")
+message(STATUS "  AVX              : ${WITH_AVX}")
 message(STATUS "  HARDENING        : ${WITH_HARDENING}")
 message(STATUS "  LIBRARY          : ${WITH_LIBRARY}")
 message(STATUS "  BINARY           : ${WITH_BINARY}")
