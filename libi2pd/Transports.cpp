@@ -5,6 +5,7 @@
 #include "NetDb.hpp"
 #include "Transports.h"
 #include "Config.h"
+#include "HTTP.h"
 #ifdef WITH_EVENTS
 #include "Event.h"
 #include "util.h"
@@ -144,6 +145,39 @@ namespace transport
 		m_DHKeysPairSupplier.Start ();
 		m_IsRunning = true;
 		m_Thread = new std::thread (std::bind (&Transports::Run, this));
+		std::string ntcpproxy; i2p::config::GetOption("ntcpproxy", ntcpproxy);
+		i2p::http::URL proxyurl;
+		if(ntcpproxy.size() && enableNTCP)
+		{
+			if(proxyurl.parse(ntcpproxy))
+			{
+				if(proxyurl.schema == "socks" || proxyurl.schema == "http")
+				{
+					m_NTCPServer = new NTCPServer();
+
+					NTCPServer::ProxyType proxytype = NTCPServer::eSocksProxy;
+
+					if (proxyurl.schema == "http")
+						proxytype = NTCPServer::eHTTPProxy;
+
+					m_NTCPServer->UseProxy(proxytype, proxyurl.host, proxyurl.port) ;
+					m_NTCPServer->Start();
+					if(!m_NTCPServer->NetworkIsReady())
+					{
+						LogPrint(eLogError, "Transports: NTCP failed to start with proxy");
+						m_NTCPServer->Stop();
+						delete m_NTCPServer;
+						m_NTCPServer = nullptr;
+					}
+				}
+				else
+					LogPrint(eLogError, "Transports: unsupported NTCP proxy URL ", ntcpproxy);
+			}
+			else
+				LogPrint(eLogError, "Transports: invalid NTCP proxy url ", ntcpproxy);
+			return;
+		}
+
 		// create acceptors
 		auto& addresses = context.GetRouterInfo ().GetAddresses ();
 		for (const auto& address : addresses)
@@ -345,14 +379,25 @@ namespace transport
 					if (!address->host.is_unspecified ()) // we have address now
 #else
 					boost::system::error_code ecode;
-					address->host.to_string (ecode);
+				  address->host.to_string (ecode);
 					if (!ecode)
 #endif
 					{
 						if (!peer.router->UsesIntroducer () && !peer.router->IsUnreachable ())
 						{
 							auto s = std::make_shared<NTCPSession> (*m_NTCPServer, peer.router);
-							m_NTCPServer->Connect (address->host, address->port, s);
+							if(m_NTCPServer->UsingProxy())
+							{
+								NTCPServer::RemoteAddressType remote = NTCPServer::eIP4Address;
+								std::string addr = address->host.to_string();
+
+								if(address->host.is_v6())
+									remote = NTCPServer::eIP6Address;
+
+								m_NTCPServer->ConnectWithProxy(addr, address->port, remote, s);
+							}
+							else
+								m_NTCPServer->Connect (address->host, address->port, s);
 							return true;
 						}
 					}
@@ -360,8 +405,16 @@ namespace transport
 					{
 						if (address->addressString.length () > 0) // trying to resolve
 						{
-							LogPrint (eLogDebug, "Transports: Resolving NTCP ", address->addressString);
-							NTCPResolve (address->addressString, ident);
+							if(m_NTCPServer->UsingProxy())
+							{
+								auto s = std::make_shared<NTCPSession> (*m_NTCPServer, peer.router);
+								m_NTCPServer->ConnectWithProxy(address->addressString, address->port, NTCPServer::eHostname, s);
+							}
+							else
+							{
+								LogPrint (eLogDebug, "Transports: Resolving NTCP ", address->addressString);
+								NTCPResolve (address->addressString, ident);
+							}
 							return true;
 						}
 					}
