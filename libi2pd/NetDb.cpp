@@ -2,6 +2,7 @@
 #include <fstream>
 #include <vector>
 #include <boost/asio.hpp>
+#include <stdexcept>
 
 #include "I2PEndian.h"
 #include "Base.h"
@@ -155,8 +156,7 @@ namespace data
 					auto numRouters = m_RouterInfos.size ();
 					if (numRouters == 0)
 					{
-						LogPrint(eLogError, "NetDb: no known routers, reseed seems to be totally failed");
-						break;
+                                                throw std::runtime_error("No known routers, reseed seems to be totally failed");
 					}
 					if (numRouters < 2500 || ts - lastExploratory >= 90)
 					{
