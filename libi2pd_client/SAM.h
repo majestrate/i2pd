@@ -62,15 +62,31 @@ namespace client
 	const char SAM_VALUE_FALSE[] = "false";
 	const char SAM_VALUE_HOST[] = "HOST";
 	const char SAM_VALUE_PORT[] = "PORT";
+	const char SAM_VALUE_MASTER[] = "MASTER";
+	const char SAM_PARAM_FROM_PORT[] = "FROM_PORT";
+	const char SAM_PARAM_TO_PORT[] = "TO_PORT";
+	const char SAM_PARAM_PROTOCOL[] = "PROTOCOL";
+  const char SAM_PARAM_HEADER[] = "HEADER";
 
 	enum SAMSocketType
 	{
 		eSAMSocketTypeUnknown,
-		eSAMSocketTypeSession,
+		eSAMSocketTypeMaster,
+    eSAMSocketTypeSession,
 		eSAMSocketTypeStream,
 		eSAMSocketTypeAcceptor,
 		eSAMSocketTypeTerminated
-	};
+  };
+
+
+  enum SAMSessionStyle
+  {
+    eSAMStyleRaw,
+    eSAMStyleStream,
+    eSAMStyleDatagram
+  };
+
+	void ExtractParams (char * buf, std::map<std::string, std::string>& params);
 
 	class SAMBridge;
 	struct SAMSession;
@@ -79,7 +95,7 @@ namespace client
 		public:
 
 			SAMSocket (SAMBridge& owner);
-			~SAMSocket ();			
+			~SAMSocket ();
 			void CloseStream (const char* reason); // TODO: implement it better
 
 			boost::asio::ip::tcp::socket& GetSocket () { return m_Socket; };
@@ -110,9 +126,11 @@ namespace client
 			void ProcessStreamAccept (char * buf, size_t len);
 			void ProcessDestGenerate (char * buf, size_t len);
 			void ProcessNamingLookup (char * buf, size_t len);
+    void ProcessSessionAdd(char * buff, size_t len);
+    void ProcessSessionRemove(char * buff, size_t len);
 			void SendI2PError(const std::string & msg);
 			size_t ProcessDatagramSend (char * buf, size_t len, const char * data); // from SAM 1.0
-			void ExtractParams (char * buf, std::map<std::string, std::string>& params);
+
 
 			void Connect (std::shared_ptr<const i2p::data::LeaseSet> remote);
 			void HandleConnectLeaseSetRequestComplete (std::shared_ptr<i2p::data::LeaseSet> leaseSet);
@@ -132,14 +150,53 @@ namespace client
 			SAMSocketType m_SocketType;
 			std::string m_ID; // nickname
 			bool m_IsSilent;
-			bool m_IsAccepting; // for eSAMSocketTypeAcceptor only 
+			bool m_IsAccepting; // for eSAMSocketTypeAcceptor only
 			std::shared_ptr<i2p::stream::Stream> m_Stream;
 			std::shared_ptr<SAMSession> m_Session;
+			std::string m_SAMVersion;
 	};
+
+  struct SAMSession;
+
+  struct SAMSubSession
+  {
+    SAMSessionStyle style;
+    std::string host;
+    uint16_t port;
+    uint16_t from_port;
+    uint16_t to_port;
+    uint8_t protocol;
+    uint16_t listen_port;
+    uint8_t listen_protocol;
+    bool header;
+    std::map<std::string, std::string> params;
+
+    std::list<std::shared_ptr<SAMSocket> > m_Sockets;
+    std::mutex m_SocketsMutex;
+
+
+		/** safely add a socket to this session */
+		void AddSocket(const std::shared_ptr<SAMSocket> & sock) {
+			std::lock_guard<std::mutex> lock(m_SocketsMutex);
+			m_Sockets.push_back(sock);
+		}
+
+		/** safely remove a socket from this session */
+		void DelSocket(const std::shared_ptr<SAMSocket> & sock) {
+			std::lock_guard<std::mutex> lock(m_SocketsMutex);
+			m_Sockets.remove(sock);
+		}
+
+    ~SAMSubSession() { CloseStreams(); }
+
+    void CloseStreams();
+  };
 
 	struct SAMSession
 	{
+
 		std::shared_ptr<ClientDestination> localDestination;
+    std::map<std::string, SAMSubSession> m_SubSessions;
 		std::list<std::shared_ptr<SAMSocket> > m_Sockets;
 		std::shared_ptr<boost::asio::ip::udp::endpoint> UDPEndpoint;
 		std::mutex m_SocketsMutex;

@@ -11,20 +11,27 @@ namespace i2p
 {
 namespace datagram
 {
-	DatagramDestination::DatagramDestination (std::shared_ptr<i2p::client::ClientDestination> owner): 
+	DatagramDestination::DatagramDestination (std::shared_ptr<i2p::client::ClientDestination> owner):
 		m_Owner (owner.get()),
 		m_Receiver (nullptr)
 	{
 		m_Identity.FromBase64 (owner->GetIdentity()->ToBase64());
 	}
-	
+
 	DatagramDestination::~DatagramDestination ()
 	{
 		m_Sessions.clear();
 	}
 
+	void DatagramDestination::SendRawTo(const uint8_t * payload, size_t len, const i2p::data::IdentHash & identity, uint8_t protocol, uint16_t fromPort, uint16_t toPort)
+	{
+		auto msg = CreateDataMessage (payload, len, protocol, fromPort, toPort);
+		auto session = ObtainSession(identity);
+		session->SendMsg(msg);
+	}
+
 	void DatagramDestination::SendDatagramTo(const uint8_t * payload, size_t len, const i2p::data::IdentHash & identity, uint16_t fromPort, uint16_t toPort)
-	{	
+	{
 		auto owner = m_Owner;
 		std::vector<uint8_t> v(MAX_DATAGRAM_SIZE);
 		uint8_t * buf = v.data();
@@ -33,18 +40,18 @@ namespace datagram
 		auto signatureLen = m_Identity.GetSignatureLen ();
 		uint8_t * buf1 = signature + signatureLen;
 		size_t headerLen = identityLen + signatureLen;
-		
-		memcpy (buf1, payload, len);	
+
+		memcpy (buf1, payload, len);
 		if (m_Identity.GetSigningKeyType () == i2p::data::SIGNING_KEY_TYPE_DSA_SHA1)
 		{
-			uint8_t hash[32];	
+			uint8_t hash[32];
 			SHA256(buf1, len, hash);
 			owner->Sign (hash, 32, signature);
 		}
 		else
 			owner->Sign (buf1, len, signature);
 
-		auto msg = CreateDataMessage (buf, len + headerLen, fromPort, toPort);
+		auto msg = CreateDataMessage (buf, len + headerLen, i2p::client::PROTOCOL_TYPE_DATAGRAM, fromPort, toPort);
 		auto session = ObtainSession(identity);
 		session->SendMsg(msg);
 	}
@@ -63,10 +70,10 @@ namespace datagram
 			uint8_t hash[32];
 			SHA256(buf + headerLen, len - headerLen, hash);
 			verified = identity.Verify (hash, 32, signature);
-		}	
-		else	
+		}
+		else
 			verified = identity.Verify (buf + headerLen, len - headerLen, signature);
-				
+
 		if (verified)
 		{
 			auto h = identity.GetIdentHash();
@@ -79,7 +86,7 @@ namespace datagram
 				LogPrint (eLogWarning, "DatagramDestination: no receiver for port ", toPort);
 		}
 		else
-			LogPrint (eLogWarning, "Datagram signature verification failed");	
+			LogPrint (eLogWarning, "Datagram signature verification failed");
 	}
 
 	DatagramDestination::Receiver DatagramDestination::FindReceiver(uint16_t port)
@@ -103,7 +110,7 @@ namespace datagram
 			LogPrint (eLogWarning, "Datagram: decompression failed");
 	}
 
-	std::shared_ptr<I2NPMessage> DatagramDestination::CreateDataMessage (const uint8_t * payload, size_t len, uint16_t fromPort, uint16_t toPort)
+	std::shared_ptr<I2NPMessage> DatagramDestination::CreateDataMessage (const uint8_t * payload, size_t len, uint8_t protocol, uint16_t fromPort, uint16_t toPort)
 	{
 		auto msg = NewI2NPMessage ();
 		uint8_t * buf = msg->GetPayload ();
@@ -113,24 +120,24 @@ namespace datagram
 		{
 			htobe32buf (msg->GetPayload (), size); // length
 			htobe16buf (buf + 4, fromPort); // source port
-			htobe16buf (buf + 6, toPort); // destination port 
-			buf[9] = i2p::client::PROTOCOL_TYPE_DATAGRAM; // datagram protocol
-			msg->len += size + 4; 
+			htobe16buf (buf + 6, toPort); // destination port
+			buf[9] = protocol;
+			msg->len += size + 4;
 			msg->FillI2NPMessageHeader (eI2NPData);
-		}	
+		}
 		else
 			msg = nullptr;
 		return msg;
 	}
 
 	void DatagramDestination::CleanUp ()
-	{			
+	{
 		if (m_Sessions.empty ()) return;
 		auto now = i2p::util::GetMillisecondsSinceEpoch();
 		LogPrint(eLogDebug, "DatagramDestination: clean up sessions");
 		std::unique_lock<std::mutex> lock(m_SessionsMutex);
 		// for each session ...
-		for (auto it = m_Sessions.begin (); it != m_Sessions.end (); ) 
+		for (auto it = m_Sessions.begin (); it != m_Sessions.end (); )
 		{
 			// check if expired
 			if (now - it->second->LastActivity() >= DATAGRAM_SESSION_MAX_IDLE)
@@ -143,7 +150,7 @@ namespace datagram
 				it++;
 		}
 	}
-	
+
 	std::shared_ptr<DatagramSession> DatagramDestination::ObtainSession(const i2p::data::IdentHash & identity)
 	{
 		std::shared_ptr<DatagramSession> session = nullptr;
@@ -169,7 +176,7 @@ namespace datagram
 		}
 		return nullptr;
 	}
-	
+
 	DatagramSession::DatagramSession(i2p::client::ClientDestination * localDestination,
 																	 const i2p::data::IdentHash & remoteIdent) :
 		m_LocalDestination(localDestination),
@@ -203,7 +210,7 @@ namespace datagram
 	{
 		if(!m_RoutingSession)
 			return DatagramSession::Info(nullptr, nullptr, m_LastUse);
-		
+
 		auto routingPath = m_RoutingSession->GetSharedRoutingPath();
 		if (!routingPath)
 			return DatagramSession::Info(nullptr, nullptr, m_LastUse);
@@ -318,7 +325,7 @@ namespace datagram
 			m_RoutingSession->SetSharedRoutingPath(path);
 		}
 		return path;
-	
+
 	}
 
 	void DatagramSession::HandleLeaseSetUpdated(std::shared_ptr<i2p::data::LeaseSet> ls)
@@ -366,4 +373,3 @@ namespace datagram
 	}
 }
 }
-
