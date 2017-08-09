@@ -59,10 +59,6 @@ namespace i2p
 		bool ntcp; i2p::config::GetOption("ntcp", ntcp);
 		bool ssu; i2p::config::GetOption("ssu", ssu);
 
-		bool fakehttps; i2p::config::GetOption("fakehttps", fakehttps);
-		if (fakehttps)
-			port = 443;
-
 		if (ipv4)
 		{
 			std::string host = "127.0.0.1";
@@ -104,6 +100,11 @@ namespace i2p
 
 	void RouterContext::UpdateRouterInfo ()
 	{
+
+		bool fakehttps; i2p::config::GetOption("fakehttps", fakehttps);
+		if (fakehttps)
+			UpdatePort(443);
+
 		m_RouterInfo.CreateBuffer (m_Keys);
 		m_RouterInfo.SaveToFile (i2p::fs::DataDirPath (ROUTER_INFO));
 		m_LastUpdateTime = i2p::util::GetSecondsSinceEpoch ();
