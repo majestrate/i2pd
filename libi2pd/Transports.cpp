@@ -180,6 +180,7 @@ namespace transport
 
 		// create acceptors
 		auto& addresses = context.GetRouterInfo ().GetAddresses ();
+		bool fakehttps; i2p::config::GetOption("fakehttps", fakehttps);
 		for (const auto& address : addresses)
 		{
 			if (!address) continue;
@@ -198,8 +199,10 @@ namespace transport
 
 			if (address->transportStyle == RouterInfo::eTransportSSU)
 			{
-				if (m_SSUServer == nullptr && enableSSU)
+
+				if (m_SSUServer == nullptr && enableSSU && !fakehttps)
 				{
+
 					if (address->host.is_v4())
 						m_SSUServer = new SSUServer (address->port);
 					else
