@@ -7,6 +7,7 @@
 #include <thread>
 #include <mutex>
 #include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
 #include "Crypto.h"
 #include "Identity.h"
 #include "RouterInfo.h"
@@ -49,7 +50,7 @@ namespace transport
 	{
 		public:
 
-			NTCPSession (NTCPServer& server, std::shared_ptr<const i2p::data::RouterInfo> in_RemoteRouter = nullptr);
+    	NTCPSession (NTCPServer& server, std::shared_ptr<const i2p::data::RouterInfo> in_RemoteRouter = nullptr);
 			~NTCPSession ();
 			void Terminate ();
 			void Done ();
@@ -63,6 +64,8 @@ namespace transport
 			void SendI2NPMessages (const std::vector<std::shared_ptr<I2NPMessage> >& msgs);
 
 		private:
+
+    void ClientLoginReal();
 
 			void PostI2NPMessages (std::vector<std::shared_ptr<I2NPMessage> > msgs);
 			void Connected ();
@@ -124,6 +127,8 @@ namespace transport
 
 			bool m_IsSending;
 			std::vector<std::shared_ptr<I2NPMessage> > m_SendQueue;
+    boost::asio::ssl::context m_tlsContext;
+    std::unique_ptr<boost::asio::ssl::stream<boost::asio::ip::tcp::socket&> > m_TlsSocket;
 	};
 
 	// TODO: move to NTCP.h/.cpp

@@ -58,6 +58,7 @@ namespace config {
 			("ntcp", value<bool>()->default_value(true),                      "Enable NTCP transport")
 			("ssu", value<bool>()->default_value(true),                       "Enable SSU transport")
 			("ntcpproxy", value<std::string>()->default_value(""),            "Proxy URL for NTCP transport")
+			("fakehttps", value<bool>()->default_value(false),                "Have inbound ntcp pretend to be on port 443 with https")
 #ifdef _WIN32
 			("svcctl", value<std::string>()->default_value(""),               "Windows service management ('install' or 'remove')")
 			("insomnia", value<bool>()->zero_tokens()->default_value(false),  "Prevent system from sleeping")
@@ -322,4 +323,3 @@ namespace config {
 
 } // namespace config
 } // namespace i2p
-

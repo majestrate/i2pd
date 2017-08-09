@@ -14,6 +14,7 @@
 #include "NTCPSession.h"
 #include "HTTP.h"
 #include "util.h"
+#include "Config.h"
 #ifdef WITH_EVENTS
 #include "Event.h"
 #endif
@@ -28,7 +29,8 @@ namespace transport
 		TransportSession (in_RemoteRouter, NTCP_ESTABLISH_TIMEOUT),
 		m_Server (server), m_Socket (m_Server.GetService ()),
 		m_IsEstablished (false), m_IsTerminated (false),
-		m_ReceiveBufferOffset (0), m_NextMessage (nullptr), m_IsSending (false)
+		m_ReceiveBufferOffset (0), m_NextMessage (nullptr), m_IsSending (false),
+		m_tlsContext(boost::asio::ssl::context::sslv23)
 	{
 		m_Establisher = new Establisher;
 	}
@@ -82,7 +84,12 @@ namespace transport
 		{
 			m_IsTerminated = true;
 			m_IsEstablished = false;
+
 			m_Socket.close ();
+
+			if(m_TlsSocket)
+				m_TlsSocket.reset(nullptr);
+
 			transports.PeerDisconnected (shared_from_this ());
 			m_Server.RemoveNTCPSession (shared_from_this ());
 			m_SendQueue.clear ();
@@ -107,6 +114,29 @@ namespace transport
 
 	void NTCPSession::ClientLogin ()
 	{
+		if(m_Socket.remote_endpoint().port() == 443)
+		{
+				m_TlsSocket.reset(new boost::asio::ssl::stream<boost::asio::ip::tcp::socket&>(m_Socket, m_tlsContext));
+				// kuz putin :^)
+				m_TlsSocket->set_verify_mode(boost::asio::ssl::verify_none);
+				m_TlsSocket->async_handshake(boost::asio::ssl::stream_base::client, [&](const boost::system::error_code & ec) {
+					if(ec)
+					{
+						if(ec != boost::asio::error::operation_aborted)
+							Terminate();
+					}
+					else
+						ClientLoginReal();
+				});
+		}
+		else
+			ClientLoginReal();
+	}
+
+	void NTCPSession::ClientLoginReal ()
+	{
+
+
 		if (!m_DHKeysPair)
 			m_DHKeysPair = transports.GetNextDHKeysPair ();
 		// send Phase1
@@ -117,8 +147,12 @@ namespace transport
 		for (int i = 0; i < 32; i++)
 			m_Establisher->phase1.HXxorHI[i] ^= ident[i];
 
-		boost::asio::async_write (m_Socket, boost::asio::buffer (&m_Establisher->phase1, sizeof (NTCPPhase1)), boost::asio::transfer_all (),
-			std::bind(&NTCPSession::HandlePhase1Sent, shared_from_this (), std::placeholders::_1, std::placeholders::_2));
+		if(m_TlsSocket)
+			boost::asio::async_write (*m_TlsSocket, boost::asio::buffer (&m_Establisher->phase1, sizeof (NTCPPhase1)), boost::asio::transfer_all (),
+																std::bind(&NTCPSession::HandlePhase1Sent, shared_from_this (), std::placeholders::_1, std::placeholders::_2));
+		else
+			boost::asio::async_write (m_Socket, boost::asio::buffer (&m_Establisher->phase1, sizeof (NTCPPhase1)), boost::asio::transfer_all (),
+															std::bind(&NTCPSession::HandlePhase1Sent, shared_from_this (), std::placeholders::_1, std::placeholders::_2));
 	}
 
 	void NTCPSession::ServerLogin ()
@@ -141,9 +175,14 @@ namespace transport
 		}
 		else
 		{
-			boost::asio::async_read (m_Socket, boost::asio::buffer(&m_Establisher->phase2, sizeof (NTCPPhase2)), boost::asio::transfer_all (),
-				std::bind(&NTCPSession::HandlePhase2Received, shared_from_this (),
-					std::placeholders::_1, std::placeholders::_2));
+			if(m_TlsSocket)
+				boost::asio::async_read (*m_TlsSocket, boost::asio::buffer(&m_Establisher->phase2, sizeof (NTCPPhase2)), boost::asio::transfer_all (),
+																 std::bind(&NTCPSession::HandlePhase2Received, shared_from_this (),
+																					 std::placeholders::_1, std::placeholders::_2));
+			else
+				boost::asio::async_read (m_Socket, boost::asio::buffer(&m_Establisher->phase2, sizeof (NTCPPhase2)), boost::asio::transfer_all (),
+																 std::bind(&NTCPSession::HandlePhase2Received, shared_from_this (),
+																					 std::placeholders::_1, std::placeholders::_2));
 		}
 	}
 
@@ -227,9 +266,14 @@ namespace transport
 		}
 		else
 		{
-			boost::asio::async_read (m_Socket, boost::asio::buffer(m_ReceiveBuffer, NTCP_DEFAULT_PHASE3_SIZE), boost::asio::transfer_all (),
-				std::bind(&NTCPSession::HandlePhase3Received, shared_from_this (),
-					std::placeholders::_1, std::placeholders::_2, tsB));
+			if(m_TlsSocket)
+				boost::asio::async_read (*m_TlsSocket, boost::asio::buffer(m_ReceiveBuffer, NTCP_DEFAULT_PHASE3_SIZE), boost::asio::transfer_all (),
+																 std::bind(&NTCPSession::HandlePhase3Received, shared_from_this (),
+																					 std::placeholders::_1, std::placeholders::_2, tsB));
+			else
+				boost::asio::async_read (m_Socket, boost::asio::buffer(m_ReceiveBuffer, NTCP_DEFAULT_PHASE3_SIZE), boost::asio::transfer_all (),
+															 std::bind(&NTCPSession::HandlePhase3Received, shared_from_this (),
+																				 std::placeholders::_1, std::placeholders::_2, tsB));
 		}
 	}
 
@@ -379,9 +423,14 @@ namespace transport
 			{
 				// we need more bytes for Phase3
 				expectedSize += paddingLen;
-				boost::asio::async_read (m_Socket, boost::asio::buffer(m_ReceiveBuffer + NTCP_DEFAULT_PHASE3_SIZE, expectedSize - NTCP_DEFAULT_PHASE3_SIZE), boost::asio::transfer_all (),
-				std::bind(&NTCPSession::HandlePhase3ExtraReceived, shared_from_this (),
-					std::placeholders::_1, std::placeholders::_2, tsB, paddingLen));
+				if(m_TlsSocket)
+					boost::asio::async_read (*m_TlsSocket, boost::asio::buffer(m_ReceiveBuffer + NTCP_DEFAULT_PHASE3_SIZE, expectedSize - NTCP_DEFAULT_PHASE3_SIZE), boost::asio::transfer_all (),
+																	 std::bind(&NTCPSession::HandlePhase3ExtraReceived, shared_from_this (),
+																						 std::placeholders::_1, std::placeholders::_2, tsB, paddingLen));
+				else
+					boost::asio::async_read (m_Socket, boost::asio::buffer(m_ReceiveBuffer + NTCP_DEFAULT_PHASE3_SIZE, expectedSize - NTCP_DEFAULT_PHASE3_SIZE), boost::asio::transfer_all (),
+																	 std::bind(&NTCPSession::HandlePhase3ExtraReceived, shared_from_this (),
+																						 std::placeholders::_1, std::placeholders::_2, tsB, paddingLen));
 			}
 			else
 				HandlePhase3 (tsB, paddingLen);
@@ -452,8 +501,13 @@ namespace transport
 		if (paddingSize > 0) signatureLen += (16 - paddingSize);
 		m_Encryption.Encrypt (m_ReceiveBuffer, signatureLen, m_ReceiveBuffer);
 
-		boost::asio::async_write (m_Socket, boost::asio::buffer (m_ReceiveBuffer, signatureLen), boost::asio::transfer_all (),
-			std::bind(&NTCPSession::HandlePhase4Sent, shared_from_this (), std::placeholders::_1, std::placeholders::_2));
+		if(m_TlsSocket)
+
+			boost::asio::async_write (*m_TlsSocket, boost::asio::buffer (m_ReceiveBuffer, signatureLen), boost::asio::transfer_all (),
+																std::bind(&NTCPSession::HandlePhase4Sent, shared_from_this (), std::placeholders::_1, std::placeholders::_2));
+		else
+			boost::asio::async_write (m_Socket, boost::asio::buffer (m_ReceiveBuffer, signatureLen), boost::asio::transfer_all (),
+															std::bind(&NTCPSession::HandlePhase4Sent, shared_from_this (), std::placeholders::_1, std::placeholders::_2));
 	}
 
 	void NTCPSession::HandlePhase4Sent (const boost::system::error_code& ecode,  std::size_t bytes_transferred)
@@ -528,9 +582,15 @@ namespace transport
 
 	void NTCPSession::Receive ()
 	{
-		m_Socket.async_read_some (boost::asio::buffer(m_ReceiveBuffer + m_ReceiveBufferOffset, NTCP_BUFFER_SIZE - m_ReceiveBufferOffset),
-			std::bind(&NTCPSession::HandleReceived, shared_from_this (),
-			std::placeholders::_1, std::placeholders::_2));
+		if(m_TlsSocket)
+
+			m_TlsSocket->async_read_some (boost::asio::buffer(m_ReceiveBuffer + m_ReceiveBufferOffset, NTCP_BUFFER_SIZE - m_ReceiveBufferOffset),
+																std::bind(&NTCPSession::HandleReceived, shared_from_this (),
+																					std::placeholders::_1, std::placeholders::_2));
+		else
+			m_Socket.async_read_some (boost::asio::buffer(m_ReceiveBuffer + m_ReceiveBufferOffset, NTCP_BUFFER_SIZE - m_ReceiveBufferOffset),
+																std::bind(&NTCPSession::HandleReceived, shared_from_this (),
+																					std::placeholders::_1, std::placeholders::_2));
 	}
 
 	void NTCPSession::HandleReceived (const boost::system::error_code& ecode, std::size_t bytes_transferred)
@@ -680,8 +740,13 @@ namespace transport
 	void NTCPSession::Send (std::shared_ptr<i2p::I2NPMessage> msg)
 	{
 		m_IsSending = true;
-		boost::asio::async_write (m_Socket, CreateMsgBuffer (msg), boost::asio::transfer_all (),
-			std::bind(&NTCPSession::HandleSent, shared_from_this (), std::placeholders::_1, std::placeholders::_2, std::vector<std::shared_ptr<I2NPMessage> >{ msg }));
+		if(m_TlsSocket)
+
+			boost::asio::async_write (*m_TlsSocket, CreateMsgBuffer (msg), boost::asio::transfer_all (),
+																std::bind(&NTCPSession::HandleSent, shared_from_this (), std::placeholders::_1, std::placeholders::_2, std::vector<std::shared_ptr<I2NPMessage> >{ msg }));
+		else
+			boost::asio::async_write (m_Socket, CreateMsgBuffer (msg), boost::asio::transfer_all (),
+																std::bind(&NTCPSession::HandleSent, shared_from_this (), std::placeholders::_1, std::placeholders::_2, std::vector<std::shared_ptr<I2NPMessage> >{ msg }));
 	}
 
 	boost::asio::const_buffers_1 NTCPSession::CreateMsgBuffer (std::shared_ptr<I2NPMessage> msg)
@@ -727,8 +792,14 @@ namespace transport
 		std::vector<boost::asio::const_buffer> bufs;
 		for (const auto& it: msgs)
 			bufs.push_back (CreateMsgBuffer (it));
-		boost::asio::async_write (m_Socket, bufs, boost::asio::transfer_all (),
-			std::bind(&NTCPSession::HandleSent, shared_from_this (), std::placeholders::_1, std::placeholders::_2, msgs));
+
+		if(m_TlsSocket)
+
+			boost::asio::async_write (*m_TlsSocket, bufs, boost::asio::transfer_all (),
+																std::bind(&NTCPSession::HandleSent, shared_from_this (), std::placeholders::_1, std::placeholders::_2, msgs));
+		else
+			boost::asio::async_write (m_Socket, bufs, boost::asio::transfer_all (),
+																std::bind(&NTCPSession::HandleSent, shared_from_this (), std::placeholders::_1, std::placeholders::_2, msgs));
 	}
 
 	void NTCPSession::HandleSent (const boost::system::error_code& ecode, std::size_t bytes_transferred, std::vector<std::shared_ptr<I2NPMessage> > msgs)
@@ -824,6 +895,7 @@ namespace transport
 			}
 			else
 			{
+				bool fakehttps; i2p::config::GetOption("fakehttps", fakehttps);
 				// create acceptors
 				auto& addresses = context.GetRouterInfo ().GetAddresses ();
 				for (const auto& address: addresses)
@@ -831,8 +903,15 @@ namespace transport
 					if (!address) continue;
 					if (address->transportStyle == i2p::data::RouterInfo::eTransportNTCP)
 					{
+
+						if (fakehttps)
+						{
+							i2p::config::GetOption("port", address->port);
+						}
+
 						if (address->host.is_v4())
 						{
+
 							try
 							{
 								m_NTCPAcceptor = new boost::asio::ip::tcp::acceptor (m_Service, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), address->port));

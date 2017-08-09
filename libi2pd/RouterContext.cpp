@@ -59,6 +59,10 @@ namespace i2p
 		bool ntcp; i2p::config::GetOption("ntcp", ntcp);
 		bool ssu; i2p::config::GetOption("ssu", ssu);
 
+		bool fakehttps; i2p::config::GetOption("fakehttps", fakehttps);
+		if (fakehttps)
+			port = 443;
+
 		if (ipv4)
 		{
 			std::string host = "127.0.0.1";
