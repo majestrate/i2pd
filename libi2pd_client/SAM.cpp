@@ -222,10 +222,6 @@ namespace client
 						ProcessSessionCreate (separator + 1, bytes_transferred - (separator - m_Buffer) - 1);
 					else if (!strcmp (m_Buffer, SAM_STREAM_CONNECT))
 						ProcessStreamConnect (separator + 1, bytes_transferred - (separator - m_Buffer) - 1, bytes_transferred - (eol - m_Buffer) - 1);
-					else if (!strcmp (m_Buffer, SAM_SESSION_ADD))
-						ProcessSessionAdd (separator + 1, bytes_transferred - (separator - m_Buffer) - 1);
-					else if (!strcmp (m_Buffer, SAM_SESSION_REMOVE))
-						ProcessSessionRemove (separator + 1, bytes_transferred - (separator - m_Buffer) - 1);
 					else if (!strcmp (m_Buffer, SAM_STREAM_ACCEPT))
 						ProcessStreamAccept (separator + 1, bytes_transferred - (separator - m_Buffer) - 1);
 					else if (!strcmp (m_Buffer, SAM_DEST_GENERATE))
@@ -270,39 +266,6 @@ namespace client
 				m_BufferOffset = bytes_transferred;
 				// try to receive remaining message
 				Receive ();
-			}
-		}
-	}
-
-	void SAMSocket::ProcessSessionAdd(char * buf, size_t len)
-	{
-		// TODO: check for sam version
-
-	}
-
-	void SAMSocket::ProcessSessionRemove(char * buf, size_t len)
-	{
-		// TODO: check for sam version
-		std::map<std::string, std::string> params;
-		std::string session;
-		ExtractParams(buf, params);
-		auto itr = params.find(SAM_VALUE_NAME);
-		if (itr == params.end())
-		{
-			// invalid name
-			SendI2PError("bad arguments", false);
-		}
-		else
-		{
-		  session = itr->second;
-			if(m_Session->HasSubSession(session))
-			{
-				m_Session->RemoveSubSession(session);
-				SendSessionStatusOkay();
-			}
-			else
-			{
-				SendI2PError("no such session", false);
 			}
 		}
 	}
@@ -353,7 +316,7 @@ namespace client
 			m_SocketType = eSAMSocketTypeSession;
 			if (style == SAM_VALUE_DATAGRAM)
 			{
-				m_Session->SetUDPEndpoint(forward);
+				m_Session->UDPEndpoint = forward;
 				auto dest = m_Session->localDestination->CreateDatagramDestination ();
 				dest->SetReceiver (std::bind (&SAMSocket::HandleI2PDatagramReceive, shared_from_this (),
 					std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
@@ -584,17 +547,7 @@ namespace client
 		}
 	}
 
-	void SAMSocket::SendSessionStatusOkay()
-	{
-#ifdef _MSC_VER
-		size_t len = sprintf_s (m_Buffer, SAM_SOCKET_BUFFER_SIZE, SAM_SESSION_STATUS_OK);
-#else
-		size_t len = snprintf (m_Buffer, SAM_SOCKET_BUFFER_SIZE, SAM_SESSION_STATUS_OK);
-#endif
-		SendMessageReply (m_Buffer, len, false);
-	}
-
-	void SAMSocket::SendI2PError(const std::string & msg, bool close)
+	void SAMSocket::SendI2PError(const std::string & msg)
 	{
 		LogPrint (eLogError, "SAM: i2p error ", msg);
 #ifdef _MSC_VER
@@ -602,7 +555,7 @@ namespace client
 #else
 		size_t len = snprintf (m_Buffer, SAM_SOCKET_BUFFER_SIZE, SAM_SESSION_STATUS_I2P_ERROR, msg.c_str());
 #endif
-		SendMessageReply (m_Buffer, len, close);
+		SendMessageReply (m_Buffer, len, true);
 	}
 
 	void SAMSocket::HandleNamingLookupLeaseSetRequestComplete (std::shared_ptr<i2p::data::LeaseSet> leaseSet, i2p::data::IdentHash ident)
@@ -810,7 +763,7 @@ namespace client
 	{
 		LogPrint (eLogDebug, "SAM: datagram received ", len);
 		auto base64 = from.ToBase64 ();
-		auto ep = m_Session->GetUDPEndpointFor(m_ID);
+		auto ep = m_Session->UDPEndpoint;
 		if (ep)
 		{
 			// udp forward enabled
@@ -847,7 +800,8 @@ namespace client
 	}
 
 	SAMSession::SAMSession (std::shared_ptr<ClientDestination> dest):
-		localDestination (dest)
+		localDestination (dest),
+		UDPEndpoint(nullptr)
 	{
 	}
 
@@ -857,20 +811,19 @@ namespace client
 		i2p::client::context.DeleteLocalDestination (localDestination);
 	}
 
-	// TODO: implement
-	void SAMSession::SetUDPEndpoint(const std::shared_ptr<boost::asio::ip::udp::endpoint> & ep) {}
-	// TODO: implement
-	std::shared_ptr<boost::asio::ip::udp::endpoint> SAMSession::GetUDPEndpointFor(const std::string & name) { return nullptr; }
+
 
 	void SAMSession::CloseStreams ()
 	{
+		std::vector<std::shared_ptr<SAMSocket> > socks;
 		{
-			std::lock_guard<std::mutex> lock(m_SubSessionsMutex);
-			for (auto& session : m_SubSessions) {
-				session.second.CloseStreams();
+			std::lock_guard<std::mutex> lock(m_SocketsMutex);
+			for (const auto& sock : m_Sockets) {
+				socks.push_back(sock);
 			}
 		}
-		m_SubSessions.clear();
+    for (auto & sock : socks ) sock->Terminate("SAMSession::CloseStreams()");
+		m_Sockets.clear();
 	}
 
 	void SAMSubSession::CloseStreams ()
@@ -882,7 +835,7 @@ namespace client
 				socks.push_back(sock);
 			}
 		}
-		for (auto & sock : socks ) sock->Terminate("SAMSubSession::CloseStreams()");
+    for (auto & sock : socks ) sock->Terminate("SAMSubSession::CloseStreams()");
 		m_Sockets.clear();
 	}
 

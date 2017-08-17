@@ -62,33 +62,29 @@ namespace client
 	const char SAM_VALUE_FALSE[] = "false";
 	const char SAM_VALUE_HOST[] = "HOST";
 	const char SAM_VALUE_PORT[] = "PORT";
-	const char SAM_VALUE_NAME[] = "NAME";
 	const char SAM_VALUE_MASTER[] = "MASTER";
 	const char SAM_PARAM_FROM_PORT[] = "FROM_PORT";
 	const char SAM_PARAM_TO_PORT[] = "TO_PORT";
 	const char SAM_PARAM_PROTOCOL[] = "PROTOCOL";
-	const char SAM_PARAM_HEADER[] = "HEADER";
-	const char SAM_SESSION_ADD[] = "SESSION ADD";
-	const char SAM_SESSION_REMOVE[] = "SESSION REMOVE";
-	const char SAM_SESSION_STATUS_OK[] = "SESSION STATUS RESULT=OK\n";
+  const char SAM_PARAM_HEADER[] = "HEADER";
 
 	enum SAMSocketType
 	{
 		eSAMSocketTypeUnknown,
 		eSAMSocketTypeMaster,
-		eSAMSocketTypeSession,
+    eSAMSocketTypeSession,
 		eSAMSocketTypeStream,
 		eSAMSocketTypeAcceptor,
 		eSAMSocketTypeTerminated
-	};
+  };
 
 
-	enum SAMSessionStyle
-	{
-		eSAMStyleRaw,
-		eSAMStyleStream,
-		eSAMStyleDatagram
-	};
+  enum SAMSessionStyle
+  {
+    eSAMStyleRaw,
+    eSAMStyleStream,
+    eSAMStyleDatagram
+  };
 
 	void ExtractParams (char * buf, std::map<std::string, std::string>& params);
 
@@ -106,9 +102,10 @@ namespace client
 			void ReceiveHandshake ();
 			void SetSocketType (SAMSocketType socketType) { m_SocketType = socketType; };
 			SAMSocketType GetSocketType () const { return m_SocketType; };
-			void Terminate (const char* reason);
 
-		 private:
+                        void Terminate (const char* reason);
+
+                private:
 
 			void HandleHandshakeReceived (const boost::system::error_code& ecode, std::size_t bytes_transferred);
 			void HandleHandshakeReplySent (const boost::system::error_code& ecode, std::size_t bytes_transferred);
@@ -118,7 +115,6 @@ namespace client
 			void Receive ();
 			void HandleReceived (const boost::system::error_code& ecode, std::size_t bytes_transferred);
 
-			void SendSessionStatusOkay();
 			void I2PReceive ();
 			void HandleI2PReceive (const boost::system::error_code& ecode, std::size_t bytes_transferred);
 			void HandleI2PAccept (std::shared_ptr<i2p::stream::Stream> stream);
@@ -130,9 +126,9 @@ namespace client
 			void ProcessStreamAccept (char * buf, size_t len);
 			void ProcessDestGenerate (char * buf, size_t len);
 			void ProcessNamingLookup (char * buf, size_t len);
-			void ProcessSessionAdd(char * buff, size_t len);
-			void ProcessSessionRemove(char * buff, size_t len);
-			void SendI2PError(const std::string & msg, bool close = true);
+    void ProcessSessionAdd(char * buff, size_t len);
+    void ProcessSessionRemove(char * buff, size_t len);
+			void SendI2PError(const std::string & msg);
 			size_t ProcessDatagramSend (char * buf, size_t len, const char * data); // from SAM 1.0
 
 
@@ -160,32 +156,24 @@ namespace client
 			std::string m_SAMVersion;
 	};
 
-	struct SAMSession;
+  struct SAMSession;
 
-	struct SAMSubSession
-	{
-		void ParseParam(const std::map<std::string, std::string> & params);
+  struct SAMSubSession
+  {
+    SAMSessionStyle style;
+    std::string host;
+    uint16_t port;
+    uint16_t from_port;
+    uint16_t to_port;
+    uint8_t protocol;
+    uint16_t listen_port;
+    uint8_t listen_protocol;
+    bool header;
+    std::map<std::string, std::string> params;
 
-		SAMSessionStyle style;
-		std::string host;
-		uint16_t port;
-		uint16_t from_port;
-		uint16_t to_port;
-		uint8_t protocol;
-		uint16_t listen_port;
-		uint8_t listen_protocol;
-		bool header;
-		std::list<std::shared_ptr<SAMSocket> > m_Sockets;
-		std::mutex m_SocketsMutex;
+    std::list<std::shared_ptr<SAMSocket> > m_Sockets;
+    std::mutex m_SocketsMutex;
 
-
-		std::list<std::shared_ptr<SAMSocket> > ListSockets()
-		{
-			std::lock_guard<std::mutex> l(m_SocketsMutex);
-			std::list<std::shared_ptr<SAMSocket> > sockets;
-			for (const auto & itr : m_Sockets) sockets.push_back(itr);
-			return sockets;
-		};
 
 		/** safely add a socket to this session */
 		void AddSocket(const std::shared_ptr<SAMSocket> & sock) {
@@ -199,77 +187,38 @@ namespace client
 			m_Sockets.remove(sock);
 		}
 
-		~SAMSubSession() { CloseStreams(); }
+    ~SAMSubSession() { CloseStreams(); }
 
-		void CloseStreams();
-	};
+    void CloseStreams();
+  };
 
 	struct SAMSession
 	{
 
 		std::shared_ptr<ClientDestination> localDestination;
-		std::map<std::string, SAMSubSession> m_SubSessions;
-		std::mutex m_SubSessionsMutex;
-
-
-		std::shared_ptr<boost::asio::ip::udp::endpoint >GetUDPEndpointFor(const std::string & nickname);
-		// for backwards compat
-		void SetUDPEndpoint(const std::shared_ptr<boost::asio::ip::udp::endpoint> & ep);
-
-		typedef std::function<void(SAMSubSession&)> VisitorFunc;
-
-		// does not aqcuire mutex
-		void VisitDefaultSession(VisitorFunc visitor)
-		{
-			VisitSubSession("DEFAULT", visitor);
-		}
-
-		bool HasSubSession(const std::string & name)
-		{
-			return m_SubSessions.find(name) != m_SubSessions.end();
-		}
-
-		void RemoveSubSession(const std::string & name)
-		{
-			std::unique_lock<std::mutex> l(m_SubSessionsMutex);
-			m_SubSessions.erase(name);
-		}
-
-		void VisitSubSession(const std::string & name, VisitorFunc visitor )
-		{
-			auto itr = m_SubSessions.find(name);
-			if(itr != m_SubSessions.end())
-			{
-				visitor(itr->second);
-			}
-		}
+    std::map<std::string, SAMSubSession> m_SubSessions;
+		std::list<std::shared_ptr<SAMSocket> > m_Sockets;
+		std::shared_ptr<boost::asio::ip::udp::endpoint> UDPEndpoint;
+		std::mutex m_SocketsMutex;
 
 		/** safely add a socket to this session */
 		void AddSocket(const std::shared_ptr<SAMSocket> & sock) {
-			VisitDefaultSession([sock](SAMSubSession & m) {
-					m.AddSocket(sock);
-				});
+			std::lock_guard<std::mutex> lock(m_SocketsMutex);
+			m_Sockets.push_back(sock);
 		}
 
 		/** safely remove a socket from this session */
 		void DelSocket(const std::shared_ptr<SAMSocket> & sock) {
-			VisitDefaultSession([sock](SAMSubSession & m) {
-				m.DelSocket(sock);
-			});
+			std::lock_guard<std::mutex> lock(m_SocketsMutex);
+			m_Sockets.remove(sock);
 		}
 
 		/** get a list holding a copy of all sam sockets from this session */
 		std::list<std::shared_ptr<SAMSocket> > ListSockets() {
 			std::list<std::shared_ptr<SAMSocket> > l;
 			{
-				std::unique_lock<std::mutex> lock(m_SubSessionsMutex);
-				for(auto & itr : m_SubSessions)
-				{
-					for(const auto & i : itr.second.ListSockets())
-					{
-						l.push_back(i);
-					}
-				}
+				std::lock_guard<std::mutex> lock(m_SocketsMutex);
+				for(const auto& sock : m_Sockets ) l.push_back(sock);
 			}
 			return l;
 		}
@@ -291,7 +240,7 @@ namespace client
 			void Stop ();
 
 			boost::asio::io_service& GetService () { return m_Service; };
-			std::shared_ptr<SAMSession> CreateSession (const std::string& id, const std::string& destination, // empty string	 means transient
+			std::shared_ptr<SAMSession> CreateSession (const std::string& id, const std::string& destination, // empty string  means transient
 				const std::map<std::string, std::string> * params);
 			void CloseSession (const std::string& id);
 			std::shared_ptr<SAMSession> FindSession (const std::string& id) const;
