@@ -32,6 +32,8 @@ namespace i2p
 				return m_Impl->ListSessions();
 			}
 
+			/** all code after this line is the private implementation */
+
 			BridgeImpl::BridgeImpl(const std::string & addr, uint16_t port) :
 				m_Endpoint(boost::asio::ip::address::from_string(addr), port)
 			{
@@ -48,7 +50,7 @@ namespace i2p
 				if(m_Thread) return;
 				try
 				{
-					m_Acceptor = std::make_shared<tcp_acceptor_t>(m_Service);
+					m_Acceptor = std::make_unique<tcp_acceptor_t>(m_Service);
 					m_Acceptor->bind(m_Endpoint);
 				}
 				catch (std::exception & ex)
@@ -63,6 +65,12 @@ namespace i2p
 			void BridgeImpl::Stop()
 			{
 				m_Running = false;
+
+				if(m_Acceptor && m_Acceptor->is_open())
+				{
+					m_Acceptor->close();
+					m_Acceptor.reset(nullptr);
+				}
 				m_Service.stop();
 				if(m_Thread)
 				{
@@ -94,6 +102,7 @@ namespace i2p
 
 			std::list<SessionInfo_ptr> BridgeImpl::ListSessions() const
 			{
+				// TODO : implement this
 				return {};
 			}
 
