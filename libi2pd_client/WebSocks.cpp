@@ -425,6 +425,7 @@ namespace client
 				// recv connect request
 				auto itr = payload.find("connect ");
 				if (itr != std::string::npos) {
+					payload = payload.substr(8);
 					itr = payload.find(":");
 					if(itr == std::string::npos) {
 						// no port
