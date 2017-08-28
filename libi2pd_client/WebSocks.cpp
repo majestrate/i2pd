@@ -156,6 +156,9 @@ namespace client
 			eWSCTryConnect,
 			eWSCFailConnect,
 			eWSCOkayConnect,
+			eWSCTryAccept,
+			eWSCFailAccept,
+			eWSCOkayAccept,
 			eWSCClose,
 			eWSCEnd
 		};
@@ -285,17 +288,22 @@ namespace client
 			} else {
 				// forward data
 				LogPrint(eLogDebug, "websocks recv ", n);
-		
-				std::string str((char*)m_RecvBuf, n);
-				auto conn = m_Parent->GetConn(m_Conn);
-				if(!conn)	 {
-					LogPrint(eLogWarning, "websocks: connection is gone");
+				if (n <= sizeof(m_RecvBuf)) {
+					std::string str((char*)m_RecvBuf, n);
+					auto conn = m_Parent->GetConn(m_Conn);
+					if(!conn)	 {
+						LogPrint(eLogWarning, "websocks: connection is gone");
+						EnterState(eWSCClose);
+						return;
+					}
+					conn->send(str);
+				} else {
+					LogPrint(eLogWarning, "websocks: message too big: ", n);
 					EnterState(eWSCClose);
 					return;
 				}
-				conn->send(str);
 				AsyncRecv();
-				
+
 			}
 		}
 
@@ -339,7 +347,7 @@ namespace client
 				EnterState(eWSCFailConnect);
 			}
 		}
-		
+
 		virtual void GotMessage(const websocketpp::connection_hdl & conn, WebSocksServerImpl::message_ptr msg)
 		{
 			(void) conn;
@@ -351,17 +359,22 @@ namespace client
 				m_Stream->Send((uint8_t*)payload.c_str(), payload.size());
 			} else if (m_State == eWSCInitial) {
 				// recv connect request
-				auto itr = payload.find(":");
-				if(itr == std::string::npos) {
-					// no port
-					m_RemotePort = 0;
-					m_RemoteAddr = payload;
-				} else {
-					// includes port
-					m_RemotePort = std::stoi(payload.substr(itr+1));
-					m_RemoteAddr = payload.substr(0, itr);
+				auto itr = payload.find("connect ");
+				if (itr != std::string::npos) {
+					itr = payload.find(":");
+					if(itr == std::string::npos) {
+						// no port
+						m_RemotePort = 0;
+						m_RemoteAddr = payload;
+					} else {
+						// includes port
+						m_RemotePort = std::stoi(payload.substr(itr+1));
+						m_RemoteAddr = payload.substr(0, itr);
+					}
+					EnterState(eWSCTryConnect);
+				} else if (payload == "accept") {
+					EnterState(eWSCTryAccept);
 				}
-				EnterState(eWSCTryConnect);
 			} else {
 				// wtf?
 				LogPrint(eLogWarning, "websocks: got message in invalid state ", m_State);
@@ -464,4 +477,3 @@ namespace client
 	}
 }
 }
-
