@@ -47,6 +47,7 @@ namespace client
 		typedef std::shared_ptr<ClientDestination> Destination_t;
 	public:
 
+		typedef i2p::stream::StreamingDestination::Acceptor StreamAcceptFunc;
 		typedef WebSocksServerImpl ServerImpl;
 		typedef ServerImpl::message_ptr MessagePtr;
 
@@ -76,6 +77,16 @@ namespace client
 		{
 			auto c = GetConn(conn);
 			if(c) c->close(websocketpp::close::status::normal, "closed");
+		}
+
+		void AcceptOnce(const StreamAcceptFunc & complete)
+		{
+			m_Dest->AcceptOnce(complete);
+		}
+
+		bool IsAcceptingStreams()
+		{
+			return m_Dest->IsAcceptingStreams();
 		}
 
 		void CreateStreamTo(const std::string & addr, int port, StreamConnectFunc complete)
@@ -155,10 +166,9 @@ namespace client
 			eWSCInitial,
 			eWSCTryConnect,
 			eWSCFailConnect,
-			eWSCOkayConnect,
 			eWSCTryAccept,
 			eWSCFailAccept,
-			eWSCOkayAccept,
+			eWSCOkay,
 			eWSCClose,
 			eWSCEnd
 		};
@@ -214,11 +224,11 @@ namespace client
 				}
 				return;
 			case eWSCTryConnect:
-				if(state == eWSCOkayConnect) {
+				if(state == eWSCOkay) {
 					// we connected okay
 					LogPrint(eLogDebug, "websocks: connected to ", m_RemoteAddr, ":", m_RemotePort);
 					SendResponse("");
-					m_State = eWSCOkayConnect;
+					m_State = eWSCOkay;
 				} else if(state == eWSCFailConnect) {
 					// we did not connect okay
 					LogPrint(eLogDebug, "websocks: failed to connect to ", m_RemoteAddr, ":", m_RemotePort);
@@ -248,7 +258,32 @@ namespace client
 					LogPrint(eLogWarning, "websocks: invalid state change ", m_State, " -> ", state);
 				}
 				return;
-			case eWSCOkayConnect:
+			case eWSCTryAccept:
+				if(state == eWSCInitial) {
+
+					if (m_Parent->IsAcceptingStreams()) {
+						EnterState(eWSCFailAccept);
+						return;
+					}
+					m_State = eWSCTryAccept;
+					m_Parent->AcceptOnce(std::bind(&WebSocksConn::HandleAccept, this, std::placeholders::_1));
+				}
+				return;
+			case eWSCFailAccept:
+				if(state == eWSCInitial) {
+					SendResponse("already accepting stream elsewhere");
+					m_State = eWSCClose;
+					Close();
+				} else if (state == eWSCTryAccept){
+					SendResponse("failed to accept stream");
+					m_State = eWSCClose;
+					Close();
+				} else {
+					SendResponse("invalid state");
+					m_State = eWSCClose;
+					Close();
+				}
+			case eWSCOkay:
 				if(state == eWSCClose) {
 					// graceful close
 					m_State = eWSCClose;
@@ -307,6 +342,27 @@ namespace client
 			}
 		}
 
+		void HandleAccept(std::shared_ptr<i2p::stream::Stream> stream)
+		{
+			if(!stream)
+			{
+					LogPrint(eLogError, "websocks: failed to accept stream");
+					EnterState(eWSCFailAccept);
+					return;
+			}
+			auto ident = stream->GetRemoteIdentity();
+			if(!ident)
+			{
+				EnterState(eWSCFailAccept);
+				return;
+			}
+			std::string dest = ident->ToBase64();
+			SendResponseFull("", dest);
+			m_Stream = stream;
+			EnterState(eWSCOkay);
+			StartForwarding();
+		}
+
 		void AsyncRecv()
 		{
 			m_Stream->AsyncReceive(
@@ -314,8 +370,13 @@ namespace client
 				std::bind(&WebSocksConn::HandleAsyncRecv, this, std::placeholders::_1, std::placeholders::_2), 60);
 		}
 
-		/** @brief send error message or empty string for success */
 		void SendResponse(const std::string & errormsg)
+		{
+			SendResponseFull(errormsg, "");
+		}
+
+		/** @brief send error message or empty string for success */
+		void SendResponseFull(const std::string & errormsg, const std::string & destination)
 		{
 			boost::property_tree::ptree resp;
 			if(errormsg.size()) {
@@ -323,6 +384,9 @@ namespace client
 				resp.put("success", 0);
 			} else {
 				resp.put("success", 1);
+			}
+			if (destination.size()) {
+				resp.put("destination", destination);
 			}
 			std::ostringstream ss;
 			write_json(ss, resp);
@@ -340,7 +404,7 @@ namespace client
 			}
 			if(m_Stream) {
 				// connect good
-				EnterState(eWSCOkayConnect);
+				EnterState(eWSCOkay);
 				StartForwarding();
 			} else {
 				// connect failed
@@ -352,7 +416,7 @@ namespace client
 		{
 			(void) conn;
 			std::string payload = msg->get_payload();
-			if(m_State == eWSCOkayConnect)
+			if(m_State == eWSCOkay)
 			{
 				// forward to server
 				LogPrint(eLogDebug, "websocks: forward ", payload.size());
