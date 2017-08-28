@@ -45,6 +45,7 @@ namespace client
 		typedef std::unique_lock<mutex_t> lock_t;
 
 		typedef std::shared_ptr<ClientDestination> Destination_t;
+		typedef std::function<void(Destination_t)> DestinationVisitor;
 	public:
 
 		typedef i2p::stream::StreamingDestination::Acceptor StreamAcceptFunc;
@@ -87,6 +88,11 @@ namespace client
 		bool IsAcceptingStreams()
 		{
 			return m_Dest->IsAcceptingStreams();
+		}
+
+		void VisitLocalDestination(DestinationVisitor v)
+		{
+			v(m_Dest);
 		}
 
 		void CreateStreamTo(const std::string & addr, int port, StreamConnectFunc complete)
@@ -422,6 +428,15 @@ namespace client
 				LogPrint(eLogDebug, "websocks: forward ", payload.size());
 				m_Stream->Send((uint8_t*)payload.c_str(), payload.size());
 			} else if (m_State == eWSCInitial) {
+				if(payload == "getaddr") {
+					// handle local destination address getting
+					std::string dest;
+					m_Parent->VisitLocalDestination([&dest] (Destination_t d) {
+							dest = d->GetIdentity()->ToBase64();
+					});
+					SendResponseFull("", dest);
+					return;
+				}
 				// recv connect request
 				auto itr = payload.find("connect ");
 				if (itr != std::string::npos) {
