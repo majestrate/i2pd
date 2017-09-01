@@ -256,7 +256,7 @@ build/Makefile
 # debian stuff
 .pc/
 
-# qt 
+# qt
 
 qt/i2pd_qt/*.ui.autosave
 qt/i2pd_qt/*.ui.bk*
@@ -264,3 +264,10 @@ qt/i2pd_qt/*.ui_*
 
 #unknown android stuff
 android/libs/
+
+
+# cmake build target directory
+target/
+
+# apt directories
+*.apt/
