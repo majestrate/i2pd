@@ -22,12 +22,13 @@ option(WITH_THREADSANITIZER "Build with thread sanitizer unix only" OFF)
 option(WITH_I2LUA "Build for i2lua" OFF)
 option(WITH_WEBSOCKETS "Build with websocket ui" OFF)
 
-# paths
-set ( CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules" )
-set ( CMAKE_SOURCE_DIR ".." )
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-unused-parameter -pedantic -Wno-misleading-indentation")
 
-set(LIBI2PD_SRC_DIR ../libi2pd)
-set(LIBI2PD_CLIENT_SRC_DIR ../libi2pd_client)
+# paths
+set ( CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/build/cmake_modules" )
+
+set(LIBI2PD_SRC_DIR libi2pd)
+set(LIBI2PD_CLIENT_SRC_DIR libi2pd_client)
 
 include_directories(${LIBI2PD_SRC_DIR})
 include_directories(${LIBI2PD_CLIENT_SRC_DIR})
@@ -115,7 +116,7 @@ if(WITH_WEBSOCKETS)
 endif ()
 add_library(i2pdclient ${CLIENT_SRC})
 
-set(DAEMON_SRC_DIR ../daemon)
+set(DAEMON_SRC_DIR ${CMAKE_SOURCE_DIR}/daemon)
 
 set (DAEMON_SRC
   "${DAEMON_SRC_DIR}/Daemon.cpp"
@@ -455,7 +456,7 @@ if (WITH_BINARY)
   endif ()
 endif ()
 
-install(FILES ../LICENSE
+install(FILES LICENSE
   DESTINATION .
   COMPONENT Runtime
   )
@@ -467,7 +468,7 @@ install(FILES "C:/projects/openssl-$ENV{OPENSSL}/LICENSE"
   OPTIONAL                      # for local builds only!
   )
 
-file(GLOB_RECURSE I2PD_SOURCES "../libi2pd/*.cpp" "../libi2pd_client/*.cpp" "../daemon/*.cpp" "../build" "../Win32" "../Makefile*")
+file(GLOB_RECURSE I2PD_SOURCES "libi2pd/*.cpp" "libi2pd_client/*.cpp" "daemon/*.cpp" "build" "Win32" "Makefile*")
 install(FILES ${I2PD_SOURCES} DESTINATION src/ COMPONENT Source)
 # install(DIRECTORY ../ DESTINATION src/
 #   # OPTIONAL
@@ -476,7 +477,7 @@ install(FILES ${I2PD_SOURCES} DESTINATION src/ COMPONENT Source)
 #   PATTERN "*.cpp"
 #   )
 
-file(GLOB I2PD_HEADERS "../libi2pd/*.h" "../libi2pd_client/*.h" "../daemon/*.h")
+file(GLOB I2PD_HEADERS "libi2pd/*.h" "libi2pd_client/*.h" "daemon/*.h")
 install(FILES ${I2PD_HEADERS} DESTINATION src/ COMPONENT Headers)
 # install(DIRECTORY ../ DESTINATION src/
 #   # OPTIONAL
@@ -487,9 +488,9 @@ install(FILES ${I2PD_HEADERS} DESTINATION src/ COMPONENT Headers)
 
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Purple I2P, a C++ I2P daemon")
 set(CPACK_PACKAGE_VENDOR "Purple I2P")
-set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/../README.md")
-set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE")
-file(READ ../libi2pd/version.h version_h)
+set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+file(READ ${LIBI2PD_SRC_DIR}/version.h version_h)
 string(REGEX REPLACE ".*I2PD_VERSION_MAJOR ([0-9]+).*" "\\1" CPACK_PACKAGE_VERSION_MAJOR "${version_h}")
 string(REGEX REPLACE ".*I2PD_VERSION_MINOR ([0-9]+).*" "\\1" CPACK_PACKAGE_VERSION_MINOR "${version_h}")
 string(REGEX REPLACE ".*I2PD_VERSION_MICRO ([0-9]+).*" "\\1" CPACK_PACKAGE_VERSION_MICRO "${version_h}")
