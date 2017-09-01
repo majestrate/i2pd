@@ -46,7 +46,7 @@ namespace data
 
 	RouterInfo::~RouterInfo ()
 	{
-		if(m_Buffer) delete[] m_Buffer;
+		delete[] m_Buffer;
 	}
 
 	void RouterInfo::Update (const uint8_t * buf, int len)

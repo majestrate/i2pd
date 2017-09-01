@@ -124,7 +124,7 @@ namespace data
 			mutable std::mutex m_RouterInfosMutex;
 			std::map<IdentHash, std::shared_ptr<RouterInfo> > m_RouterInfos;
 			mutable std::mutex m_FloodfillsMutex;
-			std::list<std::shared_ptr<RouterInfo> > m_Floodfills;
+			std::vector<std::shared_ptr<RouterInfo> > m_Floodfills;
 
 			bool m_IsRunning;
 			uint64_t m_LastLoad;
