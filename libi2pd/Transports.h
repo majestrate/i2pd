@@ -125,7 +125,8 @@ namespace transport
 
 		private:
 
-			void Run ();
+			void RunService ();
+      void RunSend ();
 			void RequestComplete (std::shared_ptr<const i2p::data::RouterInfo> r, const i2p::data::IdentHash& ident);
 			void HandleRequestComplete (std::shared_ptr<const i2p::data::RouterInfo> r, i2p::data::IdentHash ident);
 			void PostMessages (i2p::data::IdentHash ident, std::vector<std::shared_ptr<i2p::I2NPMessage> > msgs);
@@ -147,7 +148,7 @@ namespace transport
 		private:
 
 			bool m_IsOnline, m_IsRunning, m_IsNAT;
-			std::thread * m_Thread;
+    std::thread * m_ServiceThread, * m_SendThread;
 			boost::asio::io_service * m_Service;
 			boost::asio::io_service::work * m_Work;
 			boost::asio::deadline_timer * m_PeerCleanupTimer, * m_PeerTestTimer;
@@ -173,6 +174,19 @@ namespace transport
 			mutable std::mutex m_TrustedRoutersMutex;
 
 			i2p::I2NPMessagesHandler m_LoopbackHandler;
+
+    typedef std::shared_ptr<I2NPMessage> Msg_ptr;
+    typedef std::vector<Msg_ptr> Messages_t;
+    struct SendEvent
+    {
+      SendEvent(const i2p::data::IdentHash & i,const Messages_t & m) : ident(i), msgs(m) {}
+      i2p::data::IdentHash ident;
+      const Messages_t msgs;
+    };
+    typedef std::shared_ptr<SendEvent> SendEvent_ptr;
+    typedef i2p::util::Queue<SendEvent_ptr> OutboundMessageQueue;
+
+    OutboundMessageQueue m_SendQueue;
 
 		public:
 

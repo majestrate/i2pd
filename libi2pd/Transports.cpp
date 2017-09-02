@@ -115,8 +115,9 @@ namespace transport
 	Transports transports;
 
 	Transports::Transports ():
-		m_IsOnline (true), m_IsRunning (false), m_IsNAT (true), m_Thread (nullptr), m_Service (nullptr),
-		m_Work (nullptr), m_PeerCleanupTimer (nullptr), m_PeerTestTimer (nullptr),
+		m_IsOnline (true), m_IsRunning (false), m_IsNAT (true), m_ServiceThread (nullptr), m_SendThread(nullptr),
+		m_Service (nullptr), m_Work (nullptr),
+		m_PeerCleanupTimer (nullptr), m_PeerTestTimer (nullptr),
 		m_NTCPServer (nullptr), m_SSUServer (nullptr), m_DHKeysPairSupplier (5), // 5 pre-generated keys
 		m_TotalSentBytes(0), m_TotalReceivedBytes(0), m_TotalTransitTransmittedBytes (0),
  		m_InBandwidth (0), m_OutBandwidth (0), m_TransitBandwidth(0),
@@ -151,7 +152,8 @@ namespace transport
 
 		m_DHKeysPairSupplier.Start ();
 		m_IsRunning = true;
-		m_Thread = new std::thread (std::bind (&Transports::Run, this));
+		m_ServiceThread = new std::thread (std::bind (&Transports::RunService, this));
+		m_SendThread = new std::thread (std::bind (&Transports::RunSend, this));
 		std::string ntcpproxy; i2p::config::GetOption("ntcpproxy", ntcpproxy);
 		i2p::http::URL proxyurl;
 		if(ntcpproxy.size() && enableNTCP)
@@ -256,16 +258,43 @@ namespace transport
 
 		m_DHKeysPairSupplier.Stop ();
 		m_IsRunning = false;
-		if (m_Service) m_Service->stop ();
-		if (m_Thread)
+		m_SendQueue.WakeUp ();
+		if (m_SendThread)
 		{
-			m_Thread->join ();
-			delete m_Thread;
-			m_Thread = nullptr;
+			m_SendThread->join ();
+			delete m_SendThread;
+			m_SendThread = nullptr;
+		}
+
+		if (m_Service) m_Service->stop ();
+		if (m_ServiceThread)
+		{
+			m_ServiceThread->join ();
+			delete m_ServiceThread;
+			m_ServiceThread = nullptr;
 		}
 	}
 
-	void Transports::Run ()
+	void Transports::RunSend ()
+	{
+		while(m_IsRunning)
+		{
+			try
+			{
+				auto ev = m_SendQueue.GetNextWithTimeout (15000); // 15 seconds
+				if(ev)
+				{
+					PostMessages(ev->ident, ev->msgs);
+				}
+			}
+			catch(std::exception & ex)
+			{
+				LogPrint(eLogError, "Transports::RunSend() ", ex.what());
+			}
+		}
+	}
+
+	void Transports::RunService ()
 	{
 		while (m_IsRunning && m_Service)
 		{
@@ -275,7 +304,7 @@ namespace transport
 			}
 			catch (std::exception& ex)
 			{
-				LogPrint (eLogError, "Transports: runtime exception: ", ex.what ());
+				LogPrint (eLogError, "Transports::RunService() runtime exception: ", ex.what ());
 			}
 		}
 	}
@@ -322,7 +351,8 @@ namespace transport
 #ifdef WITH_EVENTS
 		QueueIntEvent("transport.send", ident.ToBase64(), msgs.size());
 #endif
-		m_Service->post (std::bind (&Transports::PostMessages, this, ident, msgs));
+		m_SendQueue.Put(std::make_shared<SendEvent>(ident, msgs));
+		// m_Service->post (std::bind (&Transports::PostMessages, this, ident, msgs));
 	}
 
 	void Transports::PostMessages (i2p::data::IdentHash ident, std::vector<std::shared_ptr<i2p::I2NPMessage> > msgs)
