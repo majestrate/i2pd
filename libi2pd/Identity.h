@@ -186,7 +186,7 @@ namespace data
 			RoutingDestination () {};
 			virtual ~RoutingDestination () {};
 
-			virtual const IdentHash& GetIdentHash () const = 0;
+	    virtual const IdentHash& GetIdentHash () const = 0;
 			virtual const uint8_t * GetEncryptionPublicKey () const = 0;
 			virtual bool IsDestination () const = 0; // for garlic
 	};

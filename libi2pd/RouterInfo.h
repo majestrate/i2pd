@@ -215,6 +215,12 @@ namespace data
 			uint8_t m_SupportedTransports, m_Caps;
 			mutable std::shared_ptr<RouterProfile> m_Profile;
 	};
+
+	/** function for visiting a router info we have locally */
+	typedef std::function<void(std::shared_ptr<const i2p::data::RouterInfo>)> LocalRouterInfoVisitor;
+
+	/** function for visiting a router info we looked up remotely */
+	typedef std::function<void(std::shared_ptr<i2p::data::RouterInfo>)> RemoteRouterInfoVisitor;
 }
 }
 

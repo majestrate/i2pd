@@ -186,7 +186,6 @@ namespace transport
 			const decltype(m_Peers)& GetPeers () const { return m_Peers; };
 	};
 
-	extern Transports transports;
 }
 }
 

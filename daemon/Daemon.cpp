@@ -28,6 +28,8 @@
 #include "Event.h"
 #include "Websocket.h"
 
+#include "I2PRouter.h"
+
 namespace i2p
 {
 	namespace util
@@ -38,6 +40,8 @@ namespace i2p
 			Daemon_Singleton_Private() {};
 			~Daemon_Singleton_Private() {};
 
+			std::unique_ptr<i2p::Router> router;
+			std::unique_ptr<i2p::client::ClientContext> clientContext;
 			std::unique_ptr<i2p::http::HTTPServer> httpServer;
 			std::unique_ptr<i2p::client::I2PControlService> m_I2PControlService;
 			std::unique_ptr<i2p::transport::UPnP> UPnP;
@@ -119,10 +123,13 @@ namespace i2p
 			LogPrint(eLogInfo,	"AESNI enabled");
 #endif
 #if defined(__AVX__)
-			LogPrint(eLogInfo,	"AVX enabled"); 
+			LogPrint(eLogInfo,	"AVX enabled");
 #endif
 			LogPrint(eLogDebug, "FS: main config file: ", config);
 			LogPrint(eLogDebug, "FS: data directory: ", datadir);
+
+			router = std::make_unique<i2p::Router>();
+			clientContext = std::make_unique<i2p::client::ClientContext>(router.get());
 
 			bool precomputation; i2p::config::GetOption("precomputation.elgamal", precomputation);
 			i2p::crypto::InitCrypto (precomputation);
@@ -255,6 +262,7 @@ namespace i2p
 		bool Daemon_Singleton::start()
 		{
 			i2p::log::Logger().Start();
+			router->Start();
 			LogPrint(eLogInfo, "Daemon: starting NetDB");
 			i2p::data::netdb.Start();
 
