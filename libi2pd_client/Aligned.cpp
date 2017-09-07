@@ -124,7 +124,8 @@ namespace client
 
 
 	AlignedRoutingSession::AlignedRoutingSession(AlignedDestination * owner, std::shared_ptr<const i2p::data::RoutingDestination> destination, int numTags, bool attachLeaseSet) :
-		i2p::garlic::GarlicRoutingSession(owner, destination, numTags, attachLeaseSet)
+		i2p::garlic::GarlicRoutingSession(owner, destination, numTags, attachLeaseSet),
+		m_BuildCompleted(nullptr)
 	{
 		auto pool = owner->GetTunnelPool();
 		m_AlignedPool = i2p::tunnel::tunnels.CreateTunnelPool(pool->GetNumInboundHops(), pool->GetNumOutboundHops(), 1, 2);
@@ -141,10 +142,11 @@ namespace client
 		if(!inbound && result == i2p::tunnel::eBuildResultOkay)
 		{
 			auto obep = path[path.size() - 1]->GetIdentHash();
-			if(m_CurrentRemoteLease && obep == m_CurrentRemoteLease->tunnelGateway)
+			if(m_CurrentRemoteLease && obep == m_CurrentRemoteLease->tunnelGateway && m_BuildCompleted)
 			{
 				// matches our build
 				m_BuildCompleted();
+				m_BuildCompleted = nullptr;
 			}
 		}
 		return true;
