@@ -57,9 +57,29 @@ namespace client
 	const char I2CP_PARAM_MAX_TUNNEL_LATENCY[] = "latency.max";
 	const int DEFAULT_MAX_TUNNEL_LATENCY = 0;
 
+
+
+
+  /** interface for outbound tunnel selection */
+  struct IOutboundTunnelSelector
+  {
+    typedef std::shared_ptr<i2p::tunnel::OutboundTunnel> OBTunnel_ptr;
+    typedef i2p::data::IdentHash RemoteDestination_t;
+    typedef std::shared_ptr<const i2p::data::RoutingDestination> RoutingDestination_ptr;
+    virtual ~IOutboundTunnelSelector() {};
+    /** start building an aligned tunnel to IGBW */
+    virtual void PrepareOutboundTunnelTo(const RemoteDestination_t & gateway, RoutingDestination_ptr remote) = 0;
+    /** get fresh outbound tunnel aligned with IBGW */
+    virtual OBTunnel_ptr GetAlignedTunnelTo(const RemoteDestination_t & gateway) = 0;
+    /** get new outbound tunnel to wherever */
+    virtual OBTunnel_ptr GetNewOutboundTunnel(OBTunnel_ptr exlcuding) = 0;
+    /** get next good outbound tunnel for a remote destination by ident hash */
+    virtual OBTunnel_ptr GetOutboundTunnelFor(const RemoteDestination_t & destination, OBTunnel_ptr excluding) = 0;
+  };
+
 	typedef std::function<void (std::shared_ptr<i2p::stream::Stream> stream)> StreamRequestComplete;
 
-	class LeaseSetDestination: public i2p::garlic::GarlicDestination,
+	class LeaseSetDestination: public i2p::garlic::GarlicDestination, public IOutboundTunnelSelector,
 		public std::enable_shared_from_this<LeaseSetDestination>
 	{
 		typedef std::function<void (std::shared_ptr<i2p::data::LeaseSet> leaseSet)> RequestComplete;
@@ -101,6 +121,13 @@ namespace client
 			std::shared_ptr<const i2p::data::LocalLeaseSet> GetLeaseSet ();
 			std::shared_ptr<i2p::tunnel::TunnelPool> GetTunnelPool () const { return m_Pool; }
 			void HandleI2NPMessage (const uint8_t * buf, size_t len, std::shared_ptr<i2p::tunnel::InboundTunnel> from);
+
+      // implements IOutboundTunnelSelector
+    virtual void PrepareOutboundTunnelTo(const RemoteDestination_t & gateway, RoutingDestination_ptr remote);
+    virtual OBTunnel_ptr GetAlignedTunnelTo(const RemoteDestination_t & gateway);
+    virtual OBTunnel_ptr GetNewOutboundTunnel(OBTunnel_ptr exlcuding=nullptr);
+    virtual OBTunnel_ptr GetOutboundTunnelFor(const RemoteDestination_t & destination, OBTunnel_ptr excluding=nullptr);
+
 
 			// override GarlicDestination
 			bool SubmitSessionKey (const uint8_t * key, const uint8_t * tag);
@@ -172,8 +199,8 @@ namespace client
 			void Ready(ReadyPromise & p);
 #endif
 
-			ClientDestination (const i2p::data::PrivateKeys& keys, bool isPublic, const std::map<std::string, std::string> * params = nullptr);
-			~ClientDestination ();
+      ClientDestination (const i2p::data::PrivateKeys& keys, bool isPublic, const std::map<std::string, std::string> * params = nullptr);
+    virtual ~ClientDestination ();
 
 			virtual bool Start ();
 			virtual bool Stop ();
@@ -182,16 +209,16 @@ namespace client
 			void Sign (const uint8_t * buf, int len, uint8_t * signature) const { m_Keys.Sign (buf, len, signature); };
 
 			// ref counter
-			int Acquire () { return ++m_RefCounter; }; 
+			int Acquire () { return ++m_RefCounter; };
 			int Release () { return --m_RefCounter; };
-			int GetRefCounter () const { return m_RefCounter; }; 
+			int GetRefCounter () const { return m_RefCounter; };
 
 			// streaming
 			std::shared_ptr<i2p::stream::StreamingDestination> CreateStreamingDestination (int port, bool gzip = true); // additional
 			std::shared_ptr<i2p::stream::StreamingDestination> GetStreamingDestination (int port = 0) const;
 			// following methods operate with default streaming destination
-			void CreateStream (StreamRequestComplete streamRequestComplete, const i2p::data::IdentHash& dest, int port = 0);
-			std::shared_ptr<i2p::stream::Stream> CreateStream (std::shared_ptr<const i2p::data::LeaseSet> remote, int port = 0);
+      virtual void CreateStream (StreamRequestComplete streamRequestComplete, const i2p::data::IdentHash& dest, int port = 0);
+      virtual std::shared_ptr<i2p::stream::Stream> CreateStream (std::shared_ptr<const i2p::data::LeaseSet> remote, int port = 0);
 			void AcceptStreams (const i2p::stream::StreamingDestination::Acceptor& acceptor);
 			void StopAcceptingStreams ();
 			bool IsAcceptingStreams () const;

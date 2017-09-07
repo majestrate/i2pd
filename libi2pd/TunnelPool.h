@@ -43,8 +43,11 @@ namespace tunnel
 
 
 	typedef std::function<std::shared_ptr<const i2p::data::RouterInfo>(std::shared_ptr<const i2p::data::RouterInfo>)> SelectHopFunc;
+  typedef std::function<std::shared_ptr<const i2p::data::RouterInfo>(void)> SelectFirstHopFunc;
+  typedef std::function<bool(std::shared_ptr<OutboundTunnel>)> OutboundTunnelFilter;
 	// standard peer selection algorithm
-	bool StandardSelectPeers(Path & path, int hops, bool inbound, SelectHopFunc nextHop);
+  std::shared_ptr<const i2p::data::RouterInfo> StandardSelectFirstHop();
+	bool StandardSelectPeers(Path & path, int hops, bool inbound, SelectFirstHopFunc firstHop, SelectHopFunc nextHop);
 
 	class TunnelPool: public std::enable_shared_from_this<TunnelPool> // per local destination
 	{
@@ -68,6 +71,7 @@ namespace tunnel
 			std::shared_ptr<OutboundTunnel> GetNextOutboundTunnel (std::shared_ptr<OutboundTunnel> excluded = nullptr) const;
 			std::shared_ptr<InboundTunnel> GetNextInboundTunnel (std::shared_ptr<InboundTunnel> excluded = nullptr) const;
 			std::shared_ptr<OutboundTunnel> GetNewOutboundTunnel (std::shared_ptr<OutboundTunnel> old) const;
+    std::vector<std::shared_ptr<OutboundTunnel>> GetOutboundTunnelsWhere(OutboundTunnelFilter f) const;
 			void TestTunnels ();
 			void ProcessGarlicMessage (std::shared_ptr<I2NPMessage> msg);
 			void ProcessDeliveryStatus (std::shared_ptr<I2NPMessage> msg);
@@ -78,6 +82,8 @@ namespace tunnel
 
 			int GetNumInboundTunnels () const { return m_NumInboundTunnels; };
 			int GetNumOutboundTunnels () const { return m_NumOutboundTunnels; };
+    int GetNumInboundHops() const { return m_NumInboundHops; };
+    int GetNumOutboundHops() const { return m_NumOutboundHops; };
 
 			void SetCustomPeerSelector(ITunnelPeerSelector * selector);
 			void UnsetCustomPeerSelector();

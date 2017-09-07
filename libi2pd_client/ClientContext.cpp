@@ -10,7 +10,7 @@
 #include "ClientContext.h"
 #include "SOCKS.h"
 #include "WebSocks.h"
-#include "MatchedDestination.h"
+#include "Aligned.h"
 
 namespace i2p
 {
@@ -343,17 +343,11 @@ namespace client
      const std::map<std::string, std::string> * params)
 	{
 		i2p::data::PrivateKeys keys = i2p::data::PrivateKeys::CreateRandomKeys (sigType);
-		auto localDestination = std::make_shared<ClientDestination> (keys, isPublic, params);
-		std::unique_lock<std::mutex> l(m_DestinationsMutex);
-		m_Destinations[localDestination->GetIdentHash ()] = localDestination;
-		localDestination->Start ();
-		return localDestination;
-	}
-
-	std::shared_ptr<ClientDestination> ClientContext::CreateNewMatchedTunnelDestination(const i2p::data::PrivateKeys &keys, const std::string & name, const std::map<std::string, std::string> * params)
-	{
-		MatchedTunnelDestination * cl = new MatchedTunnelDestination(keys, name, params);
-		auto localDestination = std::shared_ptr<ClientDestination>(cl);
+		std::shared_ptr<ClientDestination> localDestination;
+		if(params && params->find(I2P_CLIENT_TUNNEL_MATCH_TUNNELS) != params->end() && params->find(I2P_CLIENT_TUNNEL_MATCH_TUNNELS)->second == "true")
+			localDestination = std::make_shared<AlignedDestination> (keys, isPublic, params);
+		else
+			localDestination = std::make_shared<ClientDestination> (keys, isPublic, params);
 		std::unique_lock<std::mutex> l(m_DestinationsMutex);
 		m_Destinations[localDestination->GetIdentHash ()] = localDestination;
 		localDestination->Start ();
@@ -420,6 +414,7 @@ namespace client
 		options[I2CP_PARAM_TAGS_TO_SEND] = GetI2CPOption (section, I2CP_PARAM_TAGS_TO_SEND, DEFAULT_TAGS_TO_SEND);
 		options[I2CP_PARAM_MIN_TUNNEL_LATENCY] = GetI2CPOption(section, I2CP_PARAM_MIN_TUNNEL_LATENCY, DEFAULT_MIN_TUNNEL_LATENCY);
 		options[I2CP_PARAM_MAX_TUNNEL_LATENCY] = GetI2CPOption(section, I2CP_PARAM_MAX_TUNNEL_LATENCY, DEFAULT_MAX_TUNNEL_LATENCY);
+		options[I2P_CLIENT_TUNNEL_MATCH_TUNNELS] = GetI2CPOption(section, I2P_CLIENT_TUNNEL_MATCH_TUNNELS, false);
 	}
 
 	void ClientContext::ReadI2CPOptionsFromConfig (const std::string& prefix, std::map<std::string, std::string>& options) const
@@ -437,6 +432,8 @@ namespace client
 			options[I2CP_PARAM_MIN_TUNNEL_LATENCY] = value;
 		if (i2p::config::GetOption(prefix + I2CP_PARAM_MAX_TUNNEL_LATENCY, value))
 			options[I2CP_PARAM_MAX_TUNNEL_LATENCY] = value;
+		if (i2p::config::GetOption(prefix + I2P_CLIENT_TUNNEL_MATCH_TUNNELS, value))
+			options[I2P_CLIENT_TUNNEL_MATCH_TUNNELS] = value;
 	}
 
 	void ClientContext::ReadTunnels ()
@@ -482,7 +479,6 @@ namespace client
 						dest = section.second.get<std::string> (I2P_CLIENT_TUNNEL_DESTINATION);
 					int port = section.second.get<int> (I2P_CLIENT_TUNNEL_PORT);
 					// optional params
-					bool matchTunnels = section.second.get(I2P_CLIENT_TUNNEL_MATCH_TUNNELS, false);
 					std::string keys = section.second.get (I2P_CLIENT_TUNNEL_KEYS, "");
 					std::string address = section.second.get (I2P_CLIENT_TUNNEL_ADDRESS, "127.0.0.1");
 					int destinationPort = section.second.get (I2P_CLIENT_TUNNEL_DESTINATION_PORT, 0);
@@ -499,12 +495,7 @@ namespace client
 						{
 							localDestination = FindLocalDestination (k.GetPublic ()->GetIdentHash ());
 							if (!localDestination)
-							{
-								if(matchTunnels)
-									localDestination = CreateNewMatchedTunnelDestination(k, dest, &options);
-								else
-									localDestination = CreateNewLocalDestination (k, type == I2P_TUNNELS_SECTION_TYPE_UDPCLIENT, &options);
-							}
+								localDestination = CreateNewLocalDestination (k, type == I2P_TUNNELS_SECTION_TYPE_UDPCLIENT, &options);
 						}
 					}
 

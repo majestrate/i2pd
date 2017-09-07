@@ -155,6 +155,20 @@ namespace tunnel
 		return GetNextTunnel (m_OutboundTunnels, excluded);
 	}
 
+	std::vector<std::shared_ptr<OutboundTunnel> > TunnelPool::GetOutboundTunnelsWhere(OutboundTunnelFilter f) const
+	{
+		std::vector<std::shared_ptr<OutboundTunnel> > tuns;
+		{
+			std::unique_lock<std::mutex> l(m_OutboundTunnelsMutex);
+			for(auto & tun : m_OutboundTunnels)
+			{
+				if(f(tun))
+					tuns.push_back(tun);
+			}
+		}
+		return tuns;
+	}
+
 	std::shared_ptr<InboundTunnel> TunnelPool::GetNextInboundTunnel (std::shared_ptr<InboundTunnel> excluded) const
 	{
 		std::unique_lock<std::mutex> l(m_InboundTunnelsMutex);
@@ -372,7 +386,7 @@ namespace tunnel
 		return hop;
 	}
 
-	bool StandardSelectPeers(Path & peers, int numHops, bool inbound, SelectHopFunc nextHop)
+	bool StandardSelectPeers(Path & peers, int numHops, bool inbound, SelectFirstHopFunc firstHop, SelectHopFunc nextHop)
 	{
 		auto prevHop = i2p::context.GetSharedRouterInfo ();
 		if(i2p::transport::transports.RoutesRestricted())
@@ -385,7 +399,7 @@ namespace tunnel
 		}
 		else if (i2p::transport::transports.GetNumPeers () > 25)
 		{
-			auto r = i2p::transport::transports.GetRandomPeer ();
+			auto r = firstHop();
 			if (r && !r->GetProfile ()->IsBad ())
 			{
 				prevHop = r;
@@ -408,6 +422,12 @@ namespace tunnel
 		return true;
 	}
 
+	std::shared_ptr<const i2p::data::RouterInfo> StandardSelectFirstHop()
+	{
+		return i2p::transport::transports.GetRandomPeer();
+	}
+
+
 	bool TunnelPool::SelectPeers (std::vector<std::shared_ptr<const i2p::data::IdentityEx> >& peers, bool isInbound)
 	{
 		int numHops = isInbound ? m_NumInboundHops : m_NumOutboundHops;
@@ -421,7 +441,7 @@ namespace tunnel
 		}
 		// explicit peers in use
 		if (m_ExplicitPeers) return SelectExplicitPeers (peers, isInbound);
-		return StandardSelectPeers(peers, numHops, isInbound, std::bind(&TunnelPool::SelectNextHop, this, std::placeholders::_1));
+		return StandardSelectPeers(peers, numHops, isInbound, &StandardSelectFirstHop, std::bind(&TunnelPool::SelectNextHop, this, std::placeholders::_1));
 	}
 
 	bool TunnelPool::SelectExplicitPeers (std::vector<std::shared_ptr<const i2p::data::IdentityEx> >& peers, bool isInbound)

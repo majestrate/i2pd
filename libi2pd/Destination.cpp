@@ -942,5 +942,24 @@ namespace client
 		if (m_DatagramDestination) m_DatagramDestination->CleanUp ();
 	}
 
+	IOutboundTunnelSelector::OBTunnel_ptr LeaseSetDestination::GetAlignedTunnelTo(const RemoteDestination_t & gateway)
+	{
+		return GetNewOutboundTunnel();
+	}
+
+	IOutboundTunnelSelector::OBTunnel_ptr LeaseSetDestination::GetNewOutboundTunnel(OBTunnel_ptr excluding)
+	{
+		return GetTunnelPool ()->GetNextOutboundTunnel(excluding);
+	}
+
+	IOutboundTunnelSelector::OBTunnel_ptr LeaseSetDestination::GetOutboundTunnelFor(const RemoteDestination_t & destination, OBTunnel_ptr excluding)
+	{
+		return GetNewOutboundTunnel(excluding);
+	}
+
+	void LeaseSetDestination::PrepareOutboundTunnelTo(const RemoteDestination_t & gateway, RoutingDestination_ptr remote)
+	{
+	}
+
 }
 }

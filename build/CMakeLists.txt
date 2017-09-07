@@ -97,6 +97,7 @@ install(TARGETS libi2pd
 # install(EXPORT libi2pd DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 set (CLIENT_SRC
+  "${LIBI2PD_CLIENT_SRC_DIR}/Aligned.cpp"
   "${LIBI2PD_CLIENT_SRC_DIR}/AddressBook.cpp"
   "${LIBI2PD_CLIENT_SRC_DIR}/BOB.cpp"
   "${LIBI2PD_CLIENT_SRC_DIR}/ClientContext.cpp"
