@@ -831,10 +831,10 @@ namespace client
 
 	std::shared_ptr<i2p::stream::Stream> ClientDestination::CreateStream (std::shared_ptr<const i2p::data::LeaseSet> remote, int port)
 	{
-		if (m_StreamingDestination)
-			return m_StreamingDestination->CreateNewOutgoingStream (remote, port);
-		else
-			return nullptr;
+      if (m_StreamingDestination)
+        return m_StreamingDestination->CreateNewOutgoingStream (remote, port);
+      else
+        return nullptr;
 	}
 
 	std::shared_ptr<i2p::stream::StreamingDestination> ClientDestination::GetStreamingDestination (int port) const

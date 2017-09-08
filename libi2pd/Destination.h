@@ -217,8 +217,8 @@ namespace client
 			std::shared_ptr<i2p::stream::StreamingDestination> CreateStreamingDestination (int port, bool gzip = true); // additional
 			std::shared_ptr<i2p::stream::StreamingDestination> GetStreamingDestination (int port = 0) const;
 			// following methods operate with default streaming destination
-      virtual void CreateStream (StreamRequestComplete streamRequestComplete, const i2p::data::IdentHash& dest, int port = 0);
-      virtual std::shared_ptr<i2p::stream::Stream> CreateStream (std::shared_ptr<const i2p::data::LeaseSet> remote, int port = 0);
+    virtual void CreateStream (StreamRequestComplete streamRequestComplete, const i2p::data::IdentHash& dest, int port = 0);
+    virtual std::shared_ptr<i2p::stream::Stream> CreateStream (std::shared_ptr<const i2p::data::LeaseSet> remote, int port = 0);
 			void AcceptStreams (const i2p::stream::StreamingDestination::Acceptor& acceptor);
 			void StopAcceptingStreams ();
 			bool IsAcceptingStreams () const;
@@ -240,6 +240,8 @@ namespace client
 			void CreateNewLeaseSet (std::vector<std::shared_ptr<i2p::tunnel::InboundTunnel> > tunnels);
 
 		private:
+
+    void DoCreateStream (StreamRequestComplete streamRequestComplete, const i2p::data::IdentHash& dest, int port);
 
 			std::shared_ptr<ClientDestination> GetSharedFromThis ()
 			{ return std::static_pointer_cast<ClientDestination>(shared_from_this ()); }

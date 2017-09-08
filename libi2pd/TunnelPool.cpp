@@ -155,11 +155,20 @@ namespace tunnel
 		return GetNextTunnel (m_OutboundTunnels, excluded);
 	}
 
-	std::vector<std::shared_ptr<OutboundTunnel> > TunnelPool::GetOutboundTunnelsWhere(OutboundTunnelFilter f) const
+	std::vector<std::shared_ptr<OutboundTunnel> > TunnelPool::GetOutboundTunnelsWhere(OutboundTunnelFilter f, bool lock) const
 	{
 		std::vector<std::shared_ptr<OutboundTunnel> > tuns;
+		if(lock)
 		{
 			std::unique_lock<std::mutex> l(m_OutboundTunnelsMutex);
+			for(auto & tun : m_OutboundTunnels)
+			{
+				if(f(tun))
+					tuns.push_back(tun);
+			}
+		}
+		else
+		{
 			for(auto & tun : m_OutboundTunnels)
 			{
 				if(f(tun))
@@ -271,8 +280,10 @@ namespace tunnel
 				if (it.second.first->GetState () == eTunnelStateTestFailed)
 				{
 					it.second.first->SetState (eTunnelStateFailed);
-					std::unique_lock<std::mutex> l(m_OutboundTunnelsMutex);
-					m_OutboundTunnels.erase (it.second.first);
+					{
+						std::unique_lock<std::mutex> l(m_OutboundTunnelsMutex);
+						m_OutboundTunnels.erase (it.second.first);
+					}
 				}
 				else
 					it.second.first->SetState (eTunnelStateTestFailed);

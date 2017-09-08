@@ -62,7 +62,7 @@ namespace client
 				{
 					std::map<std::string, std::string> params;
 					ReadI2CPOptionsFromConfig ("httpproxy.", params);
-					localDestination = CreateNewLocalDestination (keys, false, &params);
+					localDestination = CreateNewLocalDestination (keys, false, &params, true);
 					localDestination->Acquire ();
 				}
 				else
@@ -98,7 +98,7 @@ namespace client
 				{
 					std::map<std::string, std::string> params;
 					ReadI2CPOptionsFromConfig ("socksproxy.", params);
-					localDestination = CreateNewLocalDestination (keys, false, &params);
+					localDestination = CreateNewLocalDestination (keys, false, &params, true);
 					localDestination->Acquire ();
 				}
 				else
@@ -340,11 +340,11 @@ namespace client
 	}
 
 	std::shared_ptr<ClientDestination> ClientContext::CreateNewLocalDestination (bool isPublic, i2p::data::SigningKeyType sigType,
-     const std::map<std::string, std::string> * params)
+		const std::map<std::string, std::string> * params, bool matchedTunnels)
 	{
 		i2p::data::PrivateKeys keys = i2p::data::PrivateKeys::CreateRandomKeys (sigType);
 		std::shared_ptr<ClientDestination> localDestination;
-		if(params && params->find(I2P_CLIENT_TUNNEL_MATCH_TUNNELS) != params->end() && params->find(I2P_CLIENT_TUNNEL_MATCH_TUNNELS)->second == "true")
+		if(matchedTunnels)
 			localDestination = std::make_shared<AlignedDestination> (keys, isPublic, params);
 		else
 			localDestination = std::make_shared<ClientDestination> (keys, isPublic, params);
@@ -370,7 +370,7 @@ namespace client
 	}
 
 	std::shared_ptr<ClientDestination> ClientContext::CreateNewLocalDestination (const i2p::data::PrivateKeys& keys, bool isPublic,
-		const std::map<std::string, std::string> * params)
+	const std::map<std::string, std::string> * params, bool matchedTunnels)
 	{
 		auto it = m_Destinations.find (keys.GetPublic ()->GetIdentHash ());
 		if (it != m_Destinations.end ())
@@ -383,7 +383,11 @@ namespace client
 			}
 			return nullptr;
 		}
-		auto localDestination = std::make_shared<ClientDestination> (keys, isPublic, params);
+		std::shared_ptr<ClientDestination> localDestination = nullptr;
+		if(matchedTunnels)
+			localDestination = std::make_shared<AlignedDestination> (keys, isPublic, params);
+		else
+			localDestination = std::make_shared<ClientDestination> (keys, isPublic, params);
 		std::unique_lock<std::mutex> l(m_DestinationsMutex);
 		m_Destinations[keys.GetPublic ()->GetIdentHash ()] = localDestination;
 		localDestination->Start ();
@@ -414,7 +418,7 @@ namespace client
 		options[I2CP_PARAM_TAGS_TO_SEND] = GetI2CPOption (section, I2CP_PARAM_TAGS_TO_SEND, DEFAULT_TAGS_TO_SEND);
 		options[I2CP_PARAM_MIN_TUNNEL_LATENCY] = GetI2CPOption(section, I2CP_PARAM_MIN_TUNNEL_LATENCY, DEFAULT_MIN_TUNNEL_LATENCY);
 		options[I2CP_PARAM_MAX_TUNNEL_LATENCY] = GetI2CPOption(section, I2CP_PARAM_MAX_TUNNEL_LATENCY, DEFAULT_MAX_TUNNEL_LATENCY);
-		options[I2P_CLIENT_TUNNEL_MATCH_TUNNELS] = GetI2CPOption(section, I2P_CLIENT_TUNNEL_MATCH_TUNNELS, false);
+		options[I2P_CLIENT_TUNNEL_MATCH_TUNNELS] = GetI2CPOption(section, I2P_CLIENT_TUNNEL_MATCH_TUNNELS, true);
 	}
 
 	void ClientContext::ReadI2CPOptionsFromConfig (const std::string& prefix, std::map<std::string, std::string>& options) const
@@ -464,6 +468,7 @@ namespace client
 		for (auto& section: pt)
 		{
 			std::string name = section.first;
+			bool matchedTunnels = false;
 			try
 			{
 				std::string type = section.second.get<std::string> (I2P_TUNNELS_SECTION_TYPE);
@@ -479,6 +484,7 @@ namespace client
 						dest = section.second.get<std::string> (I2P_CLIENT_TUNNEL_DESTINATION);
 					int port = section.second.get<int> (I2P_CLIENT_TUNNEL_PORT);
 					// optional params
+					matchedTunnels = section.second.get(I2P_CLIENT_TUNNEL_MATCH_TUNNELS, false);
 					std::string keys = section.second.get (I2P_CLIENT_TUNNEL_KEYS, "");
 					std::string address = section.second.get (I2P_CLIENT_TUNNEL_ADDRESS, "127.0.0.1");
 					int destinationPort = section.second.get (I2P_CLIENT_TUNNEL_DESTINATION_PORT, 0);
@@ -495,7 +501,7 @@ namespace client
 						{
 							localDestination = FindLocalDestination (k.GetPublic ()->GetIdentHash ());
 							if (!localDestination)
-								localDestination = CreateNewLocalDestination (k, type == I2P_TUNNELS_SECTION_TYPE_UDPCLIENT, &options);
+								localDestination = CreateNewLocalDestination (k, type == I2P_TUNNELS_SECTION_TYPE_UDPCLIENT, &options, matchedTunnels);
 						}
 					}
 
@@ -593,7 +599,7 @@ namespace client
 						continue;
 					localDestination = FindLocalDestination (k.GetPublic ()->GetIdentHash ());
 					if (!localDestination)
-						localDestination = CreateNewLocalDestination (k, true, &options);
+						localDestination = CreateNewLocalDestination (k, true, &options, matchedTunnels);
 					if (type == I2P_TUNNELS_SECTION_TYPE_UDPSERVER)
 					{
 						// udp server tunnel
