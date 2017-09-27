@@ -75,6 +75,7 @@ MainWindow::MainWindow(QWidget *parent) :
     int w = 683;
     int h = 3060;
     ui->settingsContents->setFixedSize(w, h);
+    ui->settingsContents->setGeometry(QRect(0,0,w,h));
 
     /*
     QPalette pal(palette());
@@ -82,7 +83,14 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->settingsContents->setAutoFillBackground(true);
     ui->settingsContents->setPalette(pal);
     */
+    QPalette pal(palette());
+    pal.setColor(QPalette::Background, Qt::red);
+    ui->wrongInputLabel->setAutoFillBackground(true);
+    ui->wrongInputLabel->setPalette(pal);
+    ui->wrongInputLabel->setMaximumHeight(ui->wrongInputLabel->sizeHint().height());
+    ui->wrongInputLabel->setVisible(false);
 
+    settingsTitleLabelNominalHeight = ui->settingsTitleLabel->height();
 #ifndef ANDROID
     createActions();
     createTrayIcon();
@@ -565,7 +573,7 @@ void MainWindow::initUInt16Box(ConfigOption option, QLineEdit* numberLineEdit, Q
     configItems.append(new UInt16StringItem(option, numberLineEdit, fieldNameTranslated));
 }
 void MainWindow::initStringBox(ConfigOption option, QLineEdit* lineEdit){
-    configItems.append(new BaseStringItem(option, lineEdit));
+    configItems.append(new BaseStringItem(option, lineEdit, QString()));
 }
 NonGUIOptionItem* MainWindow::initNonGUIOption(ConfigOption option) {
     NonGUIOptionItem * retValue;
@@ -623,6 +631,7 @@ void MainWindow::loadAllConfigs(){
 }
 /** returns false iff not valid items present and save was aborted */
 bool MainWindow::saveAllConfigs(){
+    QString cannotSaveSettings = QApplication::tr("Cannot save settings.");
     programOptionsWriterCurrentSection="";
     /*if(!logFileNameOption->lineEdit->text().trimmed().isEmpty())logOption->optionValue=boost::any(std::string("file"));
     else logOption->optionValue=boost::any(std::string("stdout"));*/
@@ -632,7 +641,10 @@ bool MainWindow::saveAllConfigs(){
     std::stringstream out;
     for(QList<MainWindowItem*>::iterator it = configItems.begin(); it!= configItems.end(); ++it) {
         MainWindowItem* item = *it;
-        if(!item->isValid()) return false;
+        if(!item->isValid()){
+            highlightWrongInput(QApplication::tr("Invalid value for")+" "+item->getConfigOption().section+"::"+item->getConfigOption().option+". "+item->getRequirementToBeValid()+" "+cannotSaveSettings, item->getWidgetToFocus());
+            return false;
+        }
     }
 
     for(QList<MainWindowItem*>::iterator it = configItems.begin(); it!= configItems.end(); ++it) {
@@ -668,15 +680,22 @@ void FolderChooserItem::pushButtonReleased() {
 }
 
 void BaseStringItem::installListeners(MainWindow *mainWindow) {
-    QObject::connect(lineEdit, SIGNAL(textChanged(const QString &)), mainWindow, SLOT(saveAllConfigs()));
+    QObject::connect(lineEdit, SIGNAL(textChanged(const QString &)), mainWindow, SLOT(updated()));
 }
 void ComboBoxItem::installListeners(MainWindow *mainWindow) {
-    QObject::connect(comboBox, SIGNAL(currentIndexChanged(int)), mainWindow, SLOT(saveAllConfigs()));
+    QObject::connect(comboBox, SIGNAL(currentIndexChanged(int)), mainWindow, SLOT(updated()));
 }
 void CheckBoxItem::installListeners(MainWindow *mainWindow) {
-    QObject::connect(checkBox, SIGNAL(stateChanged(int)), mainWindow, SLOT(saveAllConfigs()));
+    QObject::connect(checkBox, SIGNAL(stateChanged(int)), mainWindow, SLOT(updated()));
 }
 
+void MainWindow::updated() {
+    ui->wrongInputLabel->setVisible(false);
+    adjustSizesAccordingToWrongLabel();
+
+    applyTunnelsUiToConfigs();
+    saveAllConfigs();
+}
 
 void MainWindowItem::installListeners(MainWindow *mainWindow) {}
 
@@ -688,27 +707,33 @@ void MainWindow::appendTunnelForms(std::string tunnelNameToFocus) {
         TunnelConfig* tunconf = it->second;
         ServerTunnelConfig* stc = tunconf->asServerTunnelConfig();
         if(stc){
-            ServerTunnelPane * tunnelPane=new ServerTunnelPane(&tunnelsPageUpdateListener, stc);
+            ServerTunnelPane * tunnelPane=new ServerTunnelPane(&tunnelsPageUpdateListener, stc, ui->wrongInputLabel, ui->wrongInputLabel, this);
             int h=tunnelPane->appendServerTunnelForm(stc, ui->tunnelsScrollAreaWidgetContents, tunnelPanes.size(), height);
             height+=h;
-            qDebug() << "tun.height:" << height << "sz:" <<  tunnelPanes.size();
+            //qDebug() << "tun.height:" << height << "sz:" <<  tunnelPanes.size();
             tunnelPanes.push_back(tunnelPane);
-            if(name==tunnelNameToFocus)tunnelPane->getNameLineEdit()->setFocus();
+            if(name==tunnelNameToFocus){
+                tunnelPane->getNameLineEdit()->setFocus();
+                ui->tunnelsScrollArea->ensureWidgetVisible(tunnelPane->getNameLineEdit());
+            }
             continue;
         }
         ClientTunnelConfig* ctc = tunconf->asClientTunnelConfig();
         if(ctc){
-            ClientTunnelPane * tunnelPane=new ClientTunnelPane(&tunnelsPageUpdateListener, ctc);
+            ClientTunnelPane * tunnelPane=new ClientTunnelPane(&tunnelsPageUpdateListener, ctc, ui->wrongInputLabel, ui->wrongInputLabel, this);
             int h=tunnelPane->appendClientTunnelForm(ctc, ui->tunnelsScrollAreaWidgetContents, tunnelPanes.size(), height);
             height+=h;
-            qDebug() << "tun.height:" << height << "sz:" <<  tunnelPanes.size();
+            //qDebug() << "tun.height:" << height << "sz:" <<  tunnelPanes.size();
             tunnelPanes.push_back(tunnelPane);
-            if(name==tunnelNameToFocus)tunnelPane->getNameLineEdit()->setFocus();
+            if(name==tunnelNameToFocus){
+                tunnelPane->getNameLineEdit()->setFocus();
+                ui->tunnelsScrollArea->ensureWidgetVisible(tunnelPane->getNameLineEdit());
+            }
             continue;
         }
         throw "unknown TunnelConfig subtype";
     }
-    qDebug() << "tun.setting height:" << height;
+    //qDebug() << "tun.setting height:" << height;
     ui->tunnelsScrollAreaWidgetContents->setGeometry(QRect(0, 0, 621, height));
     QList<QWidget*> childWidgets = ui->tunnelsScrollAreaWidgetContents->findChildren<QWidget*>();
     foreach(QWidget* widget, childWidgets)
@@ -732,6 +757,14 @@ void MainWindow::deleteTunnelForms() {
         throw "unknown TunnelPane subtype";
     }
     tunnelPanes.clear();
+}
+
+bool MainWindow::applyTunnelsUiToConfigs() {
+    for(std::list<TunnelPane*>::iterator it = tunnelPanes.begin(); it != tunnelPanes.end(); ++it) {
+        TunnelPane* tp = *it;
+        if(!tp->applyDataFromUIToTunnelConfig())return false;
+    }
+    return true;
 }
 
 void MainWindow::reloadTunnelsConfigAndUI(std::string tunnelNameToFocus) {
@@ -777,7 +810,7 @@ void MainWindow::TunnelsPageUpdateListenerMainWindowImpl::updated(std::string ol
         if(it!=mainWindow->tunnelConfigs.end())mainWindow->tunnelConfigs.erase(it);
         mainWindow->tunnelConfigs[tunConf->getName()]=tunConf;
     }
-    mainWindow->SaveTunnelsConfig();
+    mainWindow->saveAllConfigs();
 }
 
 void MainWindow::TunnelsPageUpdateListenerMainWindowImpl::needsDeleting(std::string oldName){
@@ -832,4 +865,42 @@ void MainWindow::anchorClickedHandler(const QUrl & link) {
 
 void MainWindow::backClickedFromChild() {
     showStatusPage(statusPage);
+}
+
+void MainWindow::adjustSizesAccordingToWrongLabel() {
+    if(ui->wrongInputLabel->isVisible()) {
+        int dh = ui->wrongInputLabel->height()+ui->verticalLayout_7->layout()->spacing();
+        ui->verticalLayout_7->invalidate();
+        ui->wrongInputLabel->adjustSize();
+        ui->stackedWidget->adjustSize();
+        ui->stackedWidget->setFixedHeight(531-dh);
+        ui->settingsPage->setFixedHeight(531-dh);
+        ui->verticalLayoutWidget_4->setGeometry(QRect(0, 0, 711, 531-dh));
+        ui->stackedWidget->setFixedHeight(531-dh);
+        ui->settingsScrollArea->setFixedHeight(531-dh-settingsTitleLabelNominalHeight-ui->verticalLayout_4->spacing());
+        ui->settingsTitleLabel->setFixedHeight(settingsTitleLabelNominalHeight);
+        ui->tunnelsScrollArea->setFixedHeight(531-dh-settingsTitleLabelNominalHeight-ui->horizontalLayout_42->geometry().height()-2*ui->verticalLayout_4->spacing());
+        ui->tunnelsTitleLabel->setFixedHeight(settingsTitleLabelNominalHeight);
+    }else{
+        ui->verticalLayout_7->invalidate();
+        ui->wrongInputLabel->adjustSize();
+        ui->stackedWidget->adjustSize();
+        ui->stackedWidget->setFixedHeight(531);
+        ui->settingsPage->setFixedHeight(531);
+        ui->verticalLayoutWidget_4->setGeometry(QRect(0, 0, 711, 531));
+        ui->stackedWidget->setFixedHeight(531);
+        ui->settingsScrollArea->setFixedHeight(531-settingsTitleLabelNominalHeight-ui->verticalLayout_4->spacing());
+        ui->settingsTitleLabel->setFixedHeight(settingsTitleLabelNominalHeight);
+        ui->tunnelsScrollArea->setFixedHeight(531-settingsTitleLabelNominalHeight-ui->horizontalLayout_42->geometry().height()-2*ui->verticalLayout_4->spacing());
+        ui->tunnelsTitleLabel->setFixedHeight(settingsTitleLabelNominalHeight);
+    }
+}
+
+void MainWindow::highlightWrongInput(QString warningText, QWidget* widgetToFocus) {
+    bool redVisible = ui->wrongInputLabel->isVisible();
+    ui->wrongInputLabel->setVisible(true);
+    ui->wrongInputLabel->setText(warningText);
+    if(!redVisible)adjustSizesAccordingToWrongLabel();
+    if(widgetToFocus){ui->settingsScrollArea->ensureWidgetVisible(widgetToFocus);widgetToFocus->setFocus();}
+    showSettingsPage();
 }

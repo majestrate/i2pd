@@ -565,7 +565,7 @@ namespace client
 						{
 							// TODO: update
 							ins.first->second->isUpdated = true;
-							LogPrint (eLogInfo, "Clients: I2P client tunnel for endpoint ", clientEndpoint, "already exists");
+							LogPrint (eLogInfo, "Clients: I2P client tunnel for endpoint ", clientEndpoint, " already exists");
 						}
 					}
 				}
