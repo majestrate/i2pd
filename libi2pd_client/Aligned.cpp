@@ -102,7 +102,7 @@ namespace client
 
 	void AlignedDestination::PrepareOutboundTunnelTo(const RemoteDestination_t & gateway, RoutingDestination_ptr remote)
 	{
-		ObtainAlignedRoutingPath(remote, gateway, false, [](AlignedRoutingSession_ptr) {});
+		ObtainAlignedRoutingPath(remote, gateway, true, [](AlignedRoutingSession_ptr) {});
 	}
 
 	i2p::garlic::GarlicRoutingSessionPtr AlignedDestination::CreateNewRoutingSession(std::shared_ptr<const i2p::data::RoutingDestination> destination, int numTags, bool attachLS)
@@ -121,18 +121,19 @@ namespace client
 		{
 			auto lease = leases[rand() % leases.size()];
 			auto gotRouter = [=](std::shared_ptr<i2p::data::RouterInfo> ri) {
-				if(!ri) obtained(nullptr);
-				else {
-					auto session = GetRoutingSession(destination, attachLS);
-					std::shared_ptr<AlignedRoutingSession> s = nullptr;
-					s = std::static_pointer_cast<AlignedRoutingSession>(session);
-					s->Start();
-					s->SetCurrentLease(lease);
-					s->AddBuildCompleteCallback([=](){
-							std::shared_ptr<AlignedRoutingSession> asess = std::static_pointer_cast<AlignedRoutingSession>(session);
-							obtained(asess);
-						});
+				if(!ri) {
+					LogPrint(eLogWarning, "AlignedDestinatino failed to find IBGW");
 				}
+				auto session = GetRoutingSession(destination, attachLS);
+				std::shared_ptr<AlignedRoutingSession> s = nullptr;
+				s = std::static_pointer_cast<AlignedRoutingSession>(session);
+				s->Start();
+				s->SetCurrentLease(lease);
+				s->AddBuildCompleteCallback([=](){
+						std::shared_ptr<AlignedRoutingSession> asess = std::static_pointer_cast<AlignedRoutingSession>(session);
+						obtained(asess);
+				});
+				
 			};
 			auto obep = i2p::data::netdb.FindRouter(lease->tunnelGateway);
 			if(obep)
@@ -155,9 +156,7 @@ namespace client
 		if(m_AlignedPool)
 		{
 			m_AlignedPool->SetCustomPeerSelector(nullptr);
-			LogPrint(eLogDebug, "AlignedRoutingSession: delete tunnel pool");
 			i2p::tunnel::tunnels.DeleteTunnelPool(m_AlignedPool);
-			LogPrint(eLogDebug, "AlignedRoutingSession: deleted tunnel pool");
 		}
 	}
 
@@ -279,8 +278,7 @@ namespace client
 		if(!m_AlignedPool)
 		{
 			auto pool = GetOwner()->GetTunnelPool();
-			LogPrint(eLogDebug, "AlignedRoutingSession: create tunnel pool");
-			m_AlignedPool = i2p::tunnel::tunnels.CreateTunnelPool(pool->GetNumInboundHops(), pool->GetNumOutboundHops(), 1, 2);
+			m_AlignedPool = i2p::tunnel::tunnels.CreateTunnelPool(pool->GetNumInboundHops(), pool->GetNumOutboundHops(), 0, 2);
 			m_AlignedPool->SetCustomPeerSelector(this);
 			LogPrint(eLogDebug, "AlignedRoutingSession: created tunnel pool");
 		}
