@@ -348,8 +348,13 @@ namespace client
 			localDestination = std::make_shared<AlignedDestination> (keys, isPublic, params);
 		else
 			localDestination = std::make_shared<ClientDestination> (keys, isPublic, params);
-		std::unique_lock<std::mutex> l(m_DestinationsMutex);
-		m_Destinations[localDestination->GetIdentHash ()] = localDestination;
+		{
+			std::unique_lock<std::mutex> l(m_DestinationsMutex);
+			m_Destinations[localDestination->GetIdentHash ()] = localDestination;
+		}
+		localDestination->Start ();
+		if(params && params->find(I2P_TUNNEL_PATH_STYLE) != params->end() && params->find(I2P_TUNNEL_PATH_STYLE)->second == I2P_TUNNEL_PATH_BIDIR)
+			localDestination->GetTunnelPool()->UseBidirectionalTunnels(true);
 		localDestination->Start ();
 		return localDestination;
 	}
@@ -388,8 +393,12 @@ namespace client
 			localDestination = std::make_shared<AlignedDestination> (keys, isPublic, params);
 		else
 			localDestination = std::make_shared<ClientDestination> (keys, isPublic, params);
-		std::unique_lock<std::mutex> l(m_DestinationsMutex);
-		m_Destinations[keys.GetPublic ()->GetIdentHash ()] = localDestination;
+		{
+			std::unique_lock<std::mutex> l(m_DestinationsMutex);
+			m_Destinations[keys.GetPublic ()->GetIdentHash ()] = localDestination;
+		}
+		if(params && params->find(I2P_TUNNEL_PATH_STYLE) != params->end() && params->find(I2P_TUNNEL_PATH_STYLE)->second == I2P_TUNNEL_PATH_BIDIR)
+			localDestination->GetTunnelPool()->UseBidirectionalTunnels(true);
 		localDestination->Start ();
 		return localDestination;
 	}
@@ -407,7 +416,14 @@ namespace client
 	{
         return section.second.get (boost::property_tree::ptree::path_type (name, '/'), std::to_string (value));
 	}
+	
+	template<typename Section>
+	std::string ClientContext::GetI2CPOptionStr (const Section& section, const std::string& name, const std::string& value) const
+	{
+        return section.second.get (boost::property_tree::ptree::path_type (name, '/'), value);
+	}
 
+	
 	template<typename Section>
 	void ClientContext::ReadI2CPOptions (const Section& section, std::map<std::string, std::string>& options) const
 	{
@@ -419,6 +435,7 @@ namespace client
 		options[I2CP_PARAM_MIN_TUNNEL_LATENCY] = GetI2CPOption(section, I2CP_PARAM_MIN_TUNNEL_LATENCY, DEFAULT_MIN_TUNNEL_LATENCY);
 		options[I2CP_PARAM_MAX_TUNNEL_LATENCY] = GetI2CPOption(section, I2CP_PARAM_MAX_TUNNEL_LATENCY, DEFAULT_MAX_TUNNEL_LATENCY);
 		options[I2P_CLIENT_TUNNEL_MATCH_TUNNELS] = GetI2CPOption(section, I2P_CLIENT_TUNNEL_MATCH_TUNNELS, true);
+		options[I2P_TUNNEL_PATH_STYLE] = GetI2CPOptionStr(section, I2P_TUNNEL_PATH_STYLE, I2P_TUNNEL_PATH_UNIDIR);
 	}
 
 	void ClientContext::ReadI2CPOptionsFromConfig (const std::string& prefix, std::map<std::string, std::string>& options) const
@@ -438,6 +455,8 @@ namespace client
 			options[I2CP_PARAM_MAX_TUNNEL_LATENCY] = value;
 		if (i2p::config::GetOption(prefix + I2P_CLIENT_TUNNEL_MATCH_TUNNELS, value))
 			options[I2P_CLIENT_TUNNEL_MATCH_TUNNELS] = value;
+		if (i2p::config::GetOption(prefix + I2P_TUNNEL_PATH_STYLE, value))
+			options[I2P_TUNNEL_PATH_STYLE] = value;
 	}
 
 	void ClientContext::ReadTunnels ()

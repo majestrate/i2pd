@@ -48,7 +48,9 @@ namespace client
 	const char I2P_SERVER_TUNNEL_WEBIRC_PASSWORD[] = "webircpassword";
 	const char I2P_SERVER_TUNNEL_ADDRESS[] = "address";
 	const char I2P_SERVER_TUNNEL_ENABLE_UNIQUE_LOCAL[] = "enableuniquelocal";
-
+	const char I2P_TUNNEL_PATH_STYLE[] = "pathstyle";
+	const char I2P_TUNNEL_PATH_UNIDIR[] = "unidir";
+	const char I2P_TUNNEL_PATH_BIDIR[] = "bidir";
 
 	class ClientContext
 	{
@@ -82,6 +84,8 @@ namespace client
 			void ReadTunnels ();
 			template<typename Section, typename Type>
 			std::string GetI2CPOption (const Section& section, const std::string& name, const Type& value) const;
+			template<typename Section>
+			std::string GetI2CPOptionStr (const Section& section, const std::string& name, const std::string& value) const;
 			template<typename Section>
 			void ReadI2CPOptions (const Section& section, std::map<std::string, std::string>& options) const;
 			void ReadI2CPOptionsFromConfig (const std::string& prefix, std::map<std::string, std::string>& options) const;

@@ -90,6 +90,7 @@ namespace tunnel
 			void UnsetCustomPeerSelector();
 			bool HasCustomPeerSelector();
 
+			void UseBidirectionalTunnels(bool bidi) { m_UseBidiTunnels = bidi; } 
 		/** @brief make this tunnel pool yield tunnels that fit latency range [min, max] */
 		void RequireLatency(uint64_t min, uint64_t max) { m_MinLatency = min; m_MaxLatency = max; }
 
@@ -127,6 +128,7 @@ namespace tunnel
 			mutable std::mutex m_TestsMutex;
 			std::map<uint32_t, std::pair<std::shared_ptr<OutboundTunnel>, std::shared_ptr<InboundTunnel> > > m_Tests;
 			bool m_IsActive;
+			bool m_UseBidiTunnels;
 			std::mutex m_CustomPeerSelectorMutex;
 			ITunnelPeerSelector * m_CustomPeerSelector;
 
