@@ -280,6 +280,7 @@ namespace client
 			auto pool = GetOwner()->GetTunnelPool();
 			m_AlignedPool = i2p::tunnel::tunnels.CreateTunnelPool(pool->GetNumInboundHops(), pool->GetNumOutboundHops(), 0, 2);
 			m_AlignedPool->SetCustomPeerSelector(this);
+			m_AlignedPool->UseBidirectionalTunnels(true);
 			LogPrint(eLogDebug, "AlignedRoutingSession: created tunnel pool");
 		}
 	}
