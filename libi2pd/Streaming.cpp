@@ -666,7 +666,7 @@ namespace stream
 		if (!m_CurrentOutboundTunnel || !m_CurrentOutboundTunnel->IsEstablished ())
 		{
 			if(m_CurrentRemoteLease)
-				m_CurrentOutboundTunnel = m_LocalDestination.GetOwner ()->GetAlignedTunnelTo (m_CurrentRemoteLease->tunnelGateway);
+				m_CurrentOutboundTunnel = m_LocalDestination.GetOwner ()->GetAlignedTunnelTo (m_CurrentRemoteLease->tunnelGateway, m_CurrentOutboundTunnel);
 			else
 				m_CurrentOutboundTunnel = m_LocalDestination.GetOwner ()->GetNewOutboundTunnel(m_CurrentOutboundTunnel);
 		}
@@ -787,7 +787,7 @@ namespace stream
 						// pick another outbound tunnel
 						if (m_RoutingSession) m_RoutingSession->SetSharedRoutingPath (nullptr);
 						if (m_CurrentRemoteLease && !m_CurrentRemoteLease->ExpiresWithin(5000))
-							m_CurrentOutboundTunnel = m_LocalDestination.GetOwner ()->GetAlignedTunnelTo (m_CurrentRemoteLease->tunnelGateway);
+							m_CurrentOutboundTunnel = m_LocalDestination.GetOwner ()->GetAlignedTunnelTo (m_CurrentRemoteLease->tunnelGateway, m_CurrentOutboundTunnel);
 						else
 							m_CurrentOutboundTunnel = m_LocalDestination.GetOwner ()->GetNewOutboundTunnel(m_CurrentOutboundTunnel);
 

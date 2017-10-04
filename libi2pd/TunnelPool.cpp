@@ -524,7 +524,7 @@ namespace tunnel
 	bool TunnelPool::CreateOutboundTunnelImmediate(const Path & path, std::shared_ptr<InboundTunnel> inboundTunnel)
 	{
 		if (!inboundTunnel)
-			inboundTunnel = tunnels.GetNextInboundTunnel ();
+			inboundTunnel = GetNextInboundTunnel ();
 		if (inboundTunnel)
 		{
 			auto config = std::make_shared<TunnelConfig>(path, inboundTunnel->GetNextTunnelID (), inboundTunnel->GetNextIdentHash ());

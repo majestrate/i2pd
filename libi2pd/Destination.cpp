@@ -942,9 +942,9 @@ namespace client
 		if (m_DatagramDestination) m_DatagramDestination->CleanUp ();
 	}
 
-	IOutboundTunnelSelector::OBTunnel_ptr LeaseSetDestination::GetAlignedTunnelTo(const RemoteDestination_t & gateway)
+	IOutboundTunnelSelector::OBTunnel_ptr LeaseSetDestination::GetAlignedTunnelTo(const RemoteDestination_t & gateway, OBTunnel_ptr excluding)
 	{
-		return GetNewOutboundTunnel();
+		return GetNewOutboundTunnel(excluding);
 	}
 
 	IOutboundTunnelSelector::OBTunnel_ptr LeaseSetDestination::GetNewOutboundTunnel(OBTunnel_ptr excluding)

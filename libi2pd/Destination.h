@@ -70,7 +70,7 @@ namespace client
     /** start building an aligned tunnel to IGBW */
     virtual void PrepareOutboundTunnelTo(const RemoteDestination_t & gateway, RoutingDestination_ptr remote) = 0;
     /** get fresh outbound tunnel aligned with IBGW */
-    virtual OBTunnel_ptr GetAlignedTunnelTo(const RemoteDestination_t & gateway) = 0;
+    virtual OBTunnel_ptr GetAlignedTunnelTo(const RemoteDestination_t & gateway, OBTunnel_ptr excluding) = 0;
     /** get new outbound tunnel to wherever */
     virtual OBTunnel_ptr GetNewOutboundTunnel(OBTunnel_ptr exlcuding) = 0;
     /** get next good outbound tunnel for a remote destination by ident hash */
@@ -124,7 +124,7 @@ namespace client
 
       // implements IOutboundTunnelSelector
     virtual void PrepareOutboundTunnelTo(const RemoteDestination_t & gateway, RoutingDestination_ptr remote);
-    virtual OBTunnel_ptr GetAlignedTunnelTo(const RemoteDestination_t & gateway);
+    virtual OBTunnel_ptr GetAlignedTunnelTo(const RemoteDestination_t & gateway, OBTunnel_ptr excluding);
     virtual OBTunnel_ptr GetNewOutboundTunnel(OBTunnel_ptr exlcuding=nullptr);
     virtual OBTunnel_ptr GetOutboundTunnelFor(const RemoteDestination_t & destination, OBTunnel_ptr excluding=nullptr);
 

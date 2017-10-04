@@ -59,13 +59,13 @@ namespace client
 		return GetTunnelPool()->GetNextOutboundTunnel(excluding);
 	}
 
-	IOutboundTunnelSelector::OBTunnel_ptr AlignedDestination::GetAlignedTunnelTo(const RemoteDestination_t & gateway)
+	IOutboundTunnelSelector::OBTunnel_ptr AlignedDestination::GetAlignedTunnelTo(const RemoteDestination_t & gateway, OBTunnel_ptr excluding)
 	{
 		OBTunnel_ptr tun = nullptr;
-		VisitAllRoutingSessions([&tun, gateway](i2p::garlic::GarlicRoutingSessionPtr s) {
+		VisitAllRoutingSessions([&tun, &excluding, gateway](i2p::garlic::GarlicRoutingSessionPtr s) {
 			if(tun) return;
-			s->VisitSharedRoutingPath([&tun, gateway](std::shared_ptr<i2p::garlic::GarlicRoutingPath> p) {
-				if(p && p->remoteLease && p->remoteLease->tunnelGateway == gateway)
+			s->VisitSharedRoutingPath([&tun, &excluding, gateway](std::shared_ptr<i2p::garlic::GarlicRoutingPath> p) {
+				if(p && p->remoteLease && p->remoteLease->tunnelGateway == gateway && p->outboundTunnel != excluding)
 					tun = p->outboundTunnel;
 			});
 		});

@@ -41,7 +41,7 @@ namespace client
     ~AlignedDestination();
     virtual void CreateStream(StreamRequestComplete streamRequestComplete, const i2p::data::IdentHash& dest, int port = 0) override;
     virtual void PrepareOutboundTunnelTo(const RemoteDestination_t & gateway, RoutingDestination_ptr remote) override;
-    virtual OBTunnel_ptr GetAlignedTunnelTo(const RemoteDestination_t & gateway) override;
+    virtual OBTunnel_ptr GetAlignedTunnelTo(const RemoteDestination_t & gateway, OBTunnel_ptr excluding) override;
     virtual OBTunnel_ptr GetNewOutboundTunnel(OBTunnel_ptr exlcuding) override;
     virtual OBTunnel_ptr GetOutboundTunnelFor(const RemoteDestination_t & destination, OBTunnel_ptr excluding=nullptr) override;
 
