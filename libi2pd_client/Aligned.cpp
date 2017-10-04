@@ -21,6 +21,12 @@ namespace client
 			streamRequestComplete(nullptr);
 	}
 
+	void AlignedRoutingSession::SetCurrentLease(const Lease_ptr & lease)
+	{
+		m_CurrentRemoteLease = lease;
+		Start();
+	}
+
 	void AlignedDestination::CreateStream(StreamRequestComplete streamRequestComplete, const i2p::data::IdentHash & dest, int port)
 	{
 		LogPrint(eLogDebug, "AlignedDestination: create stream to ",dest.ToBase32(), ":", port);
@@ -113,33 +119,66 @@ namespace client
 	void AlignedDestination::ObtainAlignedRoutingPath(RoutingDestination_ptr destination, const RemoteDestination_t & gateway, bool attachLS, AlignedPathObtainedFunc obtained)
 	{
 		LogPrint(eLogDebug, "AlignedDestination: obtain routing path to IBGW=", gateway.ToBase64());
-		auto ls = FindLeaseSet(destination->GetIdentHash());
-		auto leases = ls->GetNonExpiredLeasesExcluding([gateway](const i2p::data::Lease l) -> bool {
-			return gateway != l.tunnelGateway;
-		});
-		if(leases.size())
-		{
-			auto lease = leases[rand() % leases.size()];
+
+		auto gotLease = [=](std::shared_ptr<const i2p::data::LeaseSet> ls, std::shared_ptr<const i2p::data::Lease> l) {
+			if(!ls) {
+				LogPrint(eLogWarning, "AlignedDestination: cannot resolve lease set");
+				return;
+			}
 			auto gotRouter = [=](std::shared_ptr<i2p::data::RouterInfo> ri) {
 				if(!ri) {
 					LogPrint(eLogWarning, "AlignedDestinatino failed to find IBGW");
+					obtained(nullptr);
+					return;
 				}
 				auto session = GetRoutingSession(destination, attachLS);
 				std::shared_ptr<AlignedRoutingSession> s = nullptr;
 				s = std::static_pointer_cast<AlignedRoutingSession>(session);
-				s->Start();
-				s->SetCurrentLease(lease);
+				s->SetCurrentLease(l);
 				s->AddBuildCompleteCallback([=](){
-						std::shared_ptr<AlignedRoutingSession> asess = std::static_pointer_cast<AlignedRoutingSession>(session);
-						obtained(asess);
+					std::shared_ptr<AlignedRoutingSession> asess = std::static_pointer_cast<AlignedRoutingSession>(session);
+					obtained(asess);
 				});
-				
 			};
-			auto obep = i2p::data::netdb.FindRouter(lease->tunnelGateway);
+			auto obep = i2p::data::netdb.FindRouter(l->tunnelGateway);
 			if(obep)
 				gotRouter(obep);
 			else
-				i2p::data::netdb.RequestDestination(lease->tunnelGateway, gotRouter);
+				i2p::data::netdb.RequestDestination(l->tunnelGateway, gotRouter);
+		};
+
+		auto ls = FindLeaseSet(destination->GetIdentHash());
+		if(ls)
+		{
+			auto leases = ls->GetNonExpiredLeasesExcluding([gateway](const i2p::data::Lease l) -> bool {
+				return gateway != l.tunnelGateway;
+			});
+
+			if(leases.size())
+			{
+				gotLease(ls, leases[rand() % leases.size()]);
+			}
+			else
+			{
+				// no good leases pick a new lease
+				RequestDestination(destination->GetIdentHash(), [=](std::shared_ptr<i2p::data::LeaseSet> ls) {
+					if(!ls)
+					{
+						gotLease(nullptr, nullptr);
+						return;
+					}
+					auto leases = ls->GetNonExpiredLeases();
+					if(leases.size())
+						gotLease(ls, leases[rand() % leases.size()]);
+					else
+						gotLease(nullptr, nullptr);
+
+				});
+			}
+		}
+		else
+		{
+			gotLease(nullptr, nullptr);
 		}
 	}
 
@@ -221,12 +260,8 @@ namespace client
 	}
 	std::shared_ptr<i2p::garlic::GarlicRoutingPath> AlignedRoutingSession::GetSharedRoutingPath()
 	{
-		if(HasSharedRoutingPath())
+		if(HasSharedRoutingPath() || m_AlignedPool == nullptr)
 			return i2p::garlic::GarlicRoutingSession::GetSharedRoutingPath();
-		if(!m_AlignedPool)
-		{
-			Start();
-		}
 		size_t obHops = m_AlignedPool->GetNumOutboundHops();
 		auto path = std::make_shared<i2p::garlic::GarlicRoutingPath>();
 		auto tuns = m_AlignedPool->GetOutboundTunnelsWhere([obHops](std::shared_ptr<i2p::tunnel::OutboundTunnel> tun) -> bool {

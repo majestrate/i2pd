@@ -21,7 +21,7 @@ namespace client
     std::shared_ptr<i2p::garlic::GarlicRoutingPath> GetSharedRoutingPath();
     bool SelectPeers(i2p::tunnel::Path & peers, int hops, bool inbound);
     bool OnBuildResult(const i2p::tunnel::Path & peers, bool isInbound, i2p::tunnel::TunnelBuildResult result);
-    void SetCurrentLease(const Lease_ptr & lease) { m_CurrentRemoteLease = lease; };
+    void SetCurrentLease(const Lease_ptr & lease);
     void AddBuildCompleteCallback(BuildCompleteCallback buildComplete);
     void Start();
   private:
