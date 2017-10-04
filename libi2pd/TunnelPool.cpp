@@ -113,6 +113,8 @@ namespace tunnel
 			m_OutboundTunnels.insert (createdTunnel);
 		}
 		OnTunnelBuildResult(createdTunnel, eBuildResultOkay);
+		if(m_UseBidiTunnels)
+			CreatePairedInboundTunnel(createdTunnel);
 	}
 
 	void TunnelPool::TunnelExpired (std::shared_ptr<OutboundTunnel> expiredTunnel)
@@ -483,9 +485,7 @@ namespace tunnel
 		auto outboundTunnel = GetNextOutboundTunnel ();
 		if (!outboundTunnel)
 			outboundTunnel = tunnels.GetNextOutboundTunnel ();
-		if(m_UseBidiTunnels)
-			CreatePairedInboundTunnel(outboundTunnel);
-		else
+		if(!m_UseBidiTunnels)
 		{
 			LogPrint (eLogDebug, "Tunnels: Creating destination inbound tunnel...");
 			std::vector<std::shared_ptr<const i2p::data::IdentityEx> > peers;
