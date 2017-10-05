@@ -23,8 +23,10 @@ namespace client
 		int outQty  = DEFAULT_OUTBOUND_TUNNELS_QUANTITY;
 		int numTags = DEFAULT_TAGS_TO_SEND;
 		std::shared_ptr<std::vector<i2p::data::IdentHash> > explicitPeers;
-		try {
-			if (params) {
+		try 
+		{
+			if (params) 
+			{
 				auto it = params->find (I2CP_PARAM_INBOUND_TUNNEL_LENGTH);
 				if (it != params->end ())
 					inLen = std::stoi(it->second);
@@ -55,8 +57,12 @@ namespace client
 						LogPrint (eLogInfo, "Destination: Added to explicit peers list: ", b64);
 					}
 				}
+				it = params->find (I2CP_PARAM_INBOUND_NICKNAME);
+				if (it != params->end ()) m_Nickname = it->second; // otherwise we set deafult nickname in Start when we know local address
 			}
-		} catch (std::exception & ex) {
+		} 
+		catch (std::exception & ex) 
+		{
 			LogPrint(eLogError, "Destination: unable to parse parameters for destination: ", ex.what());
 		}
 		SetNumTags (numTags);
@@ -110,6 +116,8 @@ namespace client
 	{
 		if (!m_IsRunning)
 		{
+			if (m_Nickname.empty ())
+				m_Nickname = i2p::data::GetIdentHashAbbreviation (GetIdentHash ()); // set default nickname
 			LoadTags ();
 			m_IsRunning = true;
 			m_Pool->SetLocalDestination (shared_from_this ());
