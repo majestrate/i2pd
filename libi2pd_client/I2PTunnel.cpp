@@ -637,10 +637,9 @@ namespace client
 		auto ih = from.GetIdentHash();
 		for (auto & s : m_Sessions )
 		{
-			if ( s->Identity == ih)
+			if ( s->Identity == ih && s->RemotePort == remotePort)
 			{
 				/** found existing session */
-				LogPrint(eLogDebug, "UDPServer: found session ", s->IPSocket.local_endpoint(), " ", ih.ToBase32());
 				return s;
 			}
 		}
@@ -790,7 +789,7 @@ namespace client
 		while (itr != m_Sessions.end()) {
 			if(itr->second.first == m_RecvEndpoint)
 			{
-				LogPrint(eLogDebug, "UDP Client: send ", transferred, " to ", m_RemoteIdent->ToBase32(), ":", RemotePort);
+				LogPrint(eLogDebug, "UDP Client: send ", transferred, " to ", m_RemoteIdent->ToBase32(), ":", RemotePort, " via ", remotePort);
 				m_LocalDest->GetDatagramDestination()->SendDatagramTo(m_RecvBuff, transferred, *m_RemoteIdent, remotePort, RemotePort);
 				// mark convo as active
 				itr->second.second = i2p::util::GetMillisecondsSinceEpoch();
@@ -802,7 +801,7 @@ namespace client
 		{
 			// track new udp convo
 			m_Sessions[remotePort] = {boost::asio::ip::udp::endpoint(m_RecvEndpoint), 0};
-			LogPrint(eLogDebug, "UDP Client: send ", transferred, " to ", m_RemoteIdent->ToBase32(), ":", RemotePort);
+			LogPrint(eLogDebug, "UDP Client: send ", transferred, " to ", m_RemoteIdent->ToBase32(), ":", RemotePort, " via ", remotePort);
 			m_LocalDest->GetDatagramDestination()->SendDatagramTo(m_RecvBuff, transferred, *m_RemoteIdent, remotePort, RemotePort);
 			// mark convo as active
 			m_Sessions[remotePort].second = i2p::util::GetMillisecondsSinceEpoch();
@@ -840,6 +839,7 @@ namespace client
 	{
 		if(m_RemoteIdent && from.GetIdentHash() == *m_RemoteIdent)
 		{
+			LogPrint(eLogDebug, "UDP Tunnel: ",fromPort, " -> ", toPort, " ", len, " bytes");
 			auto itr = m_Sessions.find(toPort);
 			// found convo ?
 			if(itr != m_Sessions.end())
