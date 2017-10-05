@@ -260,8 +260,11 @@ namespace client
 	}
 	std::shared_ptr<i2p::garlic::GarlicRoutingPath> AlignedRoutingSession::GetSharedRoutingPath()
 	{
-		if(HasSharedRoutingPath() || m_AlignedPool == nullptr)
+		if(HasSharedRoutingPath())
 			return i2p::garlic::GarlicRoutingSession::GetSharedRoutingPath();
+		else if(m_AlignedPool == nullptr)
+			return std::make_shared<i2p::garlic::GarlicRoutingPath>();
+		
 		size_t obHops = m_AlignedPool->GetNumOutboundHops();
 		auto path = std::make_shared<i2p::garlic::GarlicRoutingPath>();
 		auto tuns = m_AlignedPool->GetOutboundTunnelsWhere([obHops](std::shared_ptr<i2p::tunnel::OutboundTunnel> tun) -> bool {

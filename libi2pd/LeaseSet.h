@@ -33,6 +33,9 @@ namespace data
 			if (endDate < expire) return true;
 			return (endDate - expire) < t;
 		}
+    bool ExpiresSoon() const {
+      return ExpiresWithin(LEASE_ENDDATE_THRESHOLD);
+    }
 	};	
 
 	struct LeaseCmp

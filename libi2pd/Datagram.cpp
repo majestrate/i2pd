@@ -247,88 +247,53 @@ namespace datagram
 			m_RoutingSession = m_LocalDestination->GetRoutingSession(m_RemoteLeaseSet, true);
 		}
 		auto path = m_RoutingSession->GetSharedRoutingPath();
-		if(path) {
-			if (m_CurrentOutboundTunnel && !m_CurrentOutboundTunnel->IsEstablished()) {
-				// bad outbound tunnel, switch outbound tunnel
-				m_CurrentOutboundTunnel = m_LocalDestination->GetTunnelPool()->GetNextOutboundTunnel(m_CurrentOutboundTunnel);
-				path->outboundTunnel = m_CurrentOutboundTunnel;
-			}
-			if(m_CurrentRemoteLease && m_CurrentRemoteLease->ExpiresWithin(DATAGRAM_SESSION_LEASE_HANDOVER_WINDOW)) {
-				// bad lease, switch to next one
-				if(m_RemoteLeaseSet && m_RemoteLeaseSet->IsExpired())
-					m_RemoteLeaseSet = m_LocalDestination->FindLeaseSet(m_RemoteIdent);
-				if(m_RemoteLeaseSet) {
-					auto ls = m_RemoteLeaseSet->GetNonExpiredLeasesExcluding([&](const i2p::data::Lease& l) -> bool {
-							return l.tunnelID == m_CurrentRemoteLease->tunnelID;
-					});
-					auto sz = ls.size();
-					if (sz) {
-						auto idx = rand() % sz;
-						m_CurrentRemoteLease = ls[idx];
-					}
-				} else {
-					// no remote lease set?
-					LogPrint(eLogWarning, "DatagramSession: no cached remote lease set for ", m_RemoteIdent.ToBase32());
-				}
-				path->remoteLease = m_CurrentRemoteLease;
-			}
-		} else {
-			// no current path, make one
+		if (!path)
+		{
 			path = std::make_shared<i2p::garlic::GarlicRoutingPath>();
-			// switch outbound tunnel if bad
-			if(m_CurrentOutboundTunnel == nullptr || ! m_CurrentOutboundTunnel->IsEstablished()) {
-				m_CurrentOutboundTunnel = m_LocalDestination->GetTunnelPool()->GetNextOutboundTunnel(m_CurrentOutboundTunnel);
-			}
-			// switch lease if bad
-			if(m_CurrentRemoteLease && m_CurrentRemoteLease->ExpiresWithin(DATAGRAM_SESSION_LEASE_HANDOVER_WINDOW)) {
-				if(!m_RemoteLeaseSet) {
-					m_RemoteLeaseSet = m_LocalDestination->FindLeaseSet(m_RemoteIdent);
-				}
-				if(m_RemoteLeaseSet) {
-					// pick random next good lease
-					auto ls = m_RemoteLeaseSet->GetNonExpiredLeasesExcluding([&] (const i2p::data::Lease & l) -> bool {
-							if(m_CurrentRemoteLease)
-								return l.tunnelGateway == m_CurrentRemoteLease->tunnelGateway;
-							return false;
-					});
-					auto sz = ls.size();
-					if(sz) {
-						auto idx = rand() % sz;
-						m_CurrentRemoteLease = ls[idx];
-					}
-				} else {
-					// no remote lease set currently, bail
-					LogPrint(eLogWarning, "DatagramSession: no remote lease set found for ", m_RemoteIdent.ToBase32());
-					return nullptr;
-				}
-			} else if (!m_CurrentRemoteLease) {
-				if(!m_RemoteLeaseSet) m_RemoteLeaseSet = m_LocalDestination->FindLeaseSet(m_RemoteIdent);
-				if (m_RemoteLeaseSet)
-				{
-					auto ls = m_RemoteLeaseSet->GetNonExpiredLeases();
-					auto sz = ls.size();
-					if (sz) {
-						auto idx = rand() % sz;
-						m_CurrentRemoteLease = ls[idx];
-					}
-				}
-			}
-			path->outboundTunnel = m_CurrentOutboundTunnel;
-			path->remoteLease = m_CurrentRemoteLease;
 			m_RoutingSession->SetSharedRoutingPath(path);
 		}
+		
+		bool leaseExpiresSoon = false;
+		if(path->remoteLease)
+			leaseExpiresSoon = path->remoteLease->ExpiresSoon();
+		
+		if(!path->remoteLease || leaseExpiresSoon)
+		{
+			// refresh leaseset
+			if(leaseExpiresSoon)
+			{
+				m_RemoteLeaseSet = m_LocalDestination->FindLeaseSet(m_RemoteIdent);
+				if(m_RemoteLeaseSet)
+					m_RoutingSession = m_LocalDestination->GetRoutingSession(m_RemoteLeaseSet, true);
+					else
+						m_RoutingSession = nullptr;
+			}
+			auto leases = m_RemoteLeaseSet->GetNonExpiredLeases();
+			if(leases.size()) // pick new lease
+			{
+				path->remoteLease = leases[rand() % leases.size()];
+			}
+		}
+		if(path->remoteLease) 
+		{
+			// switch outbound as needed
+			if(path->outboundTunnel == nullptr || !path->outboundTunnel->IsEstablished())
+			{
+				m_LocalDestination->PrepareOutboundTunnelTo(path->remoteLease->tunnelGateway, m_RemoteLeaseSet);
+					path->outboundTunnel = m_LocalDestination->GetAlignedTunnelTo(path->remoteLease->tunnelGateway, path->outboundTunnel);
+			}
+		}
+		if(m_RoutingSession)
+			m_RoutingSession->SetSharedRoutingPath(path);
+		else
+			return nullptr;
 		return path;
-	
 	}
 
 	void DatagramSession::HandleLeaseSetUpdated(std::shared_ptr<i2p::data::LeaseSet> ls)
 	{
 		m_RequestingLS = false;
-		if(!ls) return;
-		// only update lease set if found and newer than previous lease set
-		uint64_t oldExpire = 0;
-		if(m_RemoteLeaseSet) oldExpire = m_RemoteLeaseSet->GetExpirationTime();
-		if(ls && ls->GetExpirationTime() > oldExpire) m_RemoteLeaseSet = ls;
+		m_RemoteLeaseSet = ls;
 	}
 
 	void DatagramSession::HandleSend(std::shared_ptr<I2NPMessage> msg)
