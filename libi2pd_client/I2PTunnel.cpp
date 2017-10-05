@@ -786,16 +786,28 @@ namespace client
 			return; // drop, remote not resolved
 		}
 		auto remotePort = m_RecvEndpoint.port();
-		auto itr = m_Sessions.find(remotePort);
-		if (itr == m_Sessions.end()) {
+		auto itr = m_Sessions.begin();
+		while (itr != m_Sessions.end()) {
+			if(itr->second.first == m_RecvEndpoint)
+			{
+				LogPrint(eLogDebug, "UDP Client: send ", transferred, " to ", m_RemoteIdent->ToBase32(), ":", RemotePort);
+				m_LocalDest->GetDatagramDestination()->SendDatagramTo(m_RecvBuff, transferred, *m_RemoteIdent, remotePort, RemotePort);
+				// mark convo as active
+				itr->second.second = i2p::util::GetMillisecondsSinceEpoch();
+				break;
+			}
+			++itr;
+		}
+		if (itr == m_Sessions.end())
+		{
 			// track new udp convo
 			m_Sessions[remotePort] = {boost::asio::ip::udp::endpoint(m_RecvEndpoint), 0};
+			LogPrint(eLogDebug, "UDP Client: send ", transferred, " to ", m_RemoteIdent->ToBase32(), ":", RemotePort);
+			m_LocalDest->GetDatagramDestination()->SendDatagramTo(m_RecvBuff, transferred, *m_RemoteIdent, remotePort, RemotePort);
+			// mark convo as active
+			m_Sessions[remotePort].second = i2p::util::GetMillisecondsSinceEpoch();
+			
 		}
-		// send off to remote i2p destination
-		LogPrint(eLogDebug, "UDP Client: send ", transferred, " to ", m_RemoteIdent->ToBase32(), ":", RemotePort);
-		m_LocalDest->GetDatagramDestination()->SendDatagramTo(m_RecvBuff, transferred, *m_RemoteIdent, remotePort, RemotePort);
-		// mark convo as active
-		m_Sessions[remotePort].second = i2p::util::GetMillisecondsSinceEpoch();
 		RecvFromLocal();
 	}
 
