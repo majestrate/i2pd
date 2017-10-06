@@ -104,6 +104,7 @@ namespace client
 	{
 		auto session = std::static_pointer_cast<AlignedRoutingSession>(GetRoutingSession(remote, true));
 		session->Start();
+		session->SetIBGW(gateway);
 		auto pool = GetTunnelPool();
 		auto obtun = pool->GetNextOutboundTunnel();
 		auto ri = i2p::data::netdb.FindRouter(gateway);
@@ -141,7 +142,7 @@ namespace client
 		if(!session->GetTunnelPool()->GetOutboundTunnels().size())
 			PrepareOutboundTunnelTo(gateway, destination);
 				
-		auto gotLease = [=](std::shared_ptr<const i2p::data::LeaseSet> ls) {
+		auto gotLeaseSet = [=](std::shared_ptr<const i2p::data::LeaseSet> ls) {
 			if(!ls) {
 				LogPrint(eLogWarning, "AlignedDestination: cannot resolve lease set");
 				return;
@@ -162,7 +163,11 @@ namespace client
 			else
 				i2p::data::netdb.RequestDestination(gateway, gotRouter);
 		};
-		gotLease(FindLeaseSet(destination->GetIdentHash()));
+		auto ls = FindLeaseSet(destination->GetIdentHash());
+		if(ls)
+			gotLeaseSet(ls);
+		else
+			RequestDestination(destination->GetIdentHash(), gotLeaseSet);
 	}
 
 
