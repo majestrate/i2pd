@@ -13,7 +13,7 @@ namespace client
   {
   public:
     typedef std::function<void(void)> BuildCompleteCallback;
-    typedef std::shared_ptr<const i2p::data::Lease> Lease_ptr;
+    typedef i2p::data::IdentHash Gateway_t;
 
     AlignedRoutingSession (AlignedDestination * owner, std::shared_ptr<const i2p::data::RoutingDestination> destination,
                            int numTags, bool attachLeaseSet);
@@ -21,14 +21,16 @@ namespace client
     std::shared_ptr<i2p::garlic::GarlicRoutingPath> GetSharedRoutingPath();
     bool SelectPeers(i2p::tunnel::Path & peers, int hops, bool inbound);
     bool OnBuildResult(const i2p::tunnel::Path & peers, bool isInbound, i2p::tunnel::TunnelBuildResult result);
-    void SetCurrentLease(const Lease_ptr & lease);
     void AddBuildCompleteCallback(BuildCompleteCallback buildComplete);
     void Start();
+    std::shared_ptr<i2p::tunnel::TunnelPool> GetTunnelPool () const { return m_AlignedPool; };
+    void SetIBGW(const Gateway_t & ibgw) { m_IBGW = ibgw; };
   private:
+    void UpdateIBGW();
     std::mutex m_BuildCompletedMutex;
     std::vector<BuildCompleteCallback> m_BuildCompleted;
     std::shared_ptr<i2p::tunnel::TunnelPool> m_AlignedPool;
-    Lease_ptr m_CurrentRemoteLease;
+    Gateway_t m_IBGW;
     AlignedDestination * m_Parent;
   };
 
@@ -43,8 +45,7 @@ namespace client
     virtual void PrepareOutboundTunnelTo(const RemoteDestination_t & gateway, RoutingDestination_ptr remote) override;
     virtual OBTunnel_ptr GetAlignedTunnelTo(const RemoteDestination_t & gateway, OBTunnel_ptr excluding) override;
     virtual OBTunnel_ptr GetNewOutboundTunnel(OBTunnel_ptr exlcuding) override;
-    virtual OBTunnel_ptr GetOutboundTunnelFor(const RemoteDestination_t & destination, OBTunnel_ptr excluding=nullptr) override;
-
+    virtual OBTunnel_ptr GetOutboundTunnelFor(const RemoteDestination_t & destination, OBTunnel_ptr excluding=nullptr) override;    
   protected:
 
     virtual i2p::garlic::GarlicRoutingSessionPtr CreateNewRoutingSession(std::shared_ptr<const i2p::data::RoutingDestination> destination, int numTags, bool attachLeaseSet) override;
@@ -52,16 +53,8 @@ namespace client
     typedef std::function<void(AlignedRoutingSession_ptr)> AlignedPathObtainedFunc;
 
   private:
-
-    typedef std::shared_ptr<const i2p::data::Lease> Lease_ptr;
     void ObtainAlignedRoutingPath(RoutingDestination_ptr destination, const RemoteDestination_t & gateway,  bool attachLS, AlignedPathObtainedFunc obtained);
     void HandleGotAlignedRoutingPathForStream(AlignedRoutingSession_ptr session, StreamRequestComplete streamRequestComplete, const i2p::data::IdentHash & dest, int port);
-
-    // maps destination -> IBGW
-    std::map<i2p::data::IdentHash, i2p::data::IdentHash> m_DestinationLeases;
-    std::mutex m_DestinationLeasesMutex;
-
-    i2p::data::IdentHash GetIBGWFor(const RemoteDestination_t & ident, Lease_ptr fallback);
 
     bool HasOutboundTunnelTo(const i2p::data::IdentHash & gateway);
   };
