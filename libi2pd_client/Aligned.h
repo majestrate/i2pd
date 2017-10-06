@@ -25,6 +25,7 @@ namespace client
     void Start();
     std::shared_ptr<i2p::tunnel::TunnelPool> GetTunnelPool () const { return m_AlignedPool; };
     void SetIBGW(const Gateway_t & ibgw) { m_IBGW = ibgw; };
+    bool HasTunnelsReady();
   private:
     void UpdateIBGW();
     std::mutex m_BuildCompletedMutex;

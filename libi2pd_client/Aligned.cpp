@@ -113,7 +113,7 @@ namespace client
 			auto foundIBGW = [obtun, session](std::shared_ptr<const i2p::data::RouterInfo> ibgw)
 			{
 				
-				if(ibgw && !session->GetTunnelPool()->GetOutboundTunnelsWhere([ibgw](OBTunnel_ptr tun) -> bool { return tun->GetEndpointIdentHash() == ibgw->GetIdentHash(); } ).size())
+				if(ibgw && !session->HasTunnelsReady())
 				{
 					LogPrint(eLogDebug, "Aligned: found IBGW building immediate ob tunnel");
 					auto peers = obtun->GetPeers();
@@ -128,6 +128,11 @@ namespace client
 		}
 	}
 
+	bool AlignedRoutingSession::HasTunnelsReady()
+	{
+		return GetTunnelPool()->GetOutboundTunnelsWhere([&](std::shared_ptr<i2p::tunnel::OutboundTunnel> tun) -> bool { return tun->GetEndpointIdentHash() == m_IBGW; } ).size() > 0;
+	}
+
 	i2p::garlic::GarlicRoutingSessionPtr AlignedDestination::CreateNewRoutingSession(std::shared_ptr<const i2p::data::RoutingDestination> destination, int numTags, bool attachLS)
 	{
 		return std::make_shared<AlignedRoutingSession>(this, destination, numTags, attachLS);
@@ -137,10 +142,7 @@ namespace client
 	{
 		LogPrint(eLogDebug, "AlignedDestination: obtain routing path to IBGW=", gateway.ToBase64());
 		auto session = std::static_pointer_cast<AlignedRoutingSession>(GetRoutingSession(destination, attachLS));
-		session->Start();
-		session->SetIBGW(gateway);
-		if(!session->GetTunnelPool()->GetOutboundTunnels().size())
-			PrepareOutboundTunnelTo(gateway, destination);
+		PrepareOutboundTunnelTo(gateway, destination);
 				
 		auto gotLeaseSet = [=](std::shared_ptr<const i2p::data::LeaseSet> ls) {
 			if(!ls) {
@@ -231,7 +233,10 @@ namespace client
 
 	void AlignedRoutingSession::UpdateIBGW()
 	{
-		VisitSharedRoutingPath([&](std::shared_ptr<i2p::garlic::GarlicRoutingPath> p) { if(p && p->remoteLease) m_IBGW = p->remoteLease->tunnelGateway; } );
+		VisitSharedRoutingPath([&](std::shared_ptr<i2p::garlic::GarlicRoutingPath> p) {
+			if(!p) return;
+			if(p->remoteLease) m_IBGW = p->remoteLease->tunnelGateway;
+		});
 	}
 	
 	bool AlignedRoutingSession::SelectPeers(i2p::tunnel::Path & path, int hops, bool inbound)
