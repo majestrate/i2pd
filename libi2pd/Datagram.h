@@ -81,6 +81,8 @@ namespace datagram
     void HandleLeaseSetUpdated(std::shared_ptr<i2p::data::LeaseSet> ls);
 
     void UpdateRemoteLS();
+
+    std::shared_ptr<const i2p::data::Lease> NextLease();
     
 	private:
 		i2p::client::ClientDestination * m_LocalDestination;

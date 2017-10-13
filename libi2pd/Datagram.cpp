@@ -238,9 +238,47 @@ namespace datagram
 			m_LocalDestination->RequestDestination(m_RemoteIdent, std::bind(&DatagramSession::HandleLeaseSetUpdated, this, std::placeholders::_1));
 		}
 	}
+
+	std::shared_ptr<const i2p::data::Lease> DatagramSession::NextLease()
+	{
+		m_RemoteLeaseSet = m_LocalDestination->FindLeaseSet(m_RemoteIdent);
+		if(!m_RemoteLeaseSet) return nullptr;
+		auto leases = m_RemoteLeaseSet->GetNonExpiredLeases();
+		if(leases.size())
+		{
+			auto lease = leases[rand() % leases.size()];
+			m_LocalDestination->PrepareOutboundTunnelTo(lease->tunnelGateway, m_RemoteLeaseSet);
+			return lease;
+		}
+		return nullptr;
+	}
+	
 	
 	std::shared_ptr<i2p::garlic::GarlicRoutingPath> DatagramSession::GetSharedRoutingPath ()
 	{
+		auto now = i2p::util::GetMillisecondsSinceEpoch();
+		if(now - m_LastUse > DATAGRAM_SESSION_PATH_TIMEOUT)
+		{
+			// we have timed out switch outbound tunnels
+			if(m_RoutingSession && m_RemoteLeaseSet)
+			{
+				auto path = m_RoutingSession->GetSharedRoutingPath();
+				if (path)
+				{
+					if(!path->remoteLease || path->remoteLease->ExpiresSoon())
+					{
+						path->remoteLease = NextLease();
+					}
+					if(path->remoteLease)
+					{
+						path->outboundTunnel = m_LocalDestination->GetAlignedTunnelTo(path->remoteLease->tunnelGateway, path->outboundTunnel);
+					}
+				}
+				m_RoutingSession->SetSharedRoutingPath(path);
+				return path;
+			}
+		}
+		
 		if(!m_RoutingSession) {
 			if(!m_RemoteLeaseSet) {
 				m_RemoteLeaseSet = m_LocalDestination->FindLeaseSet(m_RemoteIdent);
@@ -276,12 +314,7 @@ namespace datagram
 					m_RoutingSession = nullptr;
 				}
 			}
-			auto leases = m_RemoteLeaseSet->GetNonExpiredLeases();
-			if(leases.size()) // pick new lease
-			{
-				path->remoteLease = leases[rand() % leases.size()];
-				m_LocalDestination->PrepareOutboundTunnelTo(path->remoteLease->tunnelGateway, m_RemoteLeaseSet);
-			}
+			path->remoteLease = NextLease();
 		}
 		if(path->remoteLease) 
 		{
