@@ -265,13 +265,14 @@ namespace datagram
 				m_RemoteLeaseSet = m_LocalDestination->FindLeaseSet(m_RemoteIdent);
 				if(m_RemoteLeaseSet)
 					m_RoutingSession = m_LocalDestination->GetRoutingSession(m_RemoteLeaseSet, true);
-					else
-						m_RoutingSession = nullptr;
+				else
+					m_RoutingSession = nullptr;
 			}
 			auto leases = m_RemoteLeaseSet->GetNonExpiredLeases();
 			if(leases.size()) // pick new lease
 			{
 				path->remoteLease = leases[rand() % leases.size()];
+				m_LocalDestination->PrepareOutboundTunnelTo(path->remoteLease->tunnelGateway, m_RemoteLeaseSet);
 			}
 		}
 		if(path->remoteLease) 
@@ -279,8 +280,7 @@ namespace datagram
 			// switch outbound as needed
 			if(path->outboundTunnel == nullptr || !path->outboundTunnel->IsEstablished())
 			{
-				m_LocalDestination->PrepareOutboundTunnelTo(path->remoteLease->tunnelGateway, m_RemoteLeaseSet);
-					path->outboundTunnel = m_LocalDestination->GetAlignedTunnelTo(path->remoteLease->tunnelGateway, path->outboundTunnel);
+				path->outboundTunnel = m_LocalDestination->GetAlignedTunnelTo(path->remoteLease->tunnelGateway, path->outboundTunnel);
 			}
 		}
 		if(m_RoutingSession)
