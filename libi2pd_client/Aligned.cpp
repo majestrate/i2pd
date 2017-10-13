@@ -118,7 +118,7 @@ namespace client
 					LogPrint(eLogDebug, "Aligned: found IBGW building immediate ob tunnel");
 					auto peers = obtun->GetPeers();
 					peers.push_back(ibgw->GetRouterIdentity());
-					session->GetTunnelPool()->CreateOutboundTunnelImmediate(peers);
+					session->CreateOutboundTunnelImmediate(peers);
 				}
 			};
 			if(ri)
@@ -130,7 +130,13 @@ namespace client
 
 	bool AlignedRoutingSession::HasTunnelsReady()
 	{
-		return GetTunnelPool()->GetOutboundTunnelsWhere([&](std::shared_ptr<i2p::tunnel::OutboundTunnel> tun) -> bool { return tun->GetEndpointIdentHash() == m_IBGW; } ).size() > 0;
+		return GetTunnelPool()->GetOutboundTunnelsWhere([&](std::shared_ptr<i2p::tunnel::OutboundTunnel> tun) -> bool { return tun->GetEndpointIdentHash() == m_IBGW; } ).size() > 0 || m_Building;
+	}
+
+	void AlignedRoutingSession::CreateOutboundTunnelImmediate(const std::vector<std::shared_ptr<const i2p::data::IdentityEx> > & peers)
+	{
+		m_Building = true;
+		GetTunnelPool()->CreateOutboundTunnelImmediate(peers);
 	}
 
 	i2p::garlic::GarlicRoutingSessionPtr AlignedDestination::CreateNewRoutingSession(std::shared_ptr<const i2p::data::RoutingDestination> destination, int numTags, bool attachLS)
@@ -176,7 +182,7 @@ namespace client
 	AlignedRoutingSession::AlignedRoutingSession(AlignedDestination * owner, std::shared_ptr<const i2p::data::RoutingDestination> destination, int numTags, bool attachLeaseSet) :
 		i2p::garlic::GarlicRoutingSession(owner, destination, numTags, attachLeaseSet),
 		m_AlignedPool(nullptr),
-		m_Parent(owner)
+		m_Building(false)
 	{
 	}
 
@@ -235,7 +241,14 @@ namespace client
 	{
 		VisitSharedRoutingPath([&](std::shared_ptr<i2p::garlic::GarlicRoutingPath> p) {
 			if(!p) return;
-			if(p->remoteLease) m_IBGW = p->remoteLease->tunnelGateway;
+			if(p->remoteLease)
+			{
+				if(m_IBGW != p->remoteLease->tunnelGateway)
+				{
+					m_Building = false;
+					m_IBGW = p->remoteLease->tunnelGateway;
+				}
+			}
 		});
 	}
 	
