@@ -80,6 +80,8 @@ namespace datagram
 
     void HandleLeaseSetUpdated(std::shared_ptr<i2p::data::LeaseSet> ls);
 
+    void UpdateRemoteLS();
+    
 	private:
 		i2p::client::ClientDestination * m_LocalDestination;
     i2p::data::IdentHash m_RemoteIdent;

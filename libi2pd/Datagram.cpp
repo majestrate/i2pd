@@ -230,6 +230,15 @@ namespace datagram
 			path->updateTime = i2p::util::GetSecondsSinceEpoch ();
 	}
 
+	void DatagramSession::UpdateRemoteLS()
+	{
+		if(!m_RequestingLS)
+		{
+			m_RequestingLS = true;
+			m_LocalDestination->RequestDestination(m_RemoteIdent, std::bind(&DatagramSession::HandleLeaseSetUpdated, this, std::placeholders::_1));
+		}
+	}
+	
 	std::shared_ptr<i2p::garlic::GarlicRoutingPath> DatagramSession::GetSharedRoutingPath ()
 	{
 		if(!m_RoutingSession) {
@@ -237,11 +246,7 @@ namespace datagram
 				m_RemoteLeaseSet = m_LocalDestination->FindLeaseSet(m_RemoteIdent);
 			}
 			if(!m_RemoteLeaseSet) {
-				// no remote lease set
-				if(!m_RequestingLS) {
-					m_RequestingLS = true;
-					m_LocalDestination->RequestDestination(m_RemoteIdent, std::bind(&DatagramSession::HandleLeaseSetUpdated, this, std::placeholders::_1));
-				}
+				UpdateRemoteLS();
 				return nullptr;
 			}
 			m_RoutingSession = m_LocalDestination->GetRoutingSession(m_RemoteLeaseSet, true);
@@ -266,7 +271,10 @@ namespace datagram
 				if(m_RemoteLeaseSet)
 					m_RoutingSession = m_LocalDestination->GetRoutingSession(m_RemoteLeaseSet, true);
 				else
+				{
+					UpdateRemoteLS();
 					m_RoutingSession = nullptr;
+				}
 			}
 			auto leases = m_RemoteLeaseSet->GetNonExpiredLeases();
 			if(leases.size()) // pick new lease
@@ -294,6 +302,7 @@ namespace datagram
 	{
 		m_RequestingLS = false;
 		m_RemoteLeaseSet = ls;
+		GetSharedRoutingPath();
 	}
 
 	void DatagramSession::HandleSend(std::shared_ptr<I2NPMessage> msg)
@@ -317,8 +326,12 @@ namespace datagram
 				send.push_back(i2p::tunnel::TunnelMessageBlock{i2p::tunnel::eDeliveryTypeTunnel,routingPath->remoteLease->tunnelGateway, routingPath->remoteLease->tunnelID, m});
 			}
 			routingPath->outboundTunnel->SendTunnelDataMsg(send);
+			m_SendQueue.clear();
 		}
-		m_SendQueue.clear();
+		else if(m_SendQueue.size() >= DATAGRAM_SEND_QUEUE_MAX_SIZE)
+		{
+			m_SendQueue.clear();
+		}
 		ScheduleFlushSendQueue();
 	}
 
