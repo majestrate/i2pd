@@ -14,6 +14,11 @@ namespace tunnel
 	const size_t TUNNEL_DATA_MSG_SIZE = 1028;
 	const size_t TUNNEL_DATA_ENCRYPTED_SIZE = 1008;
 	const size_t TUNNEL_DATA_MAX_PAYLOAD_SIZE = 1003;
+
+	// seconds tunnel lifetime handover window
+	const uint32_t TUNNEL_LIFETIME_HANDOVER = 60;
+	// seconds tunnel lifetime
+	const uint32_t TUNNEL_LIFETIME = 660;
 	
 	enum TunnelDeliveryType 
 	{ 
@@ -49,7 +54,9 @@ namespace tunnel
 
 			uint32_t GetCreationTime () const { return m_CreationTime; };
 			void SetCreationTime (uint32_t t) { m_CreationTime = t; };
-			
+
+			bool ExpiresSoon(uint32_t handover=TUNNEL_LIFETIME_HANDOVER) const { return i2p::util::GetSecondsSinceEpoch() - GetCreationTime() >= (TUNNEL_LIFETIME - handover); }
+	  
 		private:
 
 			uint32_t m_TunnelID, m_NextTunnelID;

@@ -115,7 +115,6 @@ namespace client
 				
 				if(ibgw && !session->HasTunnelsReady())
 				{
-					LogPrint(eLogDebug, "Aligned: found IBGW building immediate ob tunnel");
 					auto peers = obtun->GetPeers();
 					peers.push_back(ibgw->GetRouterIdentity());
 					session->CreateOutboundTunnelImmediate(peers);
@@ -130,13 +129,17 @@ namespace client
 
 	bool AlignedRoutingSession::HasTunnelsReady()
 	{
-		return GetTunnelPool()->GetOutboundTunnelsWhere([&](std::shared_ptr<i2p::tunnel::OutboundTunnel> tun) -> bool { return tun->GetEndpointIdentHash() == m_IBGW; } ).size() > 0 || m_Building;
+		return GetTunnelPool()->GetOutboundTunnelsWhere([&](std::shared_ptr<i2p::tunnel::OutboundTunnel> tun) -> bool { return tun->GetEndpointIdentHash() == m_IBGW; } ).size() > 0;
 	}
 
 	void AlignedRoutingSession::CreateOutboundTunnelImmediate(const std::vector<std::shared_ptr<const i2p::data::IdentityEx> > & peers)
 	{
-		m_Building = true;
-		GetTunnelPool()->CreateOutboundTunnelImmediate(peers);
+		if(!m_Building)
+		{
+			m_Building = true;
+			LogPrint(eLogDebug, "Aligned: found IBGW building immediate ob tunnel");
+			GetTunnelPool()->CreateOutboundTunnelImmediate(peers);
+		}
 	}
 
 	i2p::garlic::GarlicRoutingSessionPtr AlignedDestination::CreateNewRoutingSession(std::shared_ptr<const i2p::data::RoutingDestination> destination, int numTags, bool attachLS)
@@ -153,29 +156,14 @@ namespace client
 		auto gotLeaseSet = [=](std::shared_ptr<const i2p::data::LeaseSet> ls) {
 			if(!ls) {
 				LogPrint(eLogWarning, "AlignedDestination: cannot resolve lease set");
+				obtained(nullptr);
 				return;
 			}
-			auto gotRouter = [=](std::shared_ptr<i2p::data::RouterInfo> ri) {
-				if(!ri) {
-					LogPrint(eLogWarning, "AlignedDestinatino failed to find IBGW");
-					obtained(nullptr);
-					return;
-				}
-				session->AddBuildCompleteCallback([=](){
-					obtained(session);
-				});
-			};
-			auto obep = i2p::data::netdb.FindRouter(gateway);
-			if(obep)
-				gotRouter(obep);
-			else
-				i2p::data::netdb.RequestDestination(gateway, gotRouter);
+			session->AddBuildCompleteCallback([=](){
+				obtained(session);
+			});
 		};
-		auto ls = FindLeaseSet(destination->GetIdentHash());
-		if(ls)
-			gotLeaseSet(ls);
-		else
-			RequestDestination(destination->GetIdentHash(), gotLeaseSet);
+		RequestDestination(destination->GetIdentHash(), gotLeaseSet);
 	}
 
 
@@ -227,6 +215,7 @@ namespace client
 				std::vector<BuildCompleteCallback> calls;
 				{
 					std::unique_lock<std::mutex> lock(m_BuildCompletedMutex);
+					m_Building = false;
 					for(auto & cb : m_BuildCompleted)
 						calls.push_back(cb);
 					m_BuildCompleted.clear();
@@ -245,8 +234,14 @@ namespace client
 			{
 				if(m_IBGW != p->remoteLease->tunnelGateway)
 				{
+					// IBGW changed
 					m_Building = false;
 					m_IBGW = p->remoteLease->tunnelGateway;
+				}
+				else if (p->outboundTunnel && p->outboundTunnel->ExpiresSoon())
+				{
+					// outbound tunnel is expiring or dead
+					m_Building = false;
 				}
 			}
 		});
