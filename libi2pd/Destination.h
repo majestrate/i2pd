@@ -235,19 +235,18 @@ namespace client
 			const uint8_t * GetEncryptionPrivateKey () const { return m_EncryptionPrivateKey; };
 			std::shared_ptr<const i2p::data::IdentityEx> GetIdentity () const { return m_Keys.GetPublic (); };
 
+    std::shared_ptr<ClientDestination> GetSharedFromThis ()
+			{ return std::static_pointer_cast<ClientDestination>(shared_from_this ()); }
 		protected:
 
 			void CleanupDestination ();
 			// I2CP
 			void HandleDataMessage (const uint8_t * buf, size_t len);
 			void CreateNewLeaseSet (std::vector<std::shared_ptr<i2p::tunnel::InboundTunnel> > tunnels);
-
+    
 		private:
 
     void DoCreateStream (StreamRequestComplete streamRequestComplete, const i2p::data::IdentHash& dest, int port);
-
-			std::shared_ptr<ClientDestination> GetSharedFromThis ()
-			{ return std::static_pointer_cast<ClientDestination>(shared_from_this ()); }
 			void PersistTemporaryKeys ();
 #ifdef I2LUA
 			void ScheduleCheckForReady(ReadyPromise * p);

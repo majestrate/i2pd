@@ -97,6 +97,9 @@ namespace tunnel
 		/** @brief return true if this tunnel pool has a latency requirement */
 		bool HasLatencyRequirement() const { return m_MinLatency > 0 && m_MaxLatency > 0; }
 
+    /** @brief copy settings into other tunnel pool, used by Aligned TunnelPool */
+    void CopySettingsInto(const std::shared_ptr<TunnelPool> & other) const;
+
 		/** @brief get the lowest latency tunnel in this tunnel pool regardless of latency requirements */
 		std::shared_ptr<InboundTunnel> GetLowestLatencyInboundTunnel(std::shared_ptr<InboundTunnel> exclude=nullptr) const;
 		std::shared_ptr<OutboundTunnel> GetLowestLatencyOutboundTunnel(std::shared_ptr<OutboundTunnel> exclude=nullptr) const;

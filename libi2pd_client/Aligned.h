@@ -24,11 +24,13 @@ namespace client
     void AddBuildCompleteCallback(BuildCompleteCallback buildComplete);
     void Start();
     std::shared_ptr<i2p::tunnel::TunnelPool> GetTunnelPool () const { return m_AlignedPool; };
-    void SetIBGW(const Gateway_t & ibgw) { m_IBGW = ibgw; };
+    void SetIBGW(const Gateway_t & ibgw);
     bool HasTunnelsReady();
     void CreateOutboundTunnelImmediate(const std::vector<std::shared_ptr<const i2p::data::IdentityEx> > & peers);
+    void MarkAsBuilding();
   private:
     void UpdateIBGW();
+    AlignedDestination * m_Parent;
     std::mutex m_BuildCompletedMutex;
     std::vector<BuildCompleteCallback> m_BuildCompleted;
     std::shared_ptr<i2p::tunnel::TunnelPool> m_AlignedPool;

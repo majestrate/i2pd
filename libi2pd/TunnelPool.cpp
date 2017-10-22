@@ -608,6 +608,12 @@ namespace tunnel
 		return m_CustomPeerSelector != nullptr;
 	}
 
+	void TunnelPool::CopySettingsInto(const std::shared_ptr<TunnelPool> & otherPool) const
+	{
+		if(HasLatencyRequirement())
+			otherPool->RequireLatency(m_MinLatency, m_MaxLatency);
+	}
+
 	std::shared_ptr<InboundTunnel> TunnelPool::GetLowestLatencyInboundTunnel(std::shared_ptr<InboundTunnel> exclude) const
 	{
 		std::shared_ptr<InboundTunnel> tun = nullptr;

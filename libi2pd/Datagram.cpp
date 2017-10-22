@@ -175,6 +175,7 @@ namespace datagram
 		m_LocalDestination(localDestination),
 		m_RemoteIdent(remoteIdent),
 		m_SendQueueTimer(localDestination->GetService()),
+		m_LastLeaseSwitch(0),
 		m_RequestingLS(false)
 	{
 	}
@@ -239,18 +240,20 @@ namespace datagram
 		}
 	}
 
-	std::shared_ptr<const i2p::data::Lease> DatagramSession::NextLease()
+	std::shared_ptr<const i2p::data::Lease> DatagramSession::NextLease(const std::shared_ptr<const i2p::data::Lease> & fallback)
 	{
 		m_RemoteLeaseSet = m_LocalDestination->FindLeaseSet(m_RemoteIdent);
 		if(!m_RemoteLeaseSet) return nullptr;
 		auto leases = m_RemoteLeaseSet->GetNonExpiredLeases();
-		if(leases.size())
+		auto now = i2p::util::GetSecondsSinceEpoch();
+		if(leases.size() &&  now - m_LastLeaseSwitch >= 2)
 		{
 			auto lease = leases[rand() % leases.size()];
 			m_LocalDestination->PrepareOutboundTunnelTo(lease->tunnelGateway, m_RemoteLeaseSet);
+			m_LastLeaseSwitch = now;
 			return lease;
 		}
-		return nullptr;
+		return fallback;
 	}
 	
 	
@@ -265,9 +268,9 @@ namespace datagram
 				auto path = m_RoutingSession->GetSharedRoutingPath();
 				if (path)
 				{
-					if(!path->remoteLease || path->remoteLease->ExpiresSoon())
+					if((!path->remoteLease) || path->remoteLease->ExpiresSoon())
 					{
-						path->remoteLease = NextLease();
+						path->remoteLease = NextLease(path->remoteLease);
 					}
 					if(path->remoteLease)
 					{

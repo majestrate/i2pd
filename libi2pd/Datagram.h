@@ -82,7 +82,7 @@ namespace datagram
 
     void UpdateRemoteLS();
 
-    std::shared_ptr<const i2p::data::Lease> NextLease();
+    std::shared_ptr<const i2p::data::Lease> NextLease(const std::shared_ptr<const i2p::data::Lease> & fallback=nullptr);
     
 	private:
 		i2p::client::ClientDestination * m_LocalDestination;
@@ -92,6 +92,7 @@ namespace datagram
     boost::asio::deadline_timer m_SendQueueTimer;
     std::vector<std::shared_ptr<I2NPMessage> > m_SendQueue;
     uint64_t m_LastUse;
+    uint32_t m_LastLeaseSwitch;
     bool m_RequestingLS;
 	};
 
