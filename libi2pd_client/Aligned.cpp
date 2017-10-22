@@ -28,7 +28,8 @@ namespace client
 	void AlignedDestination::CreateStream(StreamRequestComplete streamRequestComplete, const i2p::data::IdentHash & dest, int port)
 	{
 		LogPrint(eLogDebug, "AlignedDestination: create stream to ",dest.ToBase32(), ":", port);
-		auto gotLeaseSet = [=](std::shared_ptr<const i2p::data::LeaseSet> ls ) {
+		auto self = std::static_pointer_cast<AlignedDestination>(shared_from_this());
+		auto gotLeaseSet = [self, streamRequestComplete, dest, port](std::shared_ptr<const i2p::data::LeaseSet> ls ) {
 			if(!ls)
 			{
 				LogPrint(eLogDebug, "AlignedDestination: No LeaseSet");
@@ -39,8 +40,8 @@ namespace client
 			if(leases.size())
 			{
 				auto gateway = leases[rand() % leases.size()]->tunnelGateway;
-				ObtainAlignedRoutingPath(ls, gateway, true, [&, streamRequestComplete, dest, port](AlignedRoutingSession_ptr s) {
-						HandleGotAlignedRoutingPathForStream(s, streamRequestComplete, dest, port);
+				self->ObtainAlignedRoutingPath(ls, gateway, true, [self, streamRequestComplete, dest, port](AlignedRoutingSession_ptr s) {
+						self->HandleGotAlignedRoutingPathForStream(s, streamRequestComplete, dest, port);
 				});
 			}
 			else
@@ -151,16 +152,13 @@ namespace client
 		LogPrint(eLogDebug, "AlignedDestination: obtain routing path to IBGW=", gateway.ToBase64());
 		auto session = std::static_pointer_cast<AlignedRoutingSession>(GetRoutingSession(destination, attachLS));
 		PrepareOutboundTunnelTo(gateway, destination);
-				
-		auto gotLeaseSet = [=](std::shared_ptr<const i2p::data::LeaseSet> ls) {
+		auto gotLeaseSet = [obtained, session](std::shared_ptr<const i2p::data::LeaseSet> ls) {
 			if(!ls) {
 				LogPrint(eLogWarning, "AlignedDestination: cannot resolve lease set");
 				obtained(nullptr);
 				return;
 			}
-			session->AddBuildCompleteCallback([=](){
-				obtained(session);
-			});
+			session->AddBuildCompleteCallback(std::bind(obtained, session));
 		};
 		RequestDestination(destination->GetIdentHash(), gotLeaseSet);
 	}
@@ -218,20 +216,15 @@ namespace client
 	{
 		if(!inbound && result == i2p::tunnel::eBuildResultOkay)
 		{
-			auto obep = path[path.size() - 1]->GetIdentHash();
-			if(obep == m_IBGW || !m_Building)
+			std::vector<BuildCompleteCallback> calls;
 			{
-				// matches our build or our IBGW changed
-				std::vector<BuildCompleteCallback> calls;
-				{
-					std::unique_lock<std::mutex> lock(m_BuildCompletedMutex);
-					m_Building = false;
-					for(auto & cb : m_BuildCompleted)
-						calls.push_back(cb);
-					m_BuildCompleted.clear();
-				}
-				for(auto & cb : calls) cb();
+				std::unique_lock<std::mutex> lock(m_BuildCompletedMutex);
+				m_Building = false;
+				for(auto & cb : m_BuildCompleted)
+					calls.push_back(cb);
+				m_BuildCompleted.clear();
 			}
+			for(auto & cb : calls) cb();
 		}
 		return true;
 	}
