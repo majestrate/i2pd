@@ -153,7 +153,7 @@ namespace client
 		/** safely remove a socket from this session */
 		void DelSocket(const std::shared_ptr<SAMSocket> & sock) {
 			std::lock_guard<std::mutex> lock(m_SocketsMutex);
-			m_Sockets.remove(sock);
+			m_Sockets.remove_if([sock](std::shared_ptr<SAMSocket> s) -> bool { return s == sock; });
 		}
 
 		/** get a list holding a copy of all sam sockets from this session */
