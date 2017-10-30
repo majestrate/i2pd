@@ -661,6 +661,7 @@ namespace client
 				{
 					auto s = shared_from_this ();
 					boost::asio::async_write (m_Socket, boost::asio::buffer (m_StreamBuffer, len),
+						boost::asio::transfer_all(),
 						[s] (const boost::system::error_code & ec, size_t transferred)
 						{
 							(void) ec;
@@ -682,8 +683,17 @@ namespace client
 			if (ecode != boost::asio::error::operation_aborted)
 			{
 				if (bytes_transferred > 0)
+				{
+					auto s = shared_from_this ();
 					boost::asio::async_write (m_Socket, boost::asio::buffer (m_StreamBuffer, bytes_transferred),
-        		std::bind (&SAMSocket::HandleWriteI2PData, shared_from_this (), std::placeholders::_1)); // postpone termination
+						boost::asio::transfer_all(),
+						[s] (const boost::system::error_code & ec, std::size_t transferred)
+						{
+							(void) ec;
+							(void) transferred;
+							s->m_Owner.GetService().post([s] () { s->Terminate("closed after write in HandleI2PRecveive"); });
+						});
+				}
 				else
 				{
 					auto s = shared_from_this ();
