@@ -617,7 +617,7 @@ namespace client
 	void SAMSocket::HandleReceived (const boost::system::error_code& ecode, std::size_t bytes_transferred)
 	{
 		if (ecode)
-        {
+		{
 			LogPrint (eLogError, "SAM: read error: ", ecode.message ());
 			if (ecode != boost::asio::error::operation_aborted)
 				Terminate ("read error");
@@ -659,8 +659,14 @@ namespace client
 				auto len = m_Stream->ReadSome (m_StreamBuffer, SAM_SOCKET_BUFFER_SIZE);
 				if (len > 0) // still some data
 				{
+					auto s = shared_from_this ();
 					boost::asio::async_write (m_Socket, boost::asio::buffer (m_StreamBuffer, len),
-        				std::bind (&SAMSocket::HandleWriteI2PData, shared_from_this (), std::placeholders::_1));
+						[s] (const boost::system::error_code & ec, size_t transferred)
+						{
+							(void) ec;
+							(void) transferred;
+							s->m_Owner.GetService().post([s] { s->Terminate("closed by peer after write"); });
+						});
 				}
 				else // no more data
 					Terminate ("no more data");
