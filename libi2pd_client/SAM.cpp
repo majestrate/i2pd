@@ -80,7 +80,7 @@ namespace client
 	void SAMSocket::HandleHandshakeReceived (const boost::system::error_code& ecode, std::size_t bytes_transferred)
 	{
 		if (ecode)
-        {
+		{
 			LogPrint (eLogError, "SAM: handshake read error: ", ecode.message ());
 			if (ecode != boost::asio::error::operation_aborted)
 				Terminate ("SAM: handshake read error");
@@ -704,7 +704,10 @@ namespace client
 		{
 			LogPrint (eLogError, "SAM: socket write error: ", ecode.message ());
 			if (ecode != boost::asio::error::operation_aborted)
-				Terminate ("socket write error at HandleWriteI2PData");
+			{
+				auto s = shared_from_this();
+				m_Owner.GetService ().post ([s] { s->Terminate ("socket write error at HandleWriteI2PData"); });
+			}
 		}
 		else
 			I2PReceive ();
