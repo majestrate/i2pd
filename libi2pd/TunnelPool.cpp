@@ -22,7 +22,7 @@ namespace tunnel
 	TunnelPool::TunnelPool (int numInboundHops, int numOutboundHops, int numInboundTunnels, int numOutboundTunnels):
 		m_NumInboundHops (numInboundHops), m_NumOutboundHops (numOutboundHops),
 		m_NumInboundTunnels (numInboundTunnels), m_NumOutboundTunnels (numOutboundTunnels), m_IsActive (true),
-		m_CustomPeerSelector(nullptr)
+		m_CustomPeerSelector(nullptr), m_UseRRSelection(false)
 	{
 	}
 
@@ -166,6 +166,7 @@ namespace tunnel
 	{
 		if (tunnels.empty ()) return nullptr;
 		uint32_t ind = rand () % (tunnels.size ()/2 + 1), i = 0;
+		if(m_UseRRSelection) ind = rand() % tunnels.size();
 		typename TTunnels::value_type tunnel = nullptr;
 		for (const auto& it: tunnels)
 		{
@@ -182,6 +183,7 @@ namespace tunnel
 		}
 		if(HasLatencyRequirement() && !tunnel) {
 			ind = rand () % (tunnels.size ()/2 + 1), i = 0;
+			if(m_UseRRSelection) ind = rand() % tunnels.size();
 			for (const auto& it: tunnels)
 			{
 				if (it->IsEstablished () && it != excluded)

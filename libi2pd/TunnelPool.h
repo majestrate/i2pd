@@ -19,6 +19,7 @@ namespace i2p
 {
 namespace tunnel
 {
+
 	class Tunnel;
 	class InboundTunnel;
 	class OutboundTunnel;
@@ -83,6 +84,8 @@ namespace tunnel
 			void UnsetCustomPeerSelector();
 			bool HasCustomPeerSelector();
 
+			void SetUseRR(bool rr) { m_UseRRSelection = rr };
+
 		/** @brief make this tunnel pool yield tunnels that fit latency range [min, max] */
 		void RequireLatency(uint64_t min, uint64_t max) { m_MinLatency = min; m_MaxLatency = max; }
 
@@ -122,6 +125,7 @@ namespace tunnel
 			bool m_IsActive;
 			std::mutex m_CustomPeerSelectorMutex;
 			ITunnelPeerSelector * m_CustomPeerSelector;
+			bool m_UseRRSelection;
 
 		uint64_t m_MinLatency=0; // if > 0 this tunnel pool will try building tunnels with minimum latency by ms
 		uint64_t m_MaxLatency=0; // if > 0 this tunnel pool will try building tunnels with maximum latency by ms

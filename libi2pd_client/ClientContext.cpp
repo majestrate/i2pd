@@ -500,6 +500,7 @@ namespace client
 					int destinationPort = section.second.get (I2P_CLIENT_TUNNEL_DESTINATION_PORT, 0);
 					i2p::data::SigningKeyType sigType = section.second.get (I2P_CLIENT_TUNNEL_SIGNATURE_TYPE, i2p::data::SIGNING_KEY_TYPE_ECDSA_SHA256_P256);
 					i2p::data::CryptoKeyType cryptoType = section.second.get (I2P_CLIENT_TUNNEL_CRYPTO_TYPE, i2p::data::CRYPTO_KEY_TYPE_ELGAMAL);
+					bool useRoundRobin = section.second.get(I2P_TUNNELS_TUNNEL_POOL_USE_ROUND_ROBIN, false);
 					// I2CP
 					std::map<std::string, std::string> options;
 					ReadI2CPOptions (section, options);
@@ -521,6 +522,12 @@ namespace client
 						}
 					}
 
+					if (!localDestination)
+					{
+						localDestination = m_SharedLocalDestination;
+					}
+					if(useRoundRobin)
+						localDestination->GetTunnelPool()->SetUseRR(useRoundRobin);
 					if (type == I2P_TUNNELS_SECTION_TYPE_UDPCLIENT) {
 						// udp client
 						// TODO: hostnames
@@ -611,7 +618,7 @@ namespace client
 					uint32_t maxConns = section.second.get(i2p::stream::I2CP_PARAM_STREAMING_MAX_CONNS_PER_MIN, i2p::stream::DEFAULT_MAX_CONNS_PER_MIN);
 					std::string address = section.second.get<std::string> (I2P_SERVER_TUNNEL_ADDRESS, "127.0.0.1");
 					bool isUniqueLocal = section.second.get(I2P_SERVER_TUNNEL_ENABLE_UNIQUE_LOCAL, true);
-
+					bool useRoundRobin = section.second.get(I2P_TUNNELS_TUNNEL_POOL_USE_ROUND_ROBIN, false);
 					// I2CP
 					std::map<std::string, std::string> options;
 					ReadI2CPOptions (section, options);
@@ -623,6 +630,8 @@ namespace client
 					localDestination = FindLocalDestination (k.GetPublic ()->GetIdentHash ());
 					if (!localDestination)
 						localDestination = CreateNewLocalDestination (k, true, &options);
+					if(useRoundRobin)
+						localDestination->GetTunnelPool()->SetUseRR(useRoundRobin);
 					if (type == I2P_TUNNELS_SECTION_TYPE_UDPSERVER)
 					{
 						// udp server tunnel
