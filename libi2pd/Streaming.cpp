@@ -386,7 +386,7 @@ namespace stream
 			len -= MAX_PACKET_SIZE;
 		}
 		AsyncSend(buf + offset, len, nullptr);
-		return len;
+		return len + offset;
 	}
 
 	void Stream::AsyncSend (const uint8_t * buf, size_t len, SendHandler handler)
