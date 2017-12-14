@@ -42,7 +42,19 @@ namespace tunnel
 		virtual bool OnBuildResult(const Path & peers, bool isInbound, TunnelBuildResult result) = 0;
 	};
 
-
+  /** interface for custom next tunnel selection algorithm */
+  struct ITunnelSelector
+  {
+    typedef std::shared_ptr<OutboundTunnel> Tunnel_ptr;
+    typedef i2p::data::IdentHash RemoteEndpoint_t;
+    typedef std::set<Tunnel_ptr, TunnelCreationTimeCmp> Tunnels_t;
+    virtual ~ITunnelSelector() {};
+    /** get an outbound tunnel for a new path */
+    virtual Tunnel_ptr GetNewOutboundTunnel(const Tunnels_t & tunnels, const RemoteEndpoint_t & gateway, const RemoteEndpoint_t & destination, Tunnel_ptr prevTunnel=nullptr) = 0;
+    /** get an outbound tunnel for an already established path */
+    virtual Tunnel_ptr GetNextOutboundTunnel(const Tunnels_t & tunnels, const RemoteEndpoint_t & gateway, const RemoteEndpoint_t & destination, Tunnel_ptr prevTunnel=nullptr) = 0;
+  };
+  
 	typedef std::function<std::shared_ptr<const i2p::data::RouterInfo>(std::shared_ptr<const i2p::data::RouterInfo>)> SelectHopFunc;
 	// standard peer selection algorithm
 	bool StandardSelectPeers(Path & path, int hops, bool inbound, SelectHopFunc nextHop);
@@ -51,6 +63,8 @@ namespace tunnel
 	{
 		public:
 
+    typedef i2p::data::IdentHash RemoteEndpoint_t;
+    
 			TunnelPool (int numInboundHops, int numOutboundHops, int numInboundTunnels, int numOutboundTunnels);
 			~TunnelPool ();
 
@@ -66,9 +80,24 @@ namespace tunnel
 			void RecreateInboundTunnel (std::shared_ptr<InboundTunnel> tunnel);
 			void RecreateOutboundTunnel (std::shared_ptr<OutboundTunnel> tunnel);
 			std::vector<std::shared_ptr<InboundTunnel> > GetInboundTunnels (int num) const;
-			std::shared_ptr<OutboundTunnel> GetNextOutboundTunnel (std::shared_ptr<OutboundTunnel> excluded = nullptr) const;
-			std::shared_ptr<InboundTunnel> GetNextInboundTunnel (std::shared_ptr<InboundTunnel> excluded = nullptr) const;
-			std::shared_ptr<OutboundTunnel> GetNewOutboundTunnel (std::shared_ptr<OutboundTunnel> old) const;
+    std::shared_ptr<OutboundTunnel>
+    GetNewOutboundTunnel(std::shared_ptr<OutboundTunnel> old=nullptr) const;
+    std::shared_ptr<OutboundTunnel>
+    GetNextOutboundTunnel(std::shared_ptr<OutboundTunnel> old=nullptr) const;
+    
+    std::shared_ptr<OutboundTunnel>
+    GetNextOutboundTunnelSmart (
+      const RemoteEndpoint_t & gateway,
+      const RemoteEndpoint_t & destination, 
+      std::shared_ptr<OutboundTunnel> excluded = nullptr) const;
+    
+    std::shared_ptr<OutboundTunnel>
+    GetNewOutboundTunnelSmart (
+      const RemoteEndpoint_t & gateway,
+      const RemoteEndpoint_t & destination,
+      std::shared_ptr<OutboundTunnel> old=nullptr) const;
+
+    std::shared_ptr<InboundTunnel> GetNextInboundTunnel (std::shared_ptr<InboundTunnel> excluded = nullptr) const;
 			void TestTunnels ();
 			void ProcessGarlicMessage (std::shared_ptr<I2NPMessage> msg);
 			void ProcessDeliveryStatus (std::shared_ptr<I2NPMessage> msg);
@@ -82,9 +111,9 @@ namespace tunnel
 
 			void SetCustomPeerSelector(ITunnelPeerSelector * selector);
 			void UnsetCustomPeerSelector();
-			bool HasCustomPeerSelector();
-
-			void SetUseRR(bool rr) { m_UseRRSelection = rr };
+    bool HasCustomPeerSelector();
+    
+    void SetUseRR(bool rr) { m_UseRRSelection = rr; };
 
 		/** @brief make this tunnel pool yield tunnels that fit latency range [min, max] */
 		void RequireLatency(uint64_t min, uint64_t max) { m_MinLatency = min; m_MaxLatency = max; }
@@ -136,6 +165,7 @@ namespace tunnel
 			const decltype(m_OutboundTunnels)& GetOutboundTunnels () const { return m_OutboundTunnels; };
 			const decltype(m_InboundTunnels)& GetInboundTunnels () const { return m_InboundTunnels; };
 
+    ITunnelSelector * CustomTunnelSelector;
 	};
 }
 }

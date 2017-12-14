@@ -22,7 +22,7 @@ namespace tunnel
 	TunnelPool::TunnelPool (int numInboundHops, int numOutboundHops, int numInboundTunnels, int numOutboundTunnels):
 		m_NumInboundHops (numInboundHops), m_NumOutboundHops (numOutboundHops),
 		m_NumInboundTunnels (numInboundTunnels), m_NumOutboundTunnels (numOutboundTunnels), m_IsActive (true),
-		m_CustomPeerSelector(nullptr), m_UseRRSelection(false)
+		m_CustomPeerSelector(nullptr), m_UseRRSelection(false), CustomTunnelSelector(nullptr)
 	{
 	}
 
@@ -149,7 +149,20 @@ namespace tunnel
 		return v;
 	}
 
-	std::shared_ptr<OutboundTunnel> TunnelPool::GetNextOutboundTunnel (std::shared_ptr<OutboundTunnel> excluded) const
+	std::shared_ptr<OutboundTunnel>
+	TunnelPool::GetNextOutboundTunnelSmart
+	(const RemoteEndpoint_t & gateway,
+	 const RemoteEndpoint_t & destination,
+	 std::shared_ptr<OutboundTunnel> excluded) const
+	{
+		std::unique_lock<std::mutex> l(m_OutboundTunnelsMutex);
+		if(CustomTunnelSelector)
+			return CustomTunnelSelector->GetNextOutboundTunnel(m_OutboundTunnels, gateway, destination, excluded);
+		else
+			return GetNextTunnel (m_OutboundTunnels, excluded);
+	}
+
+	std::shared_ptr<OutboundTunnel> TunnelPool::GetNextOutboundTunnel(std::shared_ptr<OutboundTunnel> excluded) const
 	{
 		std::unique_lock<std::mutex> l(m_OutboundTunnelsMutex);
 		return GetNextTunnel (m_OutboundTunnels, excluded);
@@ -198,7 +211,8 @@ namespace tunnel
 		return tunnel;
 	}
 
-	std::shared_ptr<OutboundTunnel> TunnelPool::GetNewOutboundTunnel (std::shared_ptr<OutboundTunnel> old) const
+	std::shared_ptr<OutboundTunnel>
+	TunnelPool::GetNewOutboundTunnel(const std::shared_ptr<OutboundTunnel> old) const
 	{
 		if (old && old->IsEstablished ()) return old;
 		std::shared_ptr<OutboundTunnel> tunnel;
@@ -212,10 +226,23 @@ namespace tunnel
 					break;
 				}
 		}
-
 		if (!tunnel)
 			tunnel = GetNextOutboundTunnel ();
 		return tunnel;
+	}
+	
+	std::shared_ptr<OutboundTunnel>
+	TunnelPool::GetNewOutboundTunnelSmart(const RemoteEndpoint_t & gateway,
+		const RemoteEndpoint_t & destination,
+		std::shared_ptr<OutboundTunnel> old) const
+	{
+		if (CustomTunnelSelector)
+		{
+			std::unique_lock<std::mutex> l(m_OutboundTunnelsMutex);
+			return CustomTunnelSelector->GetNewOutboundTunnel(m_OutboundTunnels, gateway, destination, old);
+		}
+		else
+			return GetNewOutboundTunnel(old);
 	}
 
 	void TunnelPool::CreateTunnels ()

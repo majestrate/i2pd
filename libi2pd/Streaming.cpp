@@ -680,7 +680,13 @@ namespace stream
 			}
 		}
 		if (!m_CurrentOutboundTunnel || !m_CurrentOutboundTunnel->IsEstablished ())
-			m_CurrentOutboundTunnel = m_LocalDestination.GetOwner ()->GetTunnelPool ()->GetNewOutboundTunnel (m_CurrentOutboundTunnel);
+		{
+			if(m_CurrentRemoteLease && m_RemoteIdentity)
+				m_CurrentOutboundTunnel = m_LocalDestination.GetOwner ()->GetTunnelPool ()->
+					GetNewOutboundTunnelSmart (m_CurrentRemoteLease->tunnelGateway, m_RemoteIdentity->GetIdentHash (), m_CurrentOutboundTunnel);
+			else
+				m_CurrentOutboundTunnel = m_LocalDestination.GetOwner ()->GetTunnelPool ()->GetNewOutboundTunnel (m_CurrentOutboundTunnel);
+		}
 		if (!m_CurrentOutboundTunnel)
 		{
 			LogPrint (eLogError, "Streaming: No outbound tunnels in the pool, sSID=", m_SendStreamID);
@@ -778,6 +784,12 @@ namespace stream
 			// select tunnels if necessary and send
 			if (packets.size () > 0)
 			{
+				i2p::data::IdentHash gateway, destination;
+				gateway.Fill(0);
+				if(m_RemoteIdentity)
+					destination = m_RemoteIdentity->GetIdentHash();
+				else
+					destination.Fill(0);
 				m_NumResendAttempts++;
 				m_RTO *= 2;
 				switch (m_NumResendAttempts)
@@ -796,8 +808,13 @@ namespace stream
 					break;
 					case 3:
 						// pick another outbound tunnel
-						if (m_RoutingSession) m_RoutingSession->SetSharedRoutingPath (nullptr);
-						m_CurrentOutboundTunnel = m_LocalDestination.GetOwner ()->GetTunnelPool ()->GetNextOutboundTunnel (m_CurrentOutboundTunnel);
+						if (m_CurrentRemoteLease) gateway = m_CurrentRemoteLease->tunnelGateway;
+						if (m_RoutingSession)	m_RoutingSession->SetSharedRoutingPath (nullptr);
+						
+						if (gateway.IsZero() || destination.IsZero())
+							m_CurrentOutboundTunnel = m_LocalDestination.GetOwner ()->GetTunnelPool ()->GetNextOutboundTunnel (m_CurrentOutboundTunnel);
+						else
+							m_CurrentOutboundTunnel = m_LocalDestination.GetOwner ()->GetTunnelPool ()->GetNextOutboundTunnelSmart(gateway, destination, m_CurrentOutboundTunnel);
 						LogPrint (eLogWarning, "Streaming: Another outbound tunnel has been selected for stream with sSID=", m_SendStreamID);
 					break;
 					default: ;
