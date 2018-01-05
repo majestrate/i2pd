@@ -101,7 +101,7 @@ namespace crypto
 	typedef i2p::data::Tag<32> AESKey;
 	
 	template<size_t sz>
-	class AESAlignedBuffer // 16 bytes alignment
+	class AESAlignedBuffer : public i2p::util::Aligned<AESAlignedBuffer<sz> > // 16 bytes alignment
 	{
 		public:
 		

@@ -22,7 +22,7 @@ namespace util
 #endif
   
   template<typename T>
-  struct _Allocator
+  struct Aligned
   {
     static constexpr int align()
     {
@@ -63,11 +63,6 @@ namespace util
       free(ptr);
     }
     
-  };
-
-  template<typename T>
-  struct Aligned : public _Allocator<T>
-  {
   };
 }
 }
