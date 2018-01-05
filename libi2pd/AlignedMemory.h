@@ -40,7 +40,6 @@ namespace util
     
     static void * operator new (size_t sz, T * & ptr)
     {
-      ptr = static_cast<T*>( _Acquire(sz));
       return ptr;
     }
 
