@@ -5,30 +5,41 @@
 #include <jemalloc/jemalloc.h>
 #endif
 
+#include <cmath>
+
 namespace i2p
 {
 namespace util
 {
-  template<typename Alloc, typename T>
+
+#ifndef USE_JEMALLOC
+  static inline void * mallocx(size_t sz, int flags)
+  {
+    (void) flags;
+    return std::malloc(sz);
+  }
+#define MALLOCX_ALIGN(x) x
+#endif
+  
+  template<typename T>
   struct _Allocator
   {
-    
-    static T * _Acquire(size_t sz)
+    static constexpr int align()
     {
-      T * ptr = nullptr;
-      ptr = static_cast<T*>(Alloc()(sz));
+      return std::exp2( 1 + std::floor(std::log2(sizeof(T))) );
+    }
+    
+    static void * _Acquire(size_t sz)
+    {
+      void * ptr = nullptr;
+      ptr = mallocx(sz, MALLOCX_ALIGN(align()));
       if (!ptr) throw std::bad_alloc();
       return ptr;
-    }
-
-    static void _Release(void * ptr)
-    {
-      free(ptr);
     }
     
     void * operator new (size_t sz, T * & ptr)
     {
-      ptr = _Acquire(sz);
+      ptr = static_cast<T*>( _Acquire(sz));
       return ptr;
     }
 
@@ -44,42 +55,18 @@ namespace util
 
     void operator delete (void * ptr)
     {
-      _Release(ptr);
+      free(ptr);
     }
 
     void operator delete[] (void * ptr)
     {
-      _Release(ptr);
+      free(ptr);
     }
     
   };
 
-#ifndef USE_JEMALLOC
-  static inline void * mallocx(size_t sz, int flags)
-  {
-    (void) flags;
-    return std::malloc(sz);
-  }
-#define MALLOCX_ALIGN(x) x
-#endif
-
   template<typename T>
-  constexpr int align()
-  {
-    return std::exp2( 1 + std::floor(std::log2(sizeof(T))) );
-  }
-
-  template<typename T>
-  struct xmalloc
-  {
-    void * operator ()(size_t sz)
-    {
-      return mallocx(sz, MALLOCX_ALIGN(align<T>()));
-    }
-  };
-  
-  template<typename T>
-  struct Aligned : public _Allocator<xmalloc<T>, T>
+  struct Aligned : public _Allocator<T>
   {
   };
 }

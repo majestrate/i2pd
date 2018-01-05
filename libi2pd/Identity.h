@@ -15,6 +15,7 @@ namespace i2p
 namespace data
 {
 	typedef Tag<32> IdentHash;
+  
 	inline std::string GetIdentHashAbbreviation (const IdentHash& ident)
 	{
 		return ident.ToBase64 ().substr (0, 4);

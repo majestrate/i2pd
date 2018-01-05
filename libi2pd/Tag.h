@@ -13,12 +13,13 @@
 #include <string.h>
 #include <openssl/rand.h>
 #include "Base.h"
+#include "AlignedMemory.h"
 
 namespace i2p {
 namespace data {
 
 template<size_t sz>
-class Tag
+class Tag : public i2p::util::Aligned<Tag<sz> >
 {
 	BOOST_STATIC_ASSERT_MSG(sz % 8 == 0, "Tag size must be multiple of 8 bytes");
 

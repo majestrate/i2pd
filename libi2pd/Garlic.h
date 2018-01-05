@@ -32,7 +32,7 @@ namespace garlic
 		eGarlicDeliveryTypeTunnel = 3
 	};	
 
-	struct ElGamalBlock
+	struct ElGamalBlock : i2p::util::Aligned<ElGamalBlock>
 	{
 		uint8_t sessionKey[32];
 		uint8_t preIV[32];
