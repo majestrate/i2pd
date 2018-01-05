@@ -21,6 +21,7 @@ option(WITH_ADDRSANITIZER "Build with address sanitizer unix only" OFF)
 option(WITH_THREADSANITIZER "Build with thread sanitizer unix only" OFF)
 option(WITH_I2LUA "Build for i2lua" OFF)
 option(WITH_WEBSOCKETS "Build with websocket ui" OFF)
+option(WITH_JEMALLOC "Build with jemalloc support" OFF)
 
 # paths
 set ( CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules" )
@@ -132,6 +133,13 @@ set (DAEMON_SRC
 
 if (WITH_MESHNET)
   add_definitions(-DMESHNET)
+endif ()
+
+
+
+if (WITH_JEMALLOC)
+  add_definitions(-DUSE_JEMALLOC)
+  set(MALLOC_LIB -ljemalloc)
 endif ()
 
 if (WITH_UPNP)
@@ -415,6 +423,7 @@ message(STATUS "  ADDRSANITIZER    : ${WITH_ADDRSANITIZER}")
 message(STATUS "  THREADSANITIZER  : ${WITH_THREADSANITIZER}")
 message(STATUS "  I2LUA            : ${WITH_I2LUA}")
 message(STATUS "  WEBSOCKETS       : ${WITH_WEBSOCKETS}")
+message(STATUS "  JEMALLOC         : ${WITH_JEMALLOC}")
 message(STATUS "---------------------------------------")
 
 #Handle paths nicely
@@ -459,7 +468,7 @@ if (WITH_BINARY)
   if (WITH_STATIC)
     set(DL_LIB ${CMAKE_DL_LIBS})
   endif()
-  target_link_libraries( "${PROJECT_NAME}" libi2pd i2pdclient ${DL_LIB} ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT} ${MINGW_EXTRA} ${DL_LIB} ${ATOMIC_LIB})
+  target_link_libraries( "${PROJECT_NAME}" libi2pd i2pdclient ${DL_LIB} ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT} ${MINGW_EXTRA} ${DL_LIB} ${ATOMIC_LIB} ${MALLOC_LIB})
 
   install(TARGETS "${PROJECT_NAME}" RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT Runtime)
   set (APPS "\${CMAKE_INSTALL_PREFIX}/bin/${PROJECT_NAME}${CMAKE_EXECUTABLE_SUFFIX}")
