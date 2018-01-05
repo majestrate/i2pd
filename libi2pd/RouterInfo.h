@@ -74,6 +74,34 @@ namespace data
 			struct Introducer			
 			{
 				Introducer (): iExp (0) {};
+        Introducer (const Introducer & other)
+        {
+          iHost = other.iHost;
+          iPort = other.iPort;
+          iKey = other.iKey;
+          iTag = other.iTag;
+          iExp = other.iExp;
+        }
+        
+        Introducer (Introducer && other)
+        {
+          iHost = std::move(other.iHost);
+          iPort = std::move(other.iPort);
+          iKey = std::move(other.iKey);
+          iTag = std::move(other.iTag);
+          iExp = std::move(other.iExp);
+        }
+
+        Introducer & operator = (const Introducer & other)
+        {
+          iHost = other.iHost;
+          iPort = other.iPort;
+          iKey = other.iKey;
+          iTag = other.iTag;
+          iExp = other.iExp;
+          return *this;
+        }
+        
 				boost::asio::ip::address iHost;
 				int iPort;
 				IntroKey iKey;

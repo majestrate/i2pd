@@ -25,7 +25,24 @@ class Tag : public i2p::util::Aligned<Tag<sz> >
 
 public:
 
-	Tag () = default;
+	Tag () {}
+  ~Tag() {}
+  Tag(const Tag & other)
+  {
+    memcpy(*this, other, sz);
+  }
+  
+  Tag(Tag && other)
+  {
+    memcpy(m_Buf, other.m_Buf, sz);
+  }
+
+  Tag & operator = (const Tag & other)
+  {
+    memcpy(*this, other, sz);
+    return *this;
+  }
+
 	Tag (const uint8_t * buf) { memcpy (m_Buf, buf, sz); }
 
 	bool operator== (const Tag& other) const { return !memcmp (m_Buf, other.m_Buf, sz); }

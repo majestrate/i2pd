@@ -70,7 +70,7 @@ namespace stream
 	 */
 	const uint64_t DEFAULT_BAN_INTERVAL = 60 * 60 * 1000;
 	
-	struct Packet : public i2p::util::Aligned<Packet>
+	struct Packet 
 	{
 		size_t len, offset;
 		uint8_t buf[MAX_PACKET_SIZE];	

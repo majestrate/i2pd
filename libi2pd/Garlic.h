@@ -49,13 +49,21 @@ namespace garlic
 	struct SessionTag: public i2p::data::Tag<32> 
 	{
 		SessionTag (const uint8_t * buf, uint32_t ts = 0): Tag<32>(buf), creationTime (ts) {};
-		SessionTag () = default;
-		SessionTag (const SessionTag& ) = default;
-		SessionTag& operator= (const SessionTag& ) = default;
-#ifndef _WIN32
-		SessionTag (SessionTag&& ) = default; 
-		SessionTag& operator= (SessionTag&& ) = default;	
-#endif
+		SessionTag () {};
+		SessionTag (const SessionTag& other) : Tag(other.data()), creationTime(other.creationTime) {};
+		SessionTag& operator= (const SessionTag& other)
+    {
+      memcpy(*this, other, 32);
+      creationTime = other.creationTime;
+      return *this;
+    }
+		SessionTag (SessionTag&& other)
+    {
+      memcpy(*this, other, 32);
+      creationTime = std::move(other.creationTime);
+    }
+    
+		SessionTag& operator= (SessionTag&& ) = delete;	
 		uint32_t creationTime; // seconds since epoch	
 	};
 
