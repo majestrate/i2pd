@@ -24,6 +24,7 @@ namespace util
   template<typename T>
   struct Aligned
   {
+    
     static constexpr int align()
     {
       return std::exp2( std::floor(std::log2(sizeof(T))) );
@@ -53,12 +54,12 @@ namespace util
       return _Acquire(sz);
     }
 
-    static void operator delete (void * ptr)
+    static void operator delete (void * ptr, size_t sz)
     {
       free(ptr);
     }
-
-    static void operator delete[] (void * ptr)
+    
+    static void operator delete[] (void * ptr, size_t sz)
     {
       free(ptr);
     }
