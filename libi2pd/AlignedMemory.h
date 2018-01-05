@@ -26,7 +26,7 @@ namespace util
   {
     static constexpr int align()
     {
-      return std::exp2( 1 + std::floor(std::log2(sizeof(T))) );
+      return std::exp2( std::floor(std::log2(sizeof(T))) );
     }
     
     static void * _Acquire(size_t sz)
@@ -37,28 +37,28 @@ namespace util
       return ptr;
     }
     
-    void * operator new (size_t sz, T * & ptr)
+    static void * operator new (size_t sz, T * & ptr)
     {
       ptr = static_cast<T*>( _Acquire(sz));
       return ptr;
     }
 
-    void * operator new (size_t sz)
+    static void * operator new (size_t sz)
     {
       return _Acquire(sz);
     }
 
-    void * operator new[] (size_t sz)
+    static void * operator new[] (size_t sz)
     {
       return _Acquire(sz);
     }
 
-    void operator delete (void * ptr)
+    static void operator delete (void * ptr)
     {
       free(ptr);
     }
 
-    void operator delete[] (void * ptr)
+    static void operator delete[] (void * ptr)
     {
       free(ptr);
     }

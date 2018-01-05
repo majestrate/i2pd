@@ -11,6 +11,7 @@
 #include <iostream>
 #include "Log.h"
 #include "Gzip.h"
+#include "Tag.h"
 
 namespace i2p 
 {
@@ -18,6 +19,8 @@ namespace data
 {
 	const size_t GZIP_CHUNK_SIZE = 16384;
 
+	typedef i2p::data::Tag<GZIP_CHUNK_SIZE> GZIPChunk;
+	
 	GzipInflator::GzipInflator (): m_IsDirty (false)
 	{
 		memset (&m_Inflator, 0, sizeof (m_Inflator));
@@ -48,13 +51,13 @@ namespace data
 	void GzipInflator::Inflate (const uint8_t * in, size_t inLen, std::ostream& os)
 	{
 		m_IsDirty = true;
-		uint8_t * out = new uint8_t[GZIP_CHUNK_SIZE];
+		GZIPChunk * out = new GZIPChunk;
 		m_Inflator.next_in = const_cast<uint8_t *>(in);
 		m_Inflator.avail_in = inLen;
 		int ret;
 		do 
 		{
-			m_Inflator.next_out = out;
+			m_Inflator.next_out = *out;
 			m_Inflator.avail_out = GZIP_CHUNK_SIZE;
 			ret = inflate (&m_Inflator, Z_NO_FLUSH);
 			if (ret < 0) 
@@ -63,21 +66,21 @@ namespace data
 				os.setstate(std::ios_base::failbit);
 				break;
 			}
-			os.write ((char *)out, GZIP_CHUNK_SIZE - m_Inflator.avail_out);
+			os.write ((char *)out->data(), GZIP_CHUNK_SIZE - m_Inflator.avail_out);
 		} 
 		while (!m_Inflator.avail_out); // more data to read
-		delete[] out;
+		delete out;
 	}
 
 	void GzipInflator::Inflate (std::istream& in, std::ostream& out)
 	{
-		uint8_t * buf = new uint8_t[GZIP_CHUNK_SIZE];
+		GZIPChunk * buf = new GZIPChunk;
 		while (!in.eof ())
 		{
-			in.read ((char *) buf, GZIP_CHUNK_SIZE);
-			Inflate (buf, in.gcount (), out);
+			in.read ((char *) buf->data(), GZIP_CHUNK_SIZE);
+			Inflate (buf->data(), in.gcount (), out);
 		}
-		delete[] buf;
+		delete buf;
 	}
 
 	GzipDeflator::GzipDeflator (): m_IsDirty (false)
