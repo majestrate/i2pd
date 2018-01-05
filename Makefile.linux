@@ -70,3 +70,8 @@ ifneq ($(shell $(GREP) -c avx /proc/cpuinfo),0)
 	CPU_FLAGS += -mavx
 endif
 endif
+
+ifeq ($(USE_JEMALLOC),yes)
+	NEEDED_CXXFLAGS += -DUSE_JEMALLOC
+  LDLIBS += -ljemalloc
+endif

@@ -10,6 +10,7 @@
 #include "Identity.h"
 #include "RouterInfo.h"
 #include "LeaseSet.h"
+#include "AlignedMemory.h"
 
 namespace i2p
 {	
@@ -103,7 +104,7 @@ namespace tunnel
 	class TunnelPool;
 }
 
-	const size_t I2NP_MAX_MESSAGE_SIZE = 32768; 
+	const size_t I2NP_MAX_MESSAGE_SIZE = 65000; 
 	const size_t I2NP_MAX_SHORT_MESSAGE_SIZE = 4096; 
 	const unsigned int I2NP_MESSAGE_EXPIRATION_TIMEOUT = 8000; // in milliseconds (as initial RTT)
 	const unsigned int I2NP_MESSAGE_CLOCK_SKEW = 60*1000; // 1 minute in milliseconds 
@@ -201,11 +202,12 @@ namespace tunnel
 	};	
 
 	template<int sz>
-	struct I2NPMessageBuffer: public I2NPMessage
+	struct I2NPMessageBuffer: public I2NPMessage, public i2p::util::Aligned<I2NPMessageBuffer<sz> >
 	{
 		I2NPMessageBuffer () { buf = m_Buffer; maxLen = sz; };
 		uint8_t m_Buffer[sz + 32]; // 16 alignment + 16 padding
 	};
+
 
 	std::shared_ptr<I2NPMessage> NewI2NPMessage ();
 	std::shared_ptr<I2NPMessage> NewI2NPShortMessage ();

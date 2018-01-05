@@ -18,6 +18,7 @@
 #include "Garlic.h"
 #include "Tunnel.h"
 #include "util.h" // MemoryPool
+#include "AlignedMemory.h"
 
 namespace i2p
 {
@@ -69,7 +70,7 @@ namespace stream
 	 */
 	const uint64_t DEFAULT_BAN_INTERVAL = 60 * 60 * 1000;
 	
-	struct Packet
+	struct Packet : public i2p::util::Aligned<Packet>
 	{
 		size_t len, offset;
 		uint8_t buf[MAX_PACKET_SIZE];	

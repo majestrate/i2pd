@@ -6,12 +6,13 @@
 #include <memory>
 #include "I2NPProtocol.h"
 #include "TunnelBase.h"
+#include "AlignedMemory.h"
 
 namespace i2p
 {
 namespace tunnel
 {
-	class TunnelGatewayBuffer
+	class TunnelGatewayBuffer : public i2p::util::Aligned<TunnelGatewayBuffer>
 	{
 		public:
 			TunnelGatewayBuffer ();

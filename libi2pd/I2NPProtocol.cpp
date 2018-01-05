@@ -19,12 +19,14 @@ namespace i2p
 {
 	std::shared_ptr<I2NPMessage> NewI2NPMessage ()
 	{
-		return std::make_shared<I2NPMessageBuffer<I2NP_MAX_MESSAGE_SIZE> >();
+		auto msg = new I2NPMessageBuffer<I2NP_MAX_MESSAGE_SIZE>();
+		return std::shared_ptr<I2NPMessage>(msg);
 	}
 	
 	std::shared_ptr<I2NPMessage> NewI2NPShortMessage ()
 	{
-		return std::make_shared<I2NPMessageBuffer<I2NP_MAX_SHORT_MESSAGE_SIZE> >();
+		auto msg = new I2NPMessageBuffer<I2NP_MAX_SHORT_MESSAGE_SIZE>();
+		return std::shared_ptr<I2NPMessage>(msg);
 	}
 
 	std::shared_ptr<I2NPMessage> NewI2NPTunnelMessage ()
