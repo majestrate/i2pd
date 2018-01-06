@@ -29,11 +29,6 @@ namespace i2p
 			Align(12);
 		}
 	};
-
-	//static i2p::util::MemoryPoolMt<I2NPLongMsg> mempool_long;
-	//static i2p::util::MemoryPool<I2NPShortMsg> mempool_short;
-	static i2p::util::MemoryPool<I2NPTunnelMsg> mempool_tunnel;
-	
 	
 	std::shared_ptr<I2NPMessage> NewI2NPMessage ()
 	{
@@ -47,7 +42,7 @@ namespace i2p
 
 	std::shared_ptr<I2NPMessage> NewI2NPTunnelMessage ()
 	{
-		return mempool_tunnel.AcquireShared();
+		return std::shared_ptr<I2NPMessage>(new I2NPTunnelMsg ());
 	}	
 	
 	std::shared_ptr<I2NPMessage> NewI2NPMessage (size_t len)
