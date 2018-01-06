@@ -30,24 +30,24 @@ namespace i2p
 		}
 	};
 
-	static i2p::util::MemoryPoolMt<I2NPLongMsg> mempool_long;
-	static i2p::util::MemoryPoolMt<I2NPShortMsg> mempool_short;
-	static i2p::util::MemoryPoolMt<I2NPTunnelMsg> mempool_tunnel;
+	//static i2p::util::MemoryPoolMt<I2NPLongMsg> mempool_long;
+	static i2p::util::MemoryPool<I2NPShortMsg> mempool_short;
+	static i2p::util::MemoryPool<I2NPTunnelMsg> mempool_tunnel;
 	
 	
 	std::shared_ptr<I2NPMessage> NewI2NPMessage ()
 	{
-		return mempool_long.AcquireSharedMt ();
+		return std::shared_ptr<I2NPMessage>(new I2NPLongMsg ());
 	}
 	
 	std::shared_ptr<I2NPMessage> NewI2NPShortMessage ()
 	{
-		return mempool_short.AcquireSharedMt ();
+		return mempool_short.AcquireShared ();
 	}
 
 	std::shared_ptr<I2NPMessage> NewI2NPTunnelMessage ()
 	{
-		return mempool_tunnel.AcquireSharedMt();
+		return mempool_tunnel.AcquireShared();
 	}	
 	
 	std::shared_ptr<I2NPMessage> NewI2NPMessage (size_t len)
