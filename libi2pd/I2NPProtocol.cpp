@@ -12,28 +12,42 @@
 #include "Garlic.h"
 #include "I2NPProtocol.h"
 #include "version.h"
+#include "util.h" // mempool
 
 using namespace i2p::transport;
 
 namespace i2p
 {
+
+	typedef I2NPMessageBuffer<I2NP_MAX_MESSAGE_SIZE> I2NPLongMsg;
+	typedef I2NPMessageBuffer<I2NP_MAX_SHORT_MESSAGE_SIZE> I2NPShortMsg;
+	// reserved for alignment and NTCP 16 + 6 + 12
+	struct I2NPTunnelMsg : public I2NPMessageBuffer<i2p::tunnel::TUNNEL_DATA_MSG_SIZE + I2NP_HEADER_SIZE + 34>
+	{
+		I2NPTunnelMsg() : I2NPMessageBuffer<i2p::tunnel::TUNNEL_DATA_MSG_SIZE + I2NP_HEADER_SIZE + 34>()
+		{
+			Align(12);
+		}
+	};
+
+	static i2p::util::MemoryPoolMt<I2NPLongMsg> mempool_long;
+	static i2p::util::MemoryPoolMt<I2NPShortMsg> mempool_short;
+	static i2p::util::MemoryPoolMt<I2NPTunnelMsg> mempool_tunnel;
+	
+	
 	std::shared_ptr<I2NPMessage> NewI2NPMessage ()
 	{
-		auto msg = new I2NPMessageBuffer<I2NP_MAX_MESSAGE_SIZE>();
-		return std::shared_ptr<I2NPMessage>(msg);
+		return mempool_long.AcquireSharedMt ();
 	}
 	
 	std::shared_ptr<I2NPMessage> NewI2NPShortMessage ()
 	{
-		auto msg = new I2NPMessageBuffer<I2NP_MAX_SHORT_MESSAGE_SIZE>();
-		return std::shared_ptr<I2NPMessage>(msg);
+		return mempool_short.AcquireSharedMt ();
 	}
 
 	std::shared_ptr<I2NPMessage> NewI2NPTunnelMessage ()
 	{
-		auto msg = new I2NPMessageBuffer<i2p::tunnel::TUNNEL_DATA_MSG_SIZE + I2NP_HEADER_SIZE + 34>(); // reserved for alignment and NTCP 16 + 6 + 12
-		msg->Align (12);
-		return std::shared_ptr<I2NPMessage>(msg);
+		return mempool_tunnel.AcquireSharedMt();
 	}	
 	
 	std::shared_ptr<I2NPMessage> NewI2NPMessage (size_t len)

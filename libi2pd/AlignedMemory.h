@@ -29,7 +29,7 @@ namespace util
       return ptr;
     }
     
-    static void * operator new (size_t sz, T * & ptr)
+    static void * operator new (size_t sz, T * ptr)
     {
       return ptr;
     }

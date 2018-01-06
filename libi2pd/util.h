@@ -54,7 +54,7 @@ namespace util
 				if (!m_Head) return new T(std::forward<TArgs>(args)...);
 				else
 				{
-					auto tmp = m_Head;
+					T * tmp = m_Head;
 					m_Head = static_cast<T*>(*(void * *)m_Head); // next
 					return new (tmp)T(std::forward<TArgs>(args)...);
 				}
@@ -101,12 +101,13 @@ namespace util
 				return this->Acquire (std::forward<TArgs>(args)...);
 			}
 
-			void ReleaseMt (T * t)
+			void ReleaseSignleMt (T * t)
 			{
 				std::lock_guard<std::mutex> l(m_Mutex);
 				this->Release (t);	
 			}
 
+    
 			template<template<typename, typename...>class C, typename... R>
 			void ReleaseMt(const C<T *, R...>& c)	
 			{
@@ -114,6 +115,13 @@ namespace util
 				for (auto& it: c)
 					this->Release (it);
 			}	
+
+			template<typename... TArgs>
+			std::shared_ptr<T> AcquireSharedMt (TArgs&&... args)
+			{
+				return std::shared_ptr<T>(AcquireMt (std::forward<TArgs>(args)...),
+					std::bind (&MemoryPoolMt<T>::ReleaseSignleMt, this, std::placeholders::_1));
+			}
 
 		private:
 		
