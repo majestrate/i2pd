@@ -11,16 +11,7 @@ namespace i2p
 {
 namespace util
 {
-
-#ifndef USE_JEMALLOC
-  static inline void * mallocx(size_t sz, int flags)
-  {
-    (void) flags;
-    return std::malloc(sz);
-  }
-#define MALLOCX_ALIGN(x) x
-#endif
-  
+#ifdef USE_JEMALLOC
   template<typename T>
   struct Aligned
   {
@@ -61,9 +52,13 @@ namespace util
     static void operator delete[] (void * ptr, size_t sz)
     {
       free(ptr);
-    }
-    
+    }    
   };
+#else
+  template<typename T>
+  struct Aligned {};
+#endif
+  
 }
 }
 
