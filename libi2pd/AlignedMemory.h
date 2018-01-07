@@ -21,7 +21,7 @@ namespace util
       return std::exp2( std::floor(std::log2(sizeof(T))) );
     }
     
-    static void * _Acquire(size_t sz)
+    static inline void * _Acquire(size_t sz)
     {
       void * ptr = nullptr;
       ptr = mallocx(sz, MALLOCX_ALIGN(align()));
