@@ -135,7 +135,6 @@ namespace client
 			bool m_IsSilent;
 			bool m_IsAccepting; // for eSAMSocketTypeAcceptor only 
 			std::shared_ptr<i2p::stream::Stream> m_Stream;
-			std::shared_ptr<SAMSession> m_Session;
 	};
 
 	struct SAMSession
