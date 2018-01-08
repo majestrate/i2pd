@@ -710,10 +710,15 @@ namespace client
 		}
 		else
 		{
-			if (m_SocketType != eSAMSocketTypeTerminated && bytes_transferred > 0) // check for possible race condition with Terminate()
-				boost::asio::async_write (m_Socket, boost::asio::buffer (m_StreamBuffer, bytes_transferred),
-					boost::asio::transfer_all(),
-					std::bind (&SAMSocket::HandleWriteI2PData, shared_from_this (), std::placeholders::_1));
+			if (m_SocketType != eSAMSocketTypeTerminated)
+			{
+				if (bytes_transferred > 0)
+					boost::asio::async_write (m_Socket, boost::asio::buffer (m_StreamBuffer, bytes_transferred),
+						boost::asio::transfer_all(),
+						std::bind (&SAMSocket::HandleWriteI2PData, shared_from_this (), std::placeholders::_1));
+				else
+					I2PReceive();
+			}
 		}
 	}
 
