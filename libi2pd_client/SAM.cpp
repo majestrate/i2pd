@@ -715,9 +715,9 @@ namespace client
 	
 	void SAMSocket::WriteI2PData(size_t sz)
 	{
-		LogPrint(eLogDebug, "SAM: write i2p data ", sz, " bytes offset is ", m_StreamBufferOffset, " bytes of ", sizeof(m_StreamBuffer));
+		LogPrint(eLogDebug, "SAM: write i2p data ", sz, " bytes offset is ", m_StreamBufferOffset, " bytes ",(m_StreamBufferOffset + sz));
 		uint8_t * buff = m_StreamBuffer + m_StreamBufferOffset;
-		if ( m_StreamBufferOffset + sz <= sizeof(m_StreamBuffer))
+		if ( (m_StreamBufferOffset + sz) <= sizeof(m_StreamBuffer))
 		{
 			m_StreamBufferOffset += sz;
 			boost::asio::async_write (
