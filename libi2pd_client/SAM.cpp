@@ -667,7 +667,7 @@ namespace client
 			if (m_Stream->GetStatus () == i2p::stream::eStreamStatusNew ||
 					 m_Stream->GetStatus () == i2p::stream::eStreamStatusOpen) // regular
 			{
-				if(sizeof(m_StreamBuffer) <= m_StreamBufferOffset)
+				if(sizeof(m_StreamBuffer) > m_StreamBufferOffset)
 				{
 					size_t sz = sizeof(m_StreamBuffer) - m_StreamBufferOffset;
 					uint8_t * buff = m_StreamBuffer + m_StreamBufferOffset;
@@ -728,7 +728,7 @@ namespace client
 		}
 		else
 		{
-			LogPrint(eLogWarning, "SAM: write buffer overflow");
+			LogPrint(eLogWarning, "SAM: write i2p data buffer overflow");
 			auto s = shared_from_this ();
 			m_Owner.GetService ().post ([s] { s->Terminate("write buffer overflow"); });
 		}
