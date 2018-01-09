@@ -16,15 +16,12 @@ namespace util
   struct Aligned
   {
     
-    static constexpr int align()
-    {
-      return std::exp2( std::floor(std::log2(sizeof(T))) );
-    }
+    static constexpr int alignment = std::exp2( std::floor(std::log2(sizeof(T))) );
     
     static inline void * _Acquire(size_t sz)
     {
       void * ptr = nullptr;
-      ptr = mallocx(sz, MALLOCX_ALIGN(align()));
+      ptr = mallocx(sz, MALLOCX_ALIGN(alignment));
       if (!ptr) throw std::bad_alloc();
       return ptr;
     }
