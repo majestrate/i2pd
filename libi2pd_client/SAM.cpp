@@ -667,7 +667,7 @@ namespace client
 			if (m_Stream->GetStatus () == i2p::stream::eStreamStatusNew ||
 					 m_Stream->GetStatus () == i2p::stream::eStreamStatusOpen) // regular
 			{
-				if(sizeof(m_StreamBuffer) < m_StreamBufferOffset)
+				if(sizeof(m_StreamBuffer) <= m_StreamBufferOffset)
 				{
 					size_t sz = sizeof(m_StreamBuffer) - m_StreamBufferOffset;
 					uint8_t * buff = m_StreamBuffer + m_StreamBufferOffset;
@@ -715,6 +715,7 @@ namespace client
 	
 	void SAMSocket::WriteI2PData(size_t sz)
 	{
+		LogPrint(eLogDebug, "SAM: write i2p data ", sz, " bytes");
 		uint8_t * buff = m_StreamBuffer + m_StreamBufferOffset;
 		if ( m_StreamBufferOffset + sz <= sizeof(m_StreamBuffer))
 		{
