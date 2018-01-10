@@ -715,6 +715,7 @@ namespace client
 	
 	void SAMSocket::WriteI2PData(size_t sz)
 	{
+		auto s = shared_from_this ();
 		LogPrint(eLogDebug, "SAM: write i2p data ", sz, " bytes offset is ", m_StreamBufferOffset, " bytes ",(m_StreamBufferOffset + sz));
 		uint8_t * buff = m_StreamBuffer + m_StreamBufferOffset;
 		if ( (m_StreamBufferOffset + sz) <= sizeof(m_StreamBuffer))
@@ -724,12 +725,11 @@ namespace client
 				m_Socket,
 				boost::asio::buffer (buff, sz),
 				boost::asio::transfer_all(),																
-				std::bind (&SAMSocket::HandleWriteI2PData, shared_from_this (), std::placeholders::_1, sz)); // postpone termination
+				std::bind (&SAMSocket::HandleWriteI2PData, s, std::placeholders::_1, sz)); // postpone termination
 		}
 		else
 		{
 			LogPrint(eLogWarning, "SAM: write i2p data buffer overflow");
-			auto s = shared_from_this ();
 			m_Owner.GetService ().post ([s] { s->Terminate("write buffer overflow"); });
 		}
 	}
