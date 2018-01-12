@@ -667,12 +667,13 @@ namespace client
 			if (m_Stream->GetStatus () == i2p::stream::eStreamStatusNew ||
 					 m_Stream->GetStatus () == i2p::stream::eStreamStatusOpen) // regular
 			{
+				auto s = shared_from_this ();
 				if(sizeof(m_StreamBuffer) > m_StreamBufferOffset)
 				{
 					size_t sz = sizeof(m_StreamBuffer) - m_StreamBufferOffset;
 					uint8_t * buff = m_StreamBuffer + m_StreamBufferOffset;
 					m_Stream->AsyncReceive (boost::asio::buffer (buff, sz),
-						std::bind (&SAMSocket::HandleI2PReceive, shared_from_this (),
+						std::bind (&SAMSocket::HandleI2PReceive, s,
 							std::placeholders::_1, std::placeholders::_2),
 						SAM_SOCKET_CONNECTION_MAX_IDLE);
 				}
@@ -680,7 +681,6 @@ namespace client
 				{
 					// write overflow
 					LogPrint(eLogWarning, "SAM: write buffer overflow");
-					auto s = shared_from_this ();
 					m_Owner.GetService ().post ([s] { s->Terminate("write buffer overflow"); });
 				}
 			}
