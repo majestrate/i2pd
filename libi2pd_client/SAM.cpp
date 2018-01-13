@@ -656,10 +656,12 @@ namespace client
 			LogPrint (eLogError, "SAM: Buffer is full, terminate");
 			Terminate ("Buffer is full");
 			return;
-		} else
+		} else if (m_Socket)
 			m_Socket->async_read_some (boost::asio::buffer(m_Buffer + m_BufferOffset, SAM_SOCKET_BUFFER_SIZE - m_BufferOffset),
 				std::bind((m_SocketType == eSAMSocketTypeStream) ? &SAMSocket::HandleReceived : &SAMSocket::HandleMessage,
 				shared_from_this (), std::placeholders::_1, std::placeholders::_2));
+		else
+			LogPrint(eLogError, "SAM: receive with no native socket");
 	}
 
 	void SAMSocket::HandleReceived (const boost::system::error_code& ecode, std::size_t bytes_transferred)
@@ -681,7 +683,7 @@ namespace client
 					[s](const boost::system::error_code& ecode)
 				    {
 						if (!ecode)
-							s->Receive ();
+							s->m_Owner.GetService ().post ([s] { s->Receive (); });
 						else	
 							s->m_Owner.GetService ().post ([s] { s->Terminate ("AsyncSend failed"); });
 					});
