@@ -80,7 +80,7 @@ namespace client
 		public:
 
 			typedef boost::asio::ip::tcp::socket Socket_t;
-			SAMSocket (SAMBridge& owner);
+			SAMSocket (SAMBridge& owner, std::shared_ptr<Socket_t> socket);
 			~SAMSocket ();			
 
 			boost::asio::ip::tcp::socket& GetSocket () { return *m_Socket; };

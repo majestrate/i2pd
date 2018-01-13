@@ -15,13 +15,12 @@ namespace i2p
 {
 namespace client
 {
-	SAMSocket::SAMSocket (SAMBridge& owner):
-		m_Owner (owner), m_Timer (m_Owner.GetService ()),
+	SAMSocket::SAMSocket (SAMBridge& owner, std::shared_ptr<Socket_t> socket):
+		m_Owner (owner), m_Socket(socket), m_Timer (m_Owner.GetService ()),
 		m_BufferOffset (0), m_StreamBufferOffset(0),
 		m_SocketType (eSAMSocketTypeUnknown), m_IsSilent (false),
 		m_IsAccepting (false), m_Stream (nullptr)
 	{
-		m_Socket = std::make_shared<Socket_t>(m_Owner.GetService ());
 	}
 
 	SAMSocket::~SAMSocket ()
@@ -952,8 +951,9 @@ namespace client
 
 	void SAMBridge::Accept ()
 	{
-		auto newSocket = std::make_shared<SAMSocket> (*this);
-		m_Acceptor.async_accept (newSocket->GetSocket (), std::bind (&SAMBridge::HandleAccept, this,
+		auto native = std::make_shared<boost::asio::ip::tcp::socket>(m_Service);
+		auto newSocket = std::make_shared<SAMSocket> (*this, native);
+		m_Acceptor.async_accept (*native, std::bind (&SAMBridge::HandleAccept, this,
 			std::placeholders::_1, newSocket));
 	}
 
