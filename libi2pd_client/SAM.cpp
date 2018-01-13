@@ -16,11 +16,12 @@ namespace i2p
 namespace client
 {
 	SAMSocket::SAMSocket (SAMBridge& owner):
-		m_Owner (owner), m_Socket (std::make_shared<Socket_t>(m_Owner.GetService ())), m_Timer (m_Owner.GetService ()),
+		m_Owner (owner), m_Timer (m_Owner.GetService ()),
 		m_BufferOffset (0), m_StreamBufferOffset(0),
 		m_SocketType (eSAMSocketTypeUnknown), m_IsSilent (false),
 		m_IsAccepting (false), m_Stream (nullptr)
 	{
+		m_Socket = std::make_shared<Socket_t>(m_Owner.GetService ());
 	}
 
 	SAMSocket::~SAMSocket ()
