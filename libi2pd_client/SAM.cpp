@@ -718,14 +718,13 @@ namespace client
 
 	void SAMSocket::WriteI2PDataImmediate(uint8_t * buff, size_t sz)
 	{
-		auto s = shared_from_this();
-		m_Owner.GetService().post([s, buff, sz] {
+		if(m_Socket)
 			boost::asio::async_write (
-				*s->m_Socket,
+				*m_Socket,
 				boost::asio::buffer (buff, sz),
-				boost::asio::transfer_all(),
-				std::bind (&SAMSocket::HandleWriteI2PDataImmediate, s->shared_from_this (), std::placeholders::_1, buff)); // postpone termination
-		});
+				std::bind (&SAMSocket::HandleWriteI2PDataImmediate, shared_from_this (), std::placeholders::_1, buff)); // postpone termination
+		else
+			LogPrint(eLogError, "SAM: no native socket");
 	}
 
 	void SAMSocket::HandleWriteI2PDataImmediate(const boost::system::error_code & ec, uint8_t * buff)
