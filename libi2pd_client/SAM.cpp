@@ -47,6 +47,7 @@ namespace client
 			{
 				if (Session)
 				{
+					Session->DelSocket (this);
 					if (m_IsAccepting && Session->localDestination)
 						Session->localDestination->StopAcceptingStreams ();
 				}
