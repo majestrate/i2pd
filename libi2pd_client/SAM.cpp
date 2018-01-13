@@ -665,7 +665,7 @@ namespace client
 	void SAMSocket::HandleReceived (const boost::system::error_code& ecode, std::size_t bytes_transferred)
 	{
 		if (ecode)
-        {
+		{
 			LogPrint (eLogError, "SAM: read error: ", ecode.message ());
 			if (ecode != boost::asio::error::operation_aborted)
 				Terminate ("read error");
@@ -718,11 +718,14 @@ namespace client
 
 	void SAMSocket::WriteI2PDataImmediate(uint8_t * buff, size_t sz)
 	{
-		boost::asio::async_write (
-			*m_Socket,
-			boost::asio::buffer (buff, sz),
-			boost::asio::transfer_all(),
-			std::bind (&SAMSocket::HandleWriteI2PDataImmediate, shared_from_this (), std::placeholders::_1, buff)); // postpone termination
+		auto s = shared_from_this();
+		m_Owner.GetService().post([s, buff, sz] {
+			boost::asio::async_write (
+				*s->m_Socket,
+				boost::asio::buffer (buff, sz),
+				boost::asio::transfer_all(),
+				std::bind (&SAMSocket::HandleWriteI2PDataImmediate, s->shared_from_this (), std::placeholders::_1, buff)); // postpone termination
+		});
 	}
 
 	void SAMSocket::HandleWriteI2PDataImmediate(const boost::system::error_code & ec, uint8_t * buff)
