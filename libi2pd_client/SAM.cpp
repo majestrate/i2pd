@@ -656,7 +656,7 @@ namespace client
 			LogPrint (eLogError, "SAM: Buffer is full, terminate");
 			Terminate ("Buffer is full");
 			return;
-		} else if (m_Socket)
+		} else
 			m_Socket->async_read_some (boost::asio::buffer(m_Buffer + m_BufferOffset, SAM_SOCKET_BUFFER_SIZE - m_BufferOffset),
 				std::bind((m_SocketType == eSAMSocketTypeStream) ? &SAMSocket::HandleReceived : &SAMSocket::HandleMessage,
 				shared_from_this (), std::placeholders::_1, std::placeholders::_2));
@@ -696,22 +696,10 @@ namespace client
 			if (m_Stream->GetStatus () == i2p::stream::eStreamStatusNew ||
 					 m_Stream->GetStatus () == i2p::stream::eStreamStatusOpen) // regular
 			{
-				auto s = shared_from_this ();
-				if(sizeof(m_StreamBuffer) > m_StreamBufferOffset)
-				{
-					size_t sz = sizeof(m_StreamBuffer) - m_StreamBufferOffset;
-					uint8_t * buff = m_StreamBuffer + m_StreamBufferOffset;
-					m_Stream->AsyncReceive (boost::asio::buffer (buff, sz),
-						std::bind (&SAMSocket::HandleI2PReceive, s,
-							std::placeholders::_1, std::placeholders::_2),
-						SAM_SOCKET_CONNECTION_MAX_IDLE);
-				}
-				else
-				{
-					// write overflow
-					LogPrint(eLogWarning, "SAM: write buffer overflow");
-					m_Owner.GetService ().post ([s] { s->Terminate("write buffer overflow"); });
-				}
+				m_Stream->AsyncReceive (boost::asio::buffer (m_StreamBuffer, SAM_SOCKET_BUFFER_SIZE),
+						std::bind (&SAMSocket::HandleI2PReceive, shared_from_this(),
+						std::placeholders::_1, std::placeholders::_2),
+							SAM_SOCKET_CONNECTION_MAX_IDLE);
 			}
 			else // closed by peer
 			{
@@ -730,12 +718,11 @@ namespace client
 
 	void SAMSocket::WriteI2PDataImmediate(uint8_t * buff, size_t sz)
 	{
-		if(m_Socket)
-			boost::asio::async_write (
-				*m_Socket,
-				boost::asio::buffer (buff, sz),
-				boost::asio::transfer_all(),																
-				std::bind (&SAMSocket::HandleWriteI2PDataImmediate, shared_from_this (), std::placeholders::_1, buff)); // postpone termination
+		boost::asio::async_write (
+			*m_Socket,
+			boost::asio::buffer (buff, sz),
+			boost::asio::transfer_all(),
+			std::bind (&SAMSocket::HandleWriteI2PDataImmediate, shared_from_this (), std::placeholders::_1, buff)); // postpone termination
 	}
 
 	void SAMSocket::HandleWriteI2PDataImmediate(const boost::system::error_code & ec, uint8_t * buff)
@@ -781,15 +768,13 @@ namespace client
 				{
 					WriteI2PData(bytes_transferred);
 				}
-				else
-					I2PReceive();
+				I2PReceive();
 			}
 		}
 	}
 
 	void SAMSocket::HandleWriteI2PData (const boost::system::error_code& ecode, size_t bytes_transferred)
 	{
-		m_StreamBufferOffset -= bytes_transferred;
 		if (ecode)
 		{
 			LogPrint (eLogError, "SAM: socket write error: ", ecode.message ());
