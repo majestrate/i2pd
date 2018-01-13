@@ -717,7 +717,7 @@ namespace client
 	{
 		uint8_t * sendbuff = new uint8_t[sz];
 		memcpy(sendbuff, m_StreamBuffer, sz);
-		WriteI2PDataImmedidate(sendbuff, sz);
+		WriteI2PDataImmediate(sendbuff, sz);
 	}
 	
 	void SAMSocket::HandleI2PReceive (const boost::system::error_code& ecode, std::size_t bytes_transferred)
