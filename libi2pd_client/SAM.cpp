@@ -40,14 +40,13 @@ namespace client
 			case eSAMSocketTypeStream:
 			{
 				if (Session)
-					Session->DelSocket (shared_from_this ());
+					Session->DelSocket (this);
 				break;
 			}
 			case eSAMSocketTypeAcceptor:
 			{
 				if (Session)
 				{
-					Session->DelSocket (shared_from_this ());
 					if (m_IsAccepting && Session->localDestination)
 						Session->localDestination->StopAcceptingStreams ();
 				}
@@ -78,14 +77,14 @@ namespace client
 			case eSAMSocketTypeStream:
 			{
 				if (Session)
-					Session->DelSocket (shared_from_this ());
+					Session->DelSocket (this);
 				break;
 			}
 			case eSAMSocketTypeAcceptor:
 			{
 				if (Session)
 				{
-					Session->DelSocket (shared_from_this ());
+					Session->DelSocket (this);
 					if (m_IsAccepting && Session->localDestination)
 						Session->localDestination->StopAcceptingStreams ();
 				}

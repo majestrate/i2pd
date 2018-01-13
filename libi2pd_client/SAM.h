@@ -151,15 +151,15 @@ namespace client
 		std::mutex m_SocketsMutex;
 
 		/** safely add a socket to this session */
-		void AddSocket(const std::shared_ptr<SAMSocket> & sock) {
+		void AddSocket(std::shared_ptr<SAMSocket> sock) {
 			std::lock_guard<std::mutex> lock(m_SocketsMutex);
 			m_Sockets.push_back(sock);
 		}
 
 		/** safely remove a socket from this session */
-		void DelSocket(const std::shared_ptr<SAMSocket> & sock) {
+		void DelSocket(SAMSocket * sock) {
 			std::lock_guard<std::mutex> lock(m_SocketsMutex);
-			m_Sockets.remove(sock);
+			m_Sockets.remove_if([sock](const std::shared_ptr<SAMSocket> s) -> bool { return s.get() == sock; });
 		}
 
 		/** get a list holding a copy of all sam sockets from this session */
