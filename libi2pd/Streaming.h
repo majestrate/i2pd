@@ -277,8 +277,8 @@ namespace stream
 			/** set max connections per minute per destination */
 			void SetMaxConnsPerMinute(const uint32_t conns);
 
-			Packet * NewPacket () { return m_PacketsPool.Acquire (); }
-			void DeletePacket (Packet * p) { m_PacketsPool.Release (p); }
+    Packet * NewPacket () { return new Packet; }
+    void DeletePacket (Packet * p) { delete p; }
 			
 		private:		
 
@@ -317,7 +317,7 @@ namespace stream
 			std::vector<i2p::data::IdentHash> m_Banned;
 			uint64_t m_LastBanClear;
 
-			i2p::util::MemoryPool<Packet> m_PacketsPool;
+    //i2p::util::MemoryPool<Packet> m_PacketsPool;
 			bool m_EnableDrop;
 			
 		public:
