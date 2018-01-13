@@ -25,7 +25,40 @@ namespace client
 
 	SAMSocket::~SAMSocket ()
 	{
-		Terminate ("~SAMSocket()");
+		if(m_Stream)
+		{
+			m_Stream->Close ();
+			m_Stream.reset ();
+		}
+		auto Session = m_Owner.FindSession(m_ID);
+		
+		switch (m_SocketType)
+		{
+			case eSAMSocketTypeSession:
+				m_Owner.CloseSession (m_ID);
+			break;
+			case eSAMSocketTypeStream:
+			{
+				if (Session)
+					Session->DelSocket (shared_from_this ());
+				break;
+			}
+			case eSAMSocketTypeAcceptor:
+			{
+				if (Session)
+				{
+					Session->DelSocket (shared_from_this ());
+					if (m_IsAccepting && Session->localDestination)
+						Session->localDestination->StopAcceptingStreams ();
+				}
+				break;
+			}
+			default:
+				;
+		}
+		m_SocketType = eSAMSocketTypeTerminated;
+		if (m_Socket && m_Socket->is_open()) m_Socket->close ();
+		m_Socket.reset ();
 	}	
 
 	void SAMSocket::Terminate (const char* reason)
