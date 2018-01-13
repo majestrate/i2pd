@@ -724,6 +724,7 @@ namespace client
 			boost::asio::async_write (
 				*m_Socket,
 				boost::asio::buffer (buff, sz),
+				boost::asio::transfer_all(),
 				std::bind (&SAMSocket::HandleWriteI2PDataImmediate, shared_from_this (), std::placeholders::_1, buff)); // postpone termination
 		else
 			LogPrint(eLogError, "SAM: no native socket");
