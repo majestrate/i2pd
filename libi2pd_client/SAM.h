@@ -83,7 +83,7 @@ namespace client
 			SAMSocket (SAMBridge& owner);
 			~SAMSocket ();			
 
-			boost::asio::ip::tcp::socket& GetSocket () { return m_Socket; };
+			boost::asio::ip::tcp::socket& GetSocket () { return *m_Socket; };
 			void ReceiveHandshake ();
 			void SetSocketType (SAMSocketType socketType) { m_SocketType = socketType; };
 			SAMSocketType GetSocketType () const { return m_SocketType; };
