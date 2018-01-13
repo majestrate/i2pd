@@ -16,7 +16,7 @@ namespace i2p
 namespace client
 {
 	SAMSocket::SAMSocket (SAMBridge& owner):
-		m_Owner (owner), m_Socket (m_Owner.GetService ()), m_Timer (m_Owner.GetService ()),
+		m_Owner (owner), m_Socket (std::make_shared<Socket_t>(m_Owner.GetService ())), m_Timer (m_Owner.GetService ()),
 		m_BufferOffset (0), m_StreamBufferOffset(0),
 		m_SocketType (eSAMSocketTypeUnknown), m_IsSilent (false),
 		m_IsAccepting (false), m_Stream (nullptr)
@@ -28,20 +28,14 @@ namespace client
 		Terminate ("~SAMSocket()");
 	}	
 
-	void SAMSocket::CloseStream (const char* reason)
+	void SAMSocket::Terminate (const char* reason)
 	{
-		LogPrint (eLogDebug, "SAMSocket::CloseStream, reason: ", reason);
-		if (m_Stream)
+		if(m_Stream)
 		{
 			m_Stream->Close ();
 			m_Stream.reset ();
-		}	
-	}	
-		
-	void SAMSocket::Terminate (const char* reason)
-	{
+		}
 		auto Session = m_Owner.FindSession(m_ID);
-		CloseStream (reason);
 		
 		switch (m_SocketType)
 		{
@@ -68,14 +62,16 @@ namespace client
 				;
 		}
 		m_SocketType = eSAMSocketTypeTerminated;
-		if (m_Socket.is_open()) m_Socket.close ();
+		if (m_Socket && m_Socket->is_open()) m_Socket->close ();
+		m_Socket.reset ();
 	}
 
 	void SAMSocket::ReceiveHandshake ()
 	{
-		m_Socket.async_read_some (boost::asio::buffer(m_Buffer, SAM_SOCKET_BUFFER_SIZE),
-			std::bind(&SAMSocket::HandleHandshakeReceived, shared_from_this (),
-			std::placeholders::_1, std::placeholders::_2));
+		if(m_Socket)
+			m_Socket->async_read_some (boost::asio::buffer(m_Buffer, SAM_SOCKET_BUFFER_SIZE),
+				std::bind(&SAMSocket::HandleHandshakeReceived, shared_from_this (),
+				std::placeholders::_1, std::placeholders::_2));
 	}
 
 	void SAMSocket::HandleHandshakeReceived (const boost::system::error_code& ecode, std::size_t bytes_transferred)
@@ -122,7 +118,7 @@ namespace client
 #else
 					size_t l = snprintf (m_Buffer, SAM_SOCKET_BUFFER_SIZE, SAM_HANDSHAKE_REPLY, version.c_str ());
 #endif
-					boost::asio::async_write (m_Socket, boost::asio::buffer (m_Buffer, l), boost::asio::transfer_all (),
+					boost::asio::async_write (*m_Socket, boost::asio::buffer (m_Buffer, l), boost::asio::transfer_all (),
 								std::bind(&SAMSocket::HandleHandshakeReplySent, shared_from_this (),
 						std::placeholders::_1, std::placeholders::_2));
 				}
@@ -145,9 +141,9 @@ namespace client
 			if (ecode != boost::asio::error::operation_aborted)
 				Terminate ("SAM: handshake reply send error");
 		}
-		else
+		else if(m_Socket)
 		{
-			m_Socket.async_read_some (boost::asio::buffer(m_Buffer, SAM_SOCKET_BUFFER_SIZE),
+			m_Socket->async_read_some (boost::asio::buffer(m_Buffer, SAM_SOCKET_BUFFER_SIZE),
 				std::bind(&SAMSocket::HandleMessage, shared_from_this (),
 				std::placeholders::_1, std::placeholders::_2));
 		}
@@ -158,7 +154,7 @@ namespace client
 		LogPrint (eLogDebug, "SAMSocket::SendMessageReply, close=",close?"true":"false", " reason: ", msg);
 
 		if (!m_IsSilent)
-			boost::asio::async_write (m_Socket, boost::asio::buffer (msg, len), boost::asio::transfer_all (),
+			boost::asio::async_write (*m_Socket, boost::asio::buffer (msg, len), boost::asio::transfer_all (),
 				std::bind(&SAMSocket::HandleMessageReplySent, shared_from_this (),
 				std::placeholders::_1, std::placeholders::_2, close));
 		else
@@ -627,10 +623,10 @@ namespace client
 			LogPrint (eLogError, "SAM: Buffer is full, terminate");
 			Terminate ("Buffer is full");
 			return;
-		}
-		m_Socket.async_read_some (boost::asio::buffer(m_Buffer + m_BufferOffset, SAM_SOCKET_BUFFER_SIZE - m_BufferOffset),
-			std::bind((m_SocketType == eSAMSocketTypeStream) ? &SAMSocket::HandleReceived : &SAMSocket::HandleMessage,
-			shared_from_this (), std::placeholders::_1, std::placeholders::_2));
+		} else if (m_Socket)
+			m_Socket->async_read_some (boost::asio::buffer(m_Buffer + m_BufferOffset, SAM_SOCKET_BUFFER_SIZE - m_BufferOffset),
+				std::bind((m_SocketType == eSAMSocketTypeStream) ? &SAMSocket::HandleReceived : &SAMSocket::HandleMessage,
+				shared_from_this (), std::placeholders::_1, std::placeholders::_2));
 	}
 
 	void SAMSocket::HandleReceived (const boost::system::error_code& ecode, std::size_t bytes_transferred)
@@ -701,11 +697,12 @@ namespace client
 
 	void SAMSocket::WriteI2PDataImmediate(uint8_t * buff, size_t sz)
 	{
-		boost::asio::async_write (
-			m_Socket,
-			boost::asio::buffer (buff, sz),
-			boost::asio::transfer_all(),																
-			std::bind (&SAMSocket::HandleWriteI2PDataImmediate, shared_from_this (), std::placeholders::_1, buff)); // postpone termination
+		if(m_Socket)
+			boost::asio::async_write (
+				*m_Socket,
+				boost::asio::buffer (buff, sz),
+				boost::asio::transfer_all(),																
+				std::bind (&SAMSocket::HandleWriteI2PDataImmediate, shared_from_this (), std::placeholders::_1, buff)); // postpone termination
 	}
 
 	void SAMSocket::HandleWriteI2PDataImmediate(const boost::system::error_code & ec, uint8_t * buff)

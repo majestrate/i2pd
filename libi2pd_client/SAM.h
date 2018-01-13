@@ -79,9 +79,9 @@ namespace client
 	{
 		public:
 
+			typedef boost::asio::ip::tcp::socket Socket_t;
 			SAMSocket (SAMBridge& owner);
 			~SAMSocket ();			
-			void CloseStream (const char* reason); // TODO: implement it better
 
 			boost::asio::ip::tcp::socket& GetSocket () { return m_Socket; };
 			void ReceiveHandshake ();
@@ -130,7 +130,7 @@ namespace client
 		private:
 
 			SAMBridge& m_Owner;
-			boost::asio::ip::tcp::socket m_Socket;
+			std::shared_ptr<Socket_t> m_Socket;
 			boost::asio::deadline_timer m_Timer;
 			char m_Buffer[SAM_SOCKET_BUFFER_SIZE + 1];
 			size_t m_BufferOffset;
