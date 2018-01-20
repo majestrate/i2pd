@@ -17,7 +17,11 @@ namespace client
 {
 	SAMSocket::SAMSocket (SAMBridge& owner, std::shared_ptr<Socket_t> socket):
 		m_Owner (owner), m_Socket(socket), m_Timer (m_Owner.GetService ()),
+<<<<<<< HEAD
 		m_BufferOffset (0), m_StreamBufferOffset(0),
+=======
+		m_BufferOffset (0), 
+>>>>>>> streaming_race_fix_2018_01_15
 		m_SocketType (eSAMSocketTypeUnknown), m_IsSilent (false),
 		m_IsAccepting (false), m_Stream (nullptr)
 	{
@@ -247,7 +251,7 @@ namespace client
 					if (!strcmp (m_Buffer, SAM_SESSION_CREATE))
 						ProcessSessionCreate (separator + 1, bytes_transferred - (separator - m_Buffer) - 1);
 					else if (!strcmp (m_Buffer, SAM_STREAM_CONNECT))
-						ProcessStreamConnect (separator + 1, bytes_transferred - (separator - m_Buffer) - 1, bytes_transferred - (eol - m_Buffer) - 1);		
+						ProcessStreamConnect (separator + 1, bytes_transferred - (separator - m_Buffer) - 1, bytes_transferred - (eol - m_Buffer) - 1);
 					else if (!strcmp (m_Buffer, SAM_STREAM_ACCEPT))
 						ProcessStreamAccept (separator + 1, bytes_transferred - (separator - m_Buffer) - 1);
 					else if (!strcmp (m_Buffer, SAM_DEST_GENERATE))
@@ -413,11 +417,11 @@ namespace client
 		if (session)
 		{
 			if (rem > 0) // handle follow on data
-			{	
+			{
 				memmove (m_Buffer, buf + len + 1, rem); // buf is a pointer to m_Buffer's content
-				m_BufferOffset = rem;  
+				m_BufferOffset = rem;
 			}
-			else	
+			else
 				m_BufferOffset = 0;
 
 			auto dest = std::make_shared<i2p::data::IdentityEx> ();
@@ -714,7 +718,7 @@ namespace client
 				}
 				else // no more data
 					Terminate ("no more data");
-			}		
+			}
 		}
 	}
 
@@ -765,7 +769,7 @@ namespace client
 			{
 				auto s = shared_from_this ();
 				m_Owner.GetService ().post ([s] { s->Terminate ("stream read error (op aborted)"); });
-			}	
+			}
 		}
 		else
 		{
@@ -999,7 +1003,7 @@ namespace client
 		{
 			// extract signature type
 			i2p::data::SigningKeyType signatureType = i2p::data::SIGNING_KEY_TYPE_DSA_SHA1;
-			i2p::data::CryptoKeyType cryptoType = i2p::data::CRYPTO_KEY_TYPE_ELGAMAL;	
+			i2p::data::CryptoKeyType cryptoType = i2p::data::CRYPTO_KEY_TYPE_ELGAMAL;
 			if (params)
 			{
 				auto it = params->find (SAM_PARAM_SIGNATURE_TYPE);

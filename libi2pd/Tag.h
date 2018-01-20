@@ -74,7 +74,7 @@ public:
 	{
 		RAND_bytes(m_Buf, sz);
 	}
-	
+
 	std::string ToBase64 () const
 	{
 		char str[sz*2];

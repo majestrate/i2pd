@@ -88,9 +88,9 @@ namespace client
 			void SetSocketType (SAMSocketType socketType) { m_SocketType = socketType; };
 			SAMSocketType GetSocketType () const { return m_SocketType; };
 
-                        void Terminate (const char* reason);
+			void Terminate (const char* reason);
 
-                private:
+		 private:
 
 			void HandleHandshakeReceived (const boost::system::error_code& ecode, std::size_t bytes_transferred);
 			void HandleHandshakeReplySent (const boost::system::error_code& ecode, std::size_t bytes_transferred);
@@ -103,7 +103,7 @@ namespace client
 			void I2PReceive ();
 			void HandleI2PReceive (const boost::system::error_code& ecode, std::size_t bytes_transferred);
 			void HandleI2PAccept (std::shared_ptr<i2p::stream::Stream> stream);
-    void HandleWriteI2PData (const boost::system::error_code& ecode, size_t sz);
+			void HandleWriteI2PData (const boost::system::error_code& ecode, size_t sz);
 			void HandleI2PDatagramReceive (const i2p::data::IdentityEx& from, uint16_t fromPort, uint16_t toPort, const uint8_t * buf, size_t len);
 
 			void ProcessSessionCreate (char * buf, size_t len);
@@ -138,7 +138,7 @@ namespace client
 			SAMSocketType m_SocketType;
 			std::string m_ID; // nickname
 			bool m_IsSilent;
-			bool m_IsAccepting; // for eSAMSocketTypeAcceptor only 
+			bool m_IsAccepting; // for eSAMSocketTypeAcceptor only
 			std::shared_ptr<i2p::stream::Stream> m_Stream;
 	};
 
