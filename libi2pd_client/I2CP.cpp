@@ -416,7 +416,6 @@ namespace client
 
 	void I2CPSession::ReconfigureSessionMessageHandler (const uint8_t * buf, size_t len)
 	{
-<<<<<<< HEAD
 		uint8_t status = 3; // rejected
 		if(len > sizeof(uint16_t))
 		{
@@ -471,11 +470,6 @@ namespace client
 			LogPrint(eLogError, "I2CP: short message");
 		SendSessionStatusMessage (status); 
 	}	
-=======
-		// TODO: implement actual reconfiguration
-		SendSessionStatusMessage (2); // updated
-	}
->>>>>>> streaming_race_fix_2018_01_15
 
 	void I2CPSession::SendSessionStatusMessage (uint8_t status)
 	{

@@ -17,11 +17,7 @@ namespace client
 {
 	SAMSocket::SAMSocket (SAMBridge& owner, std::shared_ptr<Socket_t> socket):
 		m_Owner (owner), m_Socket(socket), m_Timer (m_Owner.GetService ()),
-<<<<<<< HEAD
-		m_BufferOffset (0), m_StreamBufferOffset(0),
-=======
 		m_BufferOffset (0), 
->>>>>>> streaming_race_fix_2018_01_15
 		m_SocketType (eSAMSocketTypeUnknown), m_IsSilent (false),
 		m_IsAccepting (false), m_Stream (nullptr)
 	{
