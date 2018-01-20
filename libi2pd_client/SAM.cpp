@@ -710,7 +710,7 @@ namespace client
 				auto len = m_Stream->ReadSome (buff, SAM_SOCKET_BUFFER_SIZE);
 				if (len > 0) // still some data
 				{
-					WriteI2PDataImmediate(buff, len);
+					WriteI2PDataImmediate(buff, len, true);
 				}
 				else // no more data
 					Terminate ("no more data");
@@ -718,21 +718,23 @@ namespace client
 		}
 	}
 
-	void SAMSocket::WriteI2PDataImmediate(uint8_t * buff, size_t sz)
+	void SAMSocket::WriteI2PDataImmediate(uint8_t * buff, size_t sz, bool closeAfter)
 	{
 		if(m_Socket)
 			boost::asio::async_write (
 				*m_Socket,
 				boost::asio::buffer (buff, sz),
 				boost::asio::transfer_all(),
-				std::bind (&SAMSocket::HandleWriteI2PDataImmediate, shared_from_this (), std::placeholders::_1, buff)); // postpone termination
+				std::bind (&SAMSocket::HandleWriteI2PDataImmediate, shared_from_this (), std::placeholders::_1, buff, closeAfter)); // postpone termination
 		else
 			LogPrint(eLogError, "SAM: no native socket");
 	}
 
-	void SAMSocket::HandleWriteI2PDataImmediate(const boost::system::error_code & ec, uint8_t * buff)
+	void SAMSocket::HandleWriteI2PDataImmediate(const boost::system::error_code & ec, uint8_t * buff, bool closeAfter)
 	{
 		delete [] buff;
+		if(closeAfter)
+			Terminate("close after send");
 	}
 	
 	void SAMSocket::WriteI2PData(size_t sz)

@@ -122,11 +122,10 @@ namespace client
 			void HandleSessionReadinessCheckTimer (const boost::system::error_code& ecode);
 			void SendSessionCreateReplyOk ();
 
-    void WriteI2PData(size_t sz);
-    void WriteI2PDataImmediate(uint8_t * ptr, size_t sz);
+			void WriteI2PData(size_t sz);
+      void WriteI2PDataImmediate(uint8_t * ptr, size_t sz, bool closeAfter=false);
 
-    void HandleWriteI2PDataImmediate(const boost::system::error_code & ec, uint8_t * buff);
-    
+      void HandleWriteI2PDataImmediate(const boost::system::error_code & ec, uint8_t * buff, bool closeAfter);
 		private:
 
 			SAMBridge& m_Owner;
