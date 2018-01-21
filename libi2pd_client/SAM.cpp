@@ -666,11 +666,12 @@ namespace client
 
 	void SAMSocket::HandleReceived (const boost::system::error_code& ecode, std::size_t bytes_transferred)
 	{
+		auto s = shared_from_this ();
 		if (ecode)
 		{
 			LogPrint (eLogError, "SAM: read error: ", ecode.message ());
 			if (ecode != boost::asio::error::operation_aborted)
-				Terminate ("read error");
+				s->m_Owner.GetService ().post ([s] { s->Terminate ("read error"); });
 		}
 		else
 		{
@@ -678,7 +679,6 @@ namespace client
 			{
 				bytes_transferred += m_BufferOffset;
 				m_BufferOffset = 0;
-				auto s = shared_from_this ();
 				m_Stream->AsyncSend ((uint8_t *)m_Buffer, bytes_transferred,
 					[s](const boost::system::error_code& ecode)
 				    {
