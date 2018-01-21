@@ -58,7 +58,7 @@ namespace client
 		}
 		m_SocketType = eSAMSocketTypeTerminated;
 		if (m_Socket && m_Socket->is_open()) m_Socket->close ();
-		m_Socket.reset ();
+		m_Socket = nullptr;
 	}	
 
 	void SAMSocket::Terminate (const char* reason)
