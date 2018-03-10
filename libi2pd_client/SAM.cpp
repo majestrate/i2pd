@@ -733,7 +733,9 @@ namespace client
 					WriteI2PDataImmediate(buff, len);
 				}
 				else // no more data
+				{
 					Terminate ("no more data");
+				}
 			}
 		}
 	}
@@ -793,7 +795,8 @@ namespace client
 				{
 					WriteI2PData(bytes_transferred);
 				}
-				I2PReceive();
+				auto s = shared_from_this();
+				m_Owner.GetService().post([s] { s->I2PReceive(); });
 			}
 		}
 	}
