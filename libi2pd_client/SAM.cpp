@@ -777,14 +777,12 @@ namespace client
 				}
 				else
 				{
-					auto s = shared_from_this ();
-					m_Owner.GetService ().post ([s] { s->Terminate ("stream read error"); });
+					m_Owner.GetService ().post ([this] { this->Terminate ("stream read error"); });
 				}
 			}
 			else
 			{
-				auto s = shared_from_this ();
-				m_Owner.GetService ().post ([s] { s->Terminate ("stream read error (op aborted)"); });
+				m_Owner.GetService ().post ([this] { this->Terminate ("stream read error (op aborted)"); });
 			}
 		}
 		else
