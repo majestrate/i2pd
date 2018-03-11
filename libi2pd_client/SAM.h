@@ -150,7 +150,7 @@ namespace client
 		std::mutex m_SocketsMutex;
 
 		/** safely add a socket to this session */
-		void AddSocket(const std::shared_ptr<SAMSocket> & sock) {
+		void AddSocket(std::shared_ptr<SAMSocket> sock) {
 			std::lock_guard<std::mutex> lock(m_SocketsMutex);
 			m_Sockets.emplace_back(std::move(sock));
 		}
