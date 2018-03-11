@@ -690,7 +690,10 @@ namespace client
 		{
 			LogPrint (eLogError, "SAM: read error: ", ecode.message ());
 			if (ecode != boost::asio::error::operation_aborted)
-				Terminate ("read error");
+			{
+				auto s = shared_from_this();
+				m_Owner.GetService().post([s]() { s->Terminate("read error"); });
+			}
 		}
 		else
 		{
@@ -777,12 +780,14 @@ namespace client
 				}
 				else
 				{
-					m_Owner.GetService ().post ([this] { this->Terminate ("stream read error"); });
+					auto s = shared_from_this();
+					m_Owner.GetService ().post ([s] { s->Terminate ("stream read error"); });
 				}
 			}
 			else
 			{
-				m_Owner.GetService ().post ([this] { this->Terminate ("stream read error (op aborted)"); });
+				auto s = shared_from_this();
+				m_Owner.GetService ().post ([s] { s->Terminate ("stream read error (op aborted)"); });
 			}
 		}
 		else
