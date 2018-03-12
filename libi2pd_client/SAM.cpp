@@ -940,10 +940,10 @@ namespace client
 
 	void SAMBridge::Start ()
 	{
-		Accept ();
-		ReceiveDatagram ();
 		m_IsRunning = true;
 		m_Thread = new std::thread (std::bind (&SAMBridge::Run, this));
+		Accept();
+		ReceiveDatagram ();		
 	}
 
 	void SAMBridge::Stop ()
