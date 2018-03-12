@@ -171,6 +171,15 @@ namespace client
 			return l;
 		}
 
+    std::shared_ptr<SAMSocket> FindNextAcceptor()
+    {
+      std::lock_guard<std::mutex> lock(m_SocketsMutex);
+      for (const auto & sock : m_Sockets)
+        if (sock->GetSocketType() == eSAMSocketTypeAcceptor)
+          return sock;
+      return nullptr;
+    }
+
 		SAMSession (std::shared_ptr<ClientDestination> dest);
 		~SAMSession ();
 

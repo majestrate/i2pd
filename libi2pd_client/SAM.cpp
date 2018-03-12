@@ -831,13 +831,12 @@ namespace client
 			if (session)
 			{
 				// find more pending acceptors
-				for (auto & it: session->ListSockets ())
-					if (it->m_SocketType == eSAMSocketTypeAcceptor)
-					{
-						it->m_IsAccepting = true;
-						session->localDestination->AcceptOnce (std::bind (&SAMSocket::HandleI2PAccept, std::move(it), std::placeholders::_1));
-						break;
-					}
+				auto next = session->FindNextAcceptor();
+				if (next)
+				{
+					next->m_IsAccepting = true;
+					session->localDestination->AcceptOnce (std::bind (&SAMSocket::HandleI2PAccept, std::move(next), std::placeholders::_1));
+				}
 			}
 			if (!m_IsSilent)
 			{
