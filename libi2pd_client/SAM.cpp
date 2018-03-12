@@ -942,6 +942,7 @@ namespace client
 	{
 		m_IsRunning = true;
 		m_Thread = new std::thread (std::bind (&SAMBridge::Run, this));
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		Accept();
 		ReceiveDatagram ();		
 	}
