@@ -940,11 +940,10 @@ namespace client
 
 	void SAMBridge::Start ()
 	{
-		m_IsRunning = true;
-		m_Thread = new std::thread (std::bind (&SAMBridge::Run, this));
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		Accept();
 		ReceiveDatagram ();		
+		m_IsRunning = true;
+		m_Thread = new std::thread (std::bind (&SAMBridge::Run, this));
 	}
 
 	void SAMBridge::Stop ()
@@ -981,7 +980,8 @@ namespace client
 	void SAMBridge::Accept ()
 	{
 		auto newSocket = std::make_shared<SAMSocket> (*this);
-		m_Acceptor.async_accept (newSocket->GetSocket(), std::bind (&SAMBridge::HandleAccept, this,
+		auto & sock =	newSocket->GetSocket();
+		m_Acceptor.async_accept (sock, std::bind (&SAMBridge::HandleAccept, this,
 			std::placeholders::_1, newSocket));
 	}
 
