@@ -741,6 +741,8 @@ namespace client
 				}
 			}
 		}
+		else
+			Terminate("No Stream");
 	}
 
 	void SAMSocket::WriteI2PDataImmediate(uint8_t * buff, size_t sz)
