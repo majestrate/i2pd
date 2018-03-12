@@ -176,7 +176,7 @@ namespace client
       std::lock_guard<std::mutex> lock(m_SocketsMutex);
       for (const auto & sock : m_Sockets)
         if (sock->GetSocketType() == eSAMSocketTypeAcceptor)
-          return sock;
+          return std::move(sock);
       return nullptr;
     }
 
