@@ -30,6 +30,8 @@ namespace client
 			m_Stream->Close ();
 			m_Stream.reset ();
 		}
+		if (m_Socket && m_Socket->is_open()) m_Socket->close ();
+		m_Socket.reset ();
 		auto Session = m_Owner.FindSession(m_ID);
 		
 		switch (m_SocketType)
@@ -57,8 +59,6 @@ namespace client
 				;
 		}
 		m_SocketType = eSAMSocketTypeTerminated;
-		if (m_Socket && m_Socket->is_open()) m_Socket->close ();
-		m_Socket.reset ();
 	}	
 
 	void SAMSocket::Terminate (const char* reason)
@@ -68,6 +68,8 @@ namespace client
 			m_Stream->Close ();
 			m_Stream.reset ();
 		}
+		if (m_Socket && m_Socket->is_open()) m_Socket->close ();
+		m_Socket.reset ();
 		auto Session = m_Owner.FindSession(m_ID);
 		
 		switch (m_SocketType)
@@ -95,8 +97,6 @@ namespace client
 				;
 		}
 		m_SocketType = eSAMSocketTypeTerminated;
-		if (m_Socket && m_Socket->is_open()) m_Socket->close ();
-		m_Socket.reset ();
 	}
 
 	void SAMSocket::ReceiveHandshake ()
