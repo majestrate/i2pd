@@ -831,21 +831,20 @@ namespace client
 			if (session)
 			{
 				// find more pending acceptors
-				for (auto it: session->ListSockets ())
+				for (auto & it: session->ListSockets ())
 					if (it->m_SocketType == eSAMSocketTypeAcceptor)
 					{
 						it->m_IsAccepting = true;
-						session->localDestination->AcceptOnce (std::bind (&SAMSocket::HandleI2PAccept, it, std::placeholders::_1));
+						session->localDestination->AcceptOnce (std::bind (&SAMSocket::HandleI2PAccept, std::move(it), std::placeholders::_1));
 						break;
 					}
 			}
 			if (!m_IsSilent)
 			{
 				// get remote peer address
-				auto ident_ptr = stream->GetRemoteIdentity();
+				auto ident_ptr = m_Stream->GetRemoteIdentity();
 				const size_t ident_len = ident_ptr->GetFullLen();
 				uint8_t* ident = new uint8_t[ident_len];
-
 				// send remote peer address as base64
 				const size_t l = ident_ptr->ToBuffer (ident, ident_len);
 				const size_t l1 = i2p::data::ByteStreamToBase64 (ident, l, (char *)m_StreamBuffer, SAM_SOCKET_BUFFER_SIZE);
@@ -854,7 +853,12 @@ namespace client
 				HandleI2PReceive (boost::system::error_code (), l1 +1); // we send identity like it has been received from stream
 			}
 			else
-				I2PReceive ();
+			{
+				auto s = shared_from_this();
+				m_Owner.GetService().post([s] () {
+					s->I2PReceive ();
+			  });
+			}
 		}
 		else
 			LogPrint (eLogWarning, "SAM: I2P acceptor has been reset");
