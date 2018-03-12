@@ -15,8 +15,8 @@ namespace i2p
 {
 namespace client
 {
-	SAMSocket::SAMSocket (SAMBridge& owner, std::shared_ptr<Socket_t> socket):
-		m_Owner (owner), m_Socket(socket), m_Timer (m_Owner.GetService ()),
+	SAMSocket::SAMSocket (SAMBridge& owner):
+		m_Owner (owner), m_Socket(m_Owner.GetService()), m_Timer (m_Owner.GetService ()),
 		m_BufferOffset (0), 
 		m_SocketType (eSAMSocketTypeUnknown), m_IsSilent (false),
 		m_IsAccepting (false), m_Stream (nullptr)
@@ -30,8 +30,7 @@ namespace client
 			m_Stream->Close ();
 			m_Stream.reset ();
 		}
-		if (m_Socket && m_Socket->is_open()) m_Socket->close ();
-		m_Socket.reset ();
+		if (m_Socket.is_open()) m_Socket.close ();
 		auto Session = m_Owner.FindSession(m_ID);
 		
 		switch (m_SocketType)
@@ -68,8 +67,7 @@ namespace client
 			m_Stream->Close ();
 			m_Stream.reset ();
 		}
-		if (m_Socket && m_Socket->is_open()) m_Socket->close ();
-		m_Socket.reset ();
+		if (m_Socket.is_open()) m_Socket.close ();
 		auto Session = m_Owner.FindSession(m_ID);
 		
 		switch (m_SocketType)
@@ -101,10 +99,9 @@ namespace client
 
 	void SAMSocket::ReceiveHandshake ()
 	{
-		if(m_Socket)
-			m_Socket->async_read_some (boost::asio::buffer(m_Buffer, SAM_SOCKET_BUFFER_SIZE),
-				std::bind(&SAMSocket::HandleHandshakeReceived, shared_from_this (),
-				std::placeholders::_1, std::placeholders::_2));
+		m_Socket.async_read_some (boost::asio::buffer(m_Buffer, SAM_SOCKET_BUFFER_SIZE),
+			std::bind(&SAMSocket::HandleHandshakeReceived, shared_from_this (),
+			std::placeholders::_1, std::placeholders::_2));
 	}
 
 	void SAMSocket::HandleHandshakeReceived (const boost::system::error_code& ecode, std::size_t bytes_transferred)
@@ -151,7 +148,7 @@ namespace client
 #else
 					size_t l = snprintf (m_Buffer, SAM_SOCKET_BUFFER_SIZE, SAM_HANDSHAKE_REPLY, version.c_str ());
 #endif
-					boost::asio::async_write (*m_Socket, boost::asio::buffer (m_Buffer, l), boost::asio::transfer_all (),
+					boost::asio::async_write (m_Socket, boost::asio::buffer (m_Buffer, l), boost::asio::transfer_all (),
 								std::bind(&SAMSocket::HandleHandshakeReplySent, shared_from_this (),
 						std::placeholders::_1, std::placeholders::_2));
 				}
@@ -174,9 +171,9 @@ namespace client
 			if (ecode != boost::asio::error::operation_aborted)
 				Terminate ("SAM: handshake reply send error");
 		}
-		else if(m_Socket)
+		else
 		{
-			m_Socket->async_read_some (boost::asio::buffer(m_Buffer, SAM_SOCKET_BUFFER_SIZE),
+			m_Socket.async_read_some (boost::asio::buffer(m_Buffer, SAM_SOCKET_BUFFER_SIZE),
 				std::bind(&SAMSocket::HandleMessage, shared_from_this (),
 				std::placeholders::_1, std::placeholders::_2));
 		}
@@ -187,7 +184,7 @@ namespace client
 		LogPrint (eLogDebug, "SAMSocket::SendMessageReply, close=",close?"true":"false", " reason: ", msg);
 
 		if (!m_IsSilent)
-			boost::asio::async_write (*m_Socket, boost::asio::buffer (msg, len), boost::asio::transfer_all (),
+			boost::asio::async_write (m_Socket, boost::asio::buffer (msg, len), boost::asio::transfer_all (),
 				std::bind(&SAMSocket::HandleMessageReplySent, shared_from_this (),
 				std::placeholders::_1, std::placeholders::_2, close));
 		else
@@ -501,11 +498,12 @@ namespace client
 		if (session)
 		{
 			m_SocketType = eSAMSocketTypeAcceptor;
-			session->AddSocket (shared_from_this ());
+			auto s = shared_from_this ();
+			session->AddSocket (s);
 			if (!session->localDestination->IsAcceptingStreams ())
 			{
 				m_IsAccepting = true;	
-				session->localDestination->AcceptOnce (std::bind (&SAMSocket::HandleI2PAccept, shared_from_this (), std::placeholders::_1));
+				session->localDestination->AcceptOnce (std::bind (&SAMSocket::HandleI2PAccept, s, std::placeholders::_1));
 			}
 			SendMessageReply (SAM_STREAM_STATUS_OK, strlen(SAM_STREAM_STATUS_OK), false);
 		}
@@ -676,12 +674,10 @@ namespace client
 			LogPrint (eLogError, "SAM: Buffer is full, terminate");
 			Terminate ("Buffer is full");
 			return;
-		} else if (m_Socket)
-			m_Socket->async_read_some (boost::asio::buffer(m_Buffer + m_BufferOffset, SAM_SOCKET_BUFFER_SIZE - m_BufferOffset),
+		} else
+			m_Socket.async_read_some (boost::asio::buffer(m_Buffer + m_BufferOffset, SAM_SOCKET_BUFFER_SIZE - m_BufferOffset),
 				std::bind((m_SocketType == eSAMSocketTypeStream) ? &SAMSocket::HandleReceived : &SAMSocket::HandleMessage,
 				shared_from_this (), std::placeholders::_1, std::placeholders::_2));
-		else
-			LogPrint(eLogError, "SAM: receive with no native socket");
 	}
 
 	void SAMSocket::HandleReceived (const boost::system::error_code& ecode, std::size_t bytes_transferred)
@@ -691,8 +687,7 @@ namespace client
 			LogPrint (eLogError, "SAM: read error: ", ecode.message ());
 			if (ecode != boost::asio::error::operation_aborted)
 			{
-				auto s = shared_from_this();
-				m_Owner.GetService().post([s]() { s->Terminate("read error"); });
+				Terminate("Read error");
 			}
 		}
 		else
@@ -747,14 +742,11 @@ namespace client
 
 	void SAMSocket::WriteI2PDataImmediate(uint8_t * buff, size_t sz)
 	{
-		if(m_Socket)
-			boost::asio::async_write (
-				*m_Socket,
-				boost::asio::buffer (buff, sz),
-				boost::asio::transfer_all(),
-				std::bind (&SAMSocket::HandleWriteI2PDataImmediate, shared_from_this (), std::placeholders::_1, buff)); // postpone termination
-		else
-			LogPrint(eLogError, "SAM: no native socket");
+		boost::asio::async_write (
+			m_Socket,
+			boost::asio::buffer (buff, sz),
+			boost::asio::transfer_all(),
+			std::bind (&SAMSocket::HandleWriteI2PDataImmediate, shared_from_this (), std::placeholders::_1, buff)); // postpone termination
 	}
 
 	void SAMSocket::HandleWriteI2PDataImmediate(const boost::system::error_code & ec, uint8_t * buff)
@@ -987,9 +979,8 @@ namespace client
 
 	void SAMBridge::Accept ()
 	{
-		auto native = std::make_shared<boost::asio::ip::tcp::socket>(m_Service);
-		auto newSocket = std::make_shared<SAMSocket> (*this, native);
-		m_Acceptor.async_accept (*native, std::bind (&SAMBridge::HandleAccept, this,
+		auto newSocket = std::make_shared<SAMSocket> (*this);
+		m_Acceptor.async_accept (newSocket->GetSocket(), std::bind (&SAMBridge::HandleAccept, this,
 			std::placeholders::_1, newSocket));
 	}
 

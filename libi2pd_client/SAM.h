@@ -81,10 +81,10 @@ namespace client
 		public:
 
 			typedef boost::asio::ip::tcp::socket Socket_t;
-			SAMSocket (SAMBridge& owner, std::shared_ptr<Socket_t> socket);
+    SAMSocket (SAMBridge& owner);
 			~SAMSocket ();			
 
-			boost::asio::ip::tcp::socket& GetSocket () { return *m_Socket; };
+			boost::asio::ip::tcp::socket& GetSocket () { return m_Socket; };
 			void ReceiveHandshake ();
 			void SetSocketType (SAMSocketType socketType) { m_SocketType = socketType; };
 			SAMSocketType GetSocketType () const { return m_SocketType; };
@@ -130,7 +130,7 @@ namespace client
 		private:
 
 			SAMBridge& m_Owner;
-			std::shared_ptr<Socket_t> m_Socket;
+			Socket_t m_Socket;
 			boost::asio::deadline_timer m_Timer;
 			char m_Buffer[SAM_SOCKET_BUFFER_SIZE + 1];
 			size_t m_BufferOffset;
