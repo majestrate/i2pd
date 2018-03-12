@@ -15,7 +15,11 @@ namespace i2p
 {
 namespace client
 {
+
+	uint64_t SAMSocket::socketCounter = 0;
+	
 	SAMSocket::SAMSocket (SAMBridge& owner):
+		ID(socketCounter++),
 		m_Owner (owner), m_Socket(owner.GetService()), m_Timer (m_Owner.GetService ()),
 		m_BufferOffset (0), 
 		m_SocketType (eSAMSocketTypeUnknown), m_IsSilent (false),
@@ -916,15 +920,16 @@ namespace client
 
 	void SAMSession::CloseStreams ()
 	{
-		std::vector<std::shared_ptr<SAMSocket> > socks;
+		std::vector<uint64_t> socks;
 		{
 			std::lock_guard<std::mutex> lock(m_SocketsMutex);
-			for (const auto& sock : m_Sockets) {
-				socks.push_back(sock);
+			for (const auto& it : m_Sockets) {
+				socks.push_back(it.first);
 			}
 		}
-		for (auto & sock : socks ) sock->Terminate("SAMSession::CloseStreams()");
-		m_Sockets.clear();
+		for (const auto id : socks)
+			m_Sockets[id]->Terminate("SAMSession::CloseStreams()");
+	  m_Sockets.clear();
 	}
 
 	SAMBridge::SAMBridge (const std::string& address, int port):

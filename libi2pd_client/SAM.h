@@ -90,7 +90,8 @@ namespace client
 			SAMSocketType GetSocketType () const { return m_SocketType; };
 
 			void Terminate (const char* reason);
-
+      const uint64_t ID;
+    
 		 private:
 
 			void HandleHandshakeReceived (const boost::system::error_code& ecode, std::size_t bytes_transferred);
@@ -140,33 +141,36 @@ namespace client
 			bool m_IsSilent;
 			bool m_IsAccepting; // for eSAMSocketTypeAcceptor only
 			std::shared_ptr<i2p::stream::Stream> m_Stream;
+      static uint64_t socketCounter;
 	};
 
 	struct SAMSession
 	{
 		std::shared_ptr<ClientDestination> localDestination;
-		std::list<std::shared_ptr<SAMSocket> > m_Sockets;
+		std::map<uint64_t, std::shared_ptr<SAMSocket> > m_Sockets;
 		std::shared_ptr<boost::asio::ip::udp::endpoint> UDPEndpoint;
 		std::mutex m_SocketsMutex;
 
 		/** safely add a socket to this session */
 		void AddSocket(std::shared_ptr<SAMSocket> sock) {
 			std::lock_guard<std::mutex> lock(m_SocketsMutex);
-			m_Sockets.emplace_back(std::move(sock));
-		}
+      m_Sockets[sock->ID] = sock;
+    }
 
 		/** safely remove a socket from this session */
 		void DelSocket(SAMSocket * sock) {
 			std::lock_guard<std::mutex> lock(m_SocketsMutex);
-			m_Sockets.remove_if([sock](const std::shared_ptr<SAMSocket> s) -> bool { return s.get() == sock; });
-		}
+      auto itr = m_Sockets.find(sock->ID);
+      if (itr != m_Sockets.end())
+        m_Sockets.erase(itr);
+    }
 
 		/** get a list holding a copy of all sam sockets from this session */
 		std::list<std::shared_ptr<SAMSocket> > ListSockets() {
 			std::list<std::shared_ptr<SAMSocket> > l;
 			{
 				std::lock_guard<std::mutex> lock(m_SocketsMutex);
-				for(const auto& sock : m_Sockets ) l.push_back(sock);
+				for(const auto& it : m_Sockets ) l.emplace_back(std::move(it.second));
 			}
 			return l;
 		}
@@ -174,9 +178,9 @@ namespace client
     std::shared_ptr<SAMSocket> FindNextAcceptor()
     {
       std::lock_guard<std::mutex> lock(m_SocketsMutex);
-      for (const auto & sock : m_Sockets)
-        if (sock->GetSocketType() == eSAMSocketTypeAcceptor)
-          return std::move(sock);
+      for (const auto & it : m_Sockets)
+        if (it.second->GetSocketType() == eSAMSocketTypeAcceptor)
+          return std::move(it.second);
       return nullptr;
     }
 
