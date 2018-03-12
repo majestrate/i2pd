@@ -981,7 +981,7 @@ namespace client
 	{
 		auto newSocket = std::make_shared<SAMSocket> (*this);
 		m_Acceptor.async_accept (newSocket->GetSocket(), std::bind (&SAMBridge::HandleAccept, this,
-			std::placeholders::_1, newSocket->shared_from_this()));
+			std::placeholders::_1, newSocket));
 	}
 
 	void SAMBridge::HandleAccept(const boost::system::error_code& ecode, std::shared_ptr<SAMSocket> socket)
