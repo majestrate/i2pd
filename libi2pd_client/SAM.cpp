@@ -30,7 +30,8 @@ namespace client
 			m_Stream->Close ();
 			m_Stream.reset ();
 		}
-		if (m_Socket.is_open()) m_Socket.close ();
+		boost::system::error_code ec;
+		if (m_Socket.is_open()) m_Socket.close (ec);
 		auto Session = m_Owner.FindSession(m_ID);
 		
 		switch (m_SocketType)
@@ -67,7 +68,8 @@ namespace client
 			m_Stream->Close ();
 			m_Stream.reset ();
 		}
-		if (m_Socket.is_open()) m_Socket.close ();
+		boost::system::error_code ec;
+		if (m_Socket.is_open()) m_Socket.close (ec);
 		auto Session = m_Owner.FindSession(m_ID);
 		
 		switch (m_SocketType)
@@ -921,7 +923,7 @@ namespace client
 				socks.push_back(sock);
 			}
 		}
-                for (auto & sock : socks ) sock->Terminate("SAMSession::CloseStreams()");
+		for (auto & sock : socks ) sock->Terminate("SAMSession::CloseStreams()");
 		m_Sockets.clear();
 	}
 
