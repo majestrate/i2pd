@@ -785,10 +785,11 @@ namespace client
 			{
 				if (bytes_transferred > 0)
 				{
-					WriteI2PData(bytes_transferred);
+					uint8_t * buf = new uint8_t[bytes_transferred];
+					memcpy(buf, m_StreamBuffer, bytes_transferred);
+					WriteI2PDataImmediate(buf, bytes_transferred);
 				}
-				else
-					I2PReceive();
+				I2PReceive();
 			}
 		}
 	}
