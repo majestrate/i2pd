@@ -735,11 +735,14 @@ namespace client
 
 	void SAMSocket::WriteI2PDataImmediate(uint8_t * buff, size_t sz)
 	{
-		boost::asio::async_write (
-			m_Socket,
-			boost::asio::buffer (buff, sz),
-			boost::asio::transfer_all(),
-			std::bind (&SAMSocket::HandleWriteI2PDataImmediate, shared_from_this (), std::placeholders::_1, buff)); // postpone termination
+		if(m_Socket.is_open())
+			boost::asio::async_write (
+				m_Socket,
+				boost::asio::buffer (buff, sz),
+				boost::asio::transfer_all(),
+				std::bind (&SAMSocket::HandleWriteI2PDataImmediate, shared_from_this (), std::placeholders::_1, buff)); // postpone termination
+		else
+			delete [] buff;
 	}
 
 	void SAMSocket::HandleWriteI2PDataImmediate(const boost::system::error_code & ec, uint8_t * buff)
@@ -749,11 +752,12 @@ namespace client
 	
 	void SAMSocket::WriteI2PData(size_t sz)
 	{
-		boost::asio::async_write (
-			m_Socket,
-			boost::asio::buffer (m_StreamBuffer, sz),
-			boost::asio::transfer_all(),
-			std::bind(&SAMSocket::HandleWriteI2PData, shared_from_this(), std::placeholders::_1, std::placeholders::_2));
+		if(m_Socket.is_open())
+			boost::asio::async_write (
+				m_Socket,
+				boost::asio::buffer (m_StreamBuffer, sz),
+				boost::asio::transfer_all(),
+				std::bind(&SAMSocket::HandleWriteI2PData, shared_from_this(), std::placeholders::_1, std::placeholders::_2));
 	}
 	
 	void SAMSocket::HandleI2PReceive (const boost::system::error_code& ecode, std::size_t bytes_transferred)
@@ -787,7 +791,8 @@ namespace client
 				{
 					uint8_t * buf = new uint8_t[bytes_transferred];
 					memcpy(buf, m_StreamBuffer, bytes_transferred);
-					WriteI2PDataImmediate(buf, bytes_transferred);
+					auto s = shared_from_this();
+					m_Owner.GetService().post([s, buf, bytes_transferred] () { s->WriteI2PDataImmediate(buf, bytes_transferred); });
 				}
 				I2PReceive();
 			}
