@@ -90,10 +90,15 @@ namespace client
 			void SetSocketType (SAMSocketType socketType) { m_SocketType = socketType; };
 			SAMSocketType GetSocketType () const { return m_SocketType; };
 
+			bool IsPendingAccept() const { return m_SocketType == eSAMSocketTypeAcceptor && !m_IsAccepting; };
+
+			void Close();
+			/** don't call me */
 			void Terminate (const char* reason);
 
 			bool IsSession(const std::string & id) const;
-		
+
+			void Accept(const std::shared_ptr<ClientDestination> & dest);
 		 private:
 			void TerminateClose() { Terminate(nullptr); }
 		
@@ -132,7 +137,7 @@ namespace client
 
 			void HandleWriteI2PDataImmediate(const boost::system::error_code & ec, uint8_t * buff);
 			void HandleStreamSend(const boost::system::error_code & ec);
-		
+
 		private:
 
 			SAMBridge& m_Owner;
@@ -158,7 +163,8 @@ namespace client
 		SAMSession (SAMBridge & parent, const std::string & name, std::shared_ptr<ClientDestination> dest);
 		~SAMSession ();
 
-		void CloseStreams ();
+		void AcceptNext();
+		void Close ();
 	};
 
 	class SAMBridge
@@ -179,10 +185,12 @@ namespace client
 
 			std::list<std::shared_ptr<SAMSocket> > ListSockets(const std::string & id) const;
 
+			std::shared_ptr<SAMSocket> NextAcceptSocket(const std::string & id);
+
 			/** send raw data to remote endpoint from our UDP Socket */
 			void SendTo(const uint8_t * buf, size_t len, std::shared_ptr<boost::asio::ip::udp::endpoint> remote);
 
-			void RemoveSocket(const std::shared_ptr<SAMSocket> & socket);
+			void RemoveSocket(SAMSocket * socket);
 		
 		private:
 

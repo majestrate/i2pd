@@ -25,38 +25,32 @@ namespace client
 
 	SAMSocket::~SAMSocket ()
 	{
-		m_Stream = nullptr;
 	}	
 
 	void SAMSocket::Terminate (const char* reason)
+	{
+		if (m_SocketType == eSAMSocketTypeSession)
+			m_Owner.CloseSession (m_ID);
+		Close();
+	}
+
+	void SAMSocket::Close()
 	{
 		if(m_Stream)
 		{
 			m_Stream->AsyncClose ();
 			m_Stream = nullptr;
 		}
-		auto Session = m_Owner.FindSession(m_ID);
-		switch (m_SocketType)
+		
+		if (m_SocketType == eSAMSocketTypeAcceptor)
 		{
-			case eSAMSocketTypeSession:
-				m_Owner.CloseSession (m_ID);
-			break;
-			case eSAMSocketTypeStream:
+			auto session = m_Owner.FindSession(m_ID);
+			if (m_IsAccepting && session && session->localDestination)
 			{
-				break;
+				session->localDestination->StopAcceptingStreams ();
 			}
-			case eSAMSocketTypeAcceptor:
-			{
-				if (Session)
-				{
-					if (m_IsAccepting && Session->localDestination)
-						Session->localDestination->StopAcceptingStreams ();
-				}
-				break;
-			}
-			default:
-				;
 		}
+		
 		m_SocketType = eSAMSocketTypeTerminated;
 		if (m_Socket.is_open ())
 		{
@@ -64,9 +58,9 @@ namespace client
 			m_Socket.shutdown (boost::asio::ip::tcp::socket::shutdown_both, ec);
 			m_Socket.close ();
 		}
-		m_Owner.RemoveSocket(shared_from_this());
+		m_Owner.RemoveSocket(this);
 	}
-
+	
 	void SAMSocket::ReceiveHandshake ()
 	{		
 		m_Socket.async_read_some (boost::asio::buffer(m_Buffer, SAM_SOCKET_BUFFER_SIZE),
@@ -504,11 +498,11 @@ namespace client
 		auto session = m_Owner.FindSession (id);
 		if (session)
 		{
+			auto dest = session->localDestination;
 			m_SocketType = eSAMSocketTypeAcceptor;
-			if (!session->localDestination->IsAcceptingStreams ())
+			if (!dest->IsAcceptingStreams ())
 			{
-				m_IsAccepting = true;	
-				session->localDestination->AcceptOnce (std::bind (&SAMSocket::HandleI2PAccept, shared_from_this (), std::placeholders::_1));
+			  Accept(dest);
 			}
 			SendMessageReply (SAM_STREAM_STATUS_OK, strlen(SAM_STREAM_STATUS_OK), false);
 		}
@@ -822,18 +816,10 @@ namespace client
 			m_IsAccepting = false;
 			m_Stream = stream;
 			context.GetAddressBook ().InsertAddress (stream->GetRemoteIdentity ());
-			auto session = m_Owner.FindSession (m_ID);
-			if (session)
-			{
-				// find more pending acceptors
-				for (auto & it: m_Owner.ListSockets (m_ID))
-					if (it->m_SocketType == eSAMSocketTypeAcceptor)
-					{
-						it->m_IsAccepting = true;
-						session->localDestination->AcceptOnce (std::bind (&SAMSocket::HandleI2PAccept, it, std::placeholders::_1));
-						break;
-					}
-			}
+			m_Owner.GetService().post([&] () {
+					auto session = m_Owner.FindSession(m_ID);
+					if(session) session->AcceptNext();
+			});
 			if (!m_IsSilent)
 			{
 				// get remote peer address
@@ -852,7 +838,10 @@ namespace client
 				I2PReceive ();
 		}
 		else
+		{
 			LogPrint (eLogWarning, "SAM: I2P acceptor has been reset");
+			Close();
+		}
 	}
 
 	void SAMSocket::HandleI2PDatagramReceive (const i2p::data::IdentityEx& from, uint16_t fromPort, uint16_t toPort, const uint8_t * buf, size_t len)
@@ -902,6 +891,12 @@ namespace client
 	{
 		m_Owner.GetService ().post (std::bind( !ec ? &SAMSocket::Receive : &SAMSocket::TerminateClose, shared_from_this()));
 	}
+
+	void SAMSocket::Accept(const std::shared_ptr<ClientDestination> & dest)
+	{
+		m_IsAccepting = true;
+		dest->AcceptOnce(std::bind(&SAMSocket::HandleI2PAccept, shared_from_this(), std::placeholders::_1));
+	}
 	
 	SAMSession::SAMSession (SAMBridge & parent, const std::string & id, std::shared_ptr<ClientDestination> dest):
 		m_Bridge(parent),
@@ -916,11 +911,24 @@ namespace client
 		i2p::client::context.DeleteLocalDestination (localDestination);
 	}
 
-	void SAMSession::CloseStreams ()
+	void SAMSession::Close ()
 	{
-		for(const auto & itr : m_Bridge.ListSockets(Name))
+		auto socks = m_Bridge.ListSockets(Name);
+		auto itr = socks.begin();
+		while(itr != socks.end())
 		{
-			itr->Terminate(nullptr);
+			(*itr)->Close();
+			++itr;
+		}
+		socks.clear();
+	}
+
+	void SAMSession::AcceptNext()
+	{
+		auto sock = m_Bridge.NextAcceptSocket(Name);
+		if(sock)
+		{
+			sock->Accept(localDestination);
 		}
 	}
 
@@ -950,7 +958,7 @@ namespace client
 		m_IsRunning = false;
 		m_Acceptor.cancel ();
 		for (auto& it: m_Sessions)
-			it.second->CloseStreams ();
+			it.second->Close ();
 		m_Sessions.clear ();
 		m_Service.stop ();
 		if (m_Thread)
@@ -983,10 +991,20 @@ namespace client
 			std::placeholders::_1, newSocket));
 	}
 
-	void SAMBridge::RemoveSocket(const std::shared_ptr<SAMSocket> & socket)
+	void SAMBridge::RemoveSocket(SAMSocket * socket)
 	{
 		std::unique_lock<std::mutex> lock(m_OpenSocketsMutex);
-		m_OpenSockets.remove_if([socket](const std::shared_ptr<SAMSocket> & item) -> bool { return item == socket; });
+		m_OpenSockets.remove_if([socket](const std::shared_ptr<SAMSocket> & item) -> bool { return item.get() == socket; });
+	}
+
+
+	std::shared_ptr<SAMSocket> SAMBridge::NextAcceptSocket(const std::string & id)
+	{
+		std::unique_lock<std::mutex> lock(m_OpenSocketsMutex);
+		for (auto sock : m_OpenSockets)
+			if (sock->IsSession(id) && sock->IsPendingAccept())
+				return sock;
+		return nullptr;
 	}
 	
 	void SAMBridge::HandleAccept(const boost::system::error_code& ecode, std::shared_ptr<SAMSocket> socket)
@@ -1000,7 +1018,7 @@ namespace client
 				LogPrint (eLogDebug, "SAM: new connection from ", ep);
 				{
 					std::unique_lock<std::mutex> l(m_OpenSocketsMutex);
-					m_OpenSockets.push_back(socket);
+					m_OpenSockets.emplace_back(socket);
 				}
 				socket->ReceiveHandshake ();
 			}
@@ -1070,7 +1088,7 @@ namespace client
 		{
 			session->localDestination->Release ();
 			session->localDestination->StopAcceptingStreams ();
-			session->CloseStreams ();
+			session->Close ();
 		}
 	}
 
@@ -1088,9 +1106,9 @@ namespace client
 		std::list<std::shared_ptr<SAMSocket > > list;
 		{
 			std::unique_lock<std::mutex> l(m_OpenSocketsMutex);
-			for (const auto & itr : m_OpenSockets)
+			for (auto & itr : m_OpenSockets)
 				if (itr->IsSession(id))
-					list.push_back(itr);
+					list.emplace_back(itr);
 		}
 		return list;
 	}
