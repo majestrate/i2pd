@@ -785,8 +785,7 @@ namespace client
 				{
 					uint8_t * buf = new uint8_t[bytes_transferred];
 					memcpy(buf, m_StreamBuffer, bytes_transferred);
-					auto s = shared_from_this();
-					m_Owner.GetService().post([s, buf, bytes_transferred] () { s->WriteI2PDataImmediate(buf, bytes_transferred); });
+					WriteI2PDataImmediate(buf, bytes_transferred);
 				}
 				I2PReceive();
 			}
