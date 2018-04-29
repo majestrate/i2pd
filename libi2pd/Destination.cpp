@@ -616,19 +616,6 @@ namespace client
 			});
 	}
 
-	void LeaseSetDestination::CleanupDestination()
-	{
-		std::unique_lock<std::mutex> lock(m_RemoteLeaseSetsMutex);
-		auto itr = m_RemoteLeaseSets.begin();
-		while(itr != m_RemoteLeaseSets.end())
-		{
-			if(itr->second->IsExpired())
-				itr = m_RemoteLeaseSets.erase(itr);
-			else
-				++itr;
-		}
-	}
-
 	void LeaseSetDestination::RequestLeaseSet (const i2p::data::IdentHash& dest, RequestComplete requestComplete)
 	{
 		std::set<i2p::data::IdentHash> excluded;
@@ -1035,7 +1022,6 @@ namespace client
 
 	void ClientDestination::CleanupDestination ()
 	{
-		LeaseSetDestination::CleanupDestination();
 		if (m_DatagramDestination) m_DatagramDestination->CleanUp ();
 	}
 
