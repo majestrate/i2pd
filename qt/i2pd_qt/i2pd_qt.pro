@@ -28,6 +28,8 @@ SOURCES += DaemonQT.cpp mainwindow.cpp \
     ../../libi2pd/api.cpp \
     ../../libi2pd/Base.cpp \
     ../../libi2pd/BloomFilter.cpp \
+    ../../libi2pd/ChaCha20.cpp \
+    ../../libi2pd/Poly1305.cpp \
     ../../libi2pd/Config.cpp \
     ../../libi2pd/CPU.cpp \
     ../../libi2pd/Crypto.cpp \
@@ -107,7 +109,10 @@ HEADERS  += DaemonQT.h mainwindow.h \
     ../../libi2pd/api.h \
     ../../libi2pd/Base.h \
     ../../libi2pd/BloomFilter.h \
+    ../../libi2pd/ChaCha20.h \
+    ../../libi2pd/Poly1305.h \
     ../../libi2pd/Config.h \
+    ../../libi2pd/CPU.h \
     ../../libi2pd/Crypto.h \
 	../../libi2pd/CryptoKey.h \
     ../../libi2pd/Datagram.h \

@@ -38,6 +38,8 @@ include_directories(${LIBI2PD_CLIENT_SRC_DIR})
 
 set (LIBI2PD_SRC
   "${LIBI2PD_SRC_DIR}/BloomFilter.cpp"
+  "${LIBI2PD_SRC_DIR}/Poly1305.cpp"
+  "${LIBI2PD_SRC_DIR}/ChaCha20.cpp"
   "${LIBI2PD_SRC_DIR}/Config.cpp"
   "${LIBI2PD_SRC_DIR}/CPU.cpp"  
   "${LIBI2PD_SRC_DIR}/Crypto.cpp"

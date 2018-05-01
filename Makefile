@@ -15,6 +15,7 @@ include filelist.mk
 
 USE_AESNI	:= yes
 USE_AVX		:= yes
+USE_AVX2	:= yes
 USE_STATIC	:= no
 USE_MESHNET	:= no
 USE_UPNP	:= no
