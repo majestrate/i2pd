@@ -7,7 +7,7 @@ namespace crypto
 {
 namespace chacha20 
 {
-static inline void u32t8le(uint32_t v, uint8_t * p) 
+inline void u32t8le(uint32_t v, uint8_t * p) 
 {
     p[0] = v & 0xff;
     p[1] = (v >> 8) & 0xff;
@@ -15,7 +15,7 @@ static inline void u32t8le(uint32_t v, uint8_t * p)
     p[3] = (v >> 24) & 0xff;
 }
 
-static inline uint32_t u8t32le(const uint8_t * p) 
+inline uint32_t u8t32le(const uint8_t * p) 
 {
     uint32_t value = p[3];
 
@@ -26,12 +26,12 @@ static inline uint32_t u8t32le(const uint8_t * p)
     return value;
 }
 
-static inline uint32_t rotl32(uint32_t x, int n) 
+inline uint32_t rotl32(uint32_t x, int n) 
 {
     return x << n | (x >> (-n & 31));
 }
 
-static inline void quarterround(uint32_t *x, int a, int b, int c, int d) 
+inline void quarterround(uint32_t *x, int a, int b, int c, int d) 
 {
     x[a] += x[b]; x[d] = rotl32(x[d] ^ x[a], 16);
     x[c] += x[d]; x[b] = rotl32(x[b] ^ x[c], 12);
