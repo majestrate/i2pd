@@ -7,7 +7,8 @@ namespace cpu
 {
   extern bool aesni;
   extern bool avx;
-
+  extern bool avx2;
+  
   void Detect();
 }
 }
