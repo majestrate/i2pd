@@ -88,8 +88,9 @@ ChaCha20::Block_t & ChaCha20::Block_t::operator << (const State_t & st)
 {
     int i;
     const uint32_t * s = st;
+    uint8_t * out = *this;
     for (i = 0; i < 16; i++) 
-        chacha20::u32t8le(s[i], *this + (i << 2));
+        chacha20::u32t8le(s[i], out + (i << 2));
     return *this;
 }
 
