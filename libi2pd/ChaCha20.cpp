@@ -40,9 +40,9 @@ inline void quarterround(uint32_t *x, int a, int b, int c, int d)
 }
 } // namespace chacha20
 
-ChaCha20::ChaCha20(const uint8_t * key) : m_Counter(0)
+void ChaCha20::SetKey(const uint8_t * key)
 {
-    memcpy(m_Key, key, CHACHA20_KEY_SIZE);
+    memcpy(m_Key, key, CHACHA20_KEY_BYTES);
 }
 
 void ChaCha20::Block(int rounds)
@@ -62,24 +62,22 @@ void ChaCha20::Block(int rounds)
         chacha20::quarterround(x, 2, 7,  8, 13);
         chacha20::quarterround(x, 3, 4,  9, 14);
     }
-
+    
     m_Block << (x += m_State);
-    ++m_State;
+
 }
 
 ChaCha20::State_t & ChaCha20::State_t::operator = (const ChaCha20::State_t & other)
 {
-    memcpy(this->data, other.data, sizeof(data));
+    memcpy(data, other.data, sizeof(uint32_t) * 16);
     return *this;
 }
 
 
 ChaCha20::State_t & ChaCha20::State_t::operator += (const ChaCha20::State_t & other)
 {
-    uint32_t * us = *this;
-    const uint32_t * them = other;
     for(int i = 0; i < 16; i++)
-        us[i] += them[i];
+        data[i] += other.data[i];
     return *this;
 }
 
@@ -87,19 +85,12 @@ ChaCha20::State_t & ChaCha20::State_t::operator += (const ChaCha20::State_t & ot
 ChaCha20::Block_t & ChaCha20::Block_t::operator << (const State_t & st)
 {
     int i;
-    const uint32_t * s = st;
-    uint8_t * out = *this;
     for (i = 0; i < 16; i++) 
-        chacha20::u32t8le(s[i], out + (i << 2));
+        chacha20::u32t8le(st.data[i], data + (i << 2));
     return *this;
 }
 
-void ChaCha20::Reset()
-{
-    m_Counter = 0;
-}
-
-void ChaCha20::BeforeXOR(const uint8_t * nonce)
+void ChaCha20::BeforeXOR(const uint8_t * nonce, uint32_t counter)
 {
     size_t i;
 
@@ -112,28 +103,27 @@ void ChaCha20::BeforeXOR(const uint8_t * nonce)
         m_State[4 + i] = chacha20::u8t32le(m_Key + i * 4);
     
 
-    m_State[12] = m_Counter;
+    m_State[12] = counter;
 
     for (i = 0; i < 3; i++) 
         m_State[13 + i] = chacha20::u8t32le(nonce + i * 4);
 }
 
-void ChaCha20::XOR(uint8_t * dst, const uint8_t * src, const uint8_t * nonce, std::size_t sz)
+void ChaCha20::XOR(uint8_t * buf, const uint8_t * nonce, std::size_t sz, uint32_t counter)
 {
-    BeforeXOR(nonce);
+    BeforeXOR(nonce, counter);
     size_t i, j;
 
-    for (i = 0; i < sz; i += CHACHA20_BLOCK_SIZE) 
+    for (i = 0; i < sz; i += CHACHA20_BLOCK_BYTES) 
     {
         Block();
-
-        for (j = i; j < i + CHACHA20_BLOCK_SIZE; j++) 
+        ++m_State;
+        for (j = i; j < i + CHACHA20_BLOCK_BYTES; j++) 
         {
             if (j >= sz) break;
-            dst[j] = src[j] ^ m_Block[j - i];
+            buf[j] ^= m_Block[j - i];
         }
     }
-    ++m_Counter;
 }
 
 }
