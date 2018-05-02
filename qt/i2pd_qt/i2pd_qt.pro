@@ -30,6 +30,7 @@ SOURCES += DaemonQT.cpp mainwindow.cpp \
     ../../libi2pd/BloomFilter.cpp \
     ../../libi2pd/ChaCha20.cpp \
     ../../libi2pd/Poly1305.cpp \
+    ../../libi2pd/Ed25519.cpp \
     ../../libi2pd/Config.cpp \
     ../../libi2pd/CPU.cpp \
     ../../libi2pd/Crypto.cpp \
