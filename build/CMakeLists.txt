@@ -44,6 +44,7 @@ set (LIBI2PD_SRC
   "${LIBI2PD_SRC_DIR}/CPU.cpp"  
   "${LIBI2PD_SRC_DIR}/Crypto.cpp"
   "${LIBI2PD_SRC_DIR}/CryptoKey.cpp"
+  "${LIBI2PD_SRC_DIR}/Ed25519.cpp"
   "${LIBI2PD_SRC_DIR}/Garlic.cpp"
   "${LIBI2PD_SRC_DIR}/Gzip.cpp"
   "${LIBI2PD_SRC_DIR}/HTTP.cpp"
