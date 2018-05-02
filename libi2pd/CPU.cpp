@@ -13,7 +13,9 @@
 #ifndef bit_AVX2
 #define bit_AVX2 (1 << 5)
 #endif
-
+#ifndef bit_SHA
+#define bit_SHA (1 << 29)
+#endif
 
 namespace i2p
 {
@@ -22,6 +24,7 @@ namespace cpu
 	bool aesni = false;
 	bool avx = false;
 	bool avx2 = false;
+	bool shani = false;
 
 	static void run_cpuid(uint32_t eax, uint32_t ecx, uint32_t * abcd)
 	{
@@ -51,9 +54,11 @@ namespace cpu
 			__cpuid(0x00000001, info[0], info[1], info[2], info[3]);
 			aesni = info[2] & bit_AES;  // AESNI
 			avx = info[2] & bit_AVX;  // AVX
-			run_cpuid(7, 0, abcd);
-			avx2 = abcd[1] & bit_AVX2;
+			
 		}
+		run_cpuid(7, 0, abcd);
+		avx2 = abcd[1] & bit_AVX2;
+		shani = abcd[2] & bit_SHA;
 #endif
 		if(aesni)
 		{
@@ -66,6 +71,10 @@ namespace cpu
 		if(avx2)
 		{
 			LogPrint(eLogInfo, "AVX2 enabled");
+		}
+		if(shani)
+		{
+			LogPrint(eLogInfo, "SHANI enabled");
 		}
 	}
 }

@@ -14,22 +14,13 @@ namespace i2p
 {
 namespace crypto
 {
-  const std::size_t POLY1305_DIGEST_SIZE = 16;
-  const std::size_t POLY1305_KEY_SIZE = 32;
-  
-  struct Poly1305
-  {
-  public:
-    Poly1305(const uint8_t * key);
-    void Update(const uint8_t * buff, std::size_t sz);
-    void Finish(uint8_t * digest);
-  private:
-    std::size_t align;
-    uint8_t data[136];
-  };
+  const std::size_t POLY1305_DIGEST_BYTES = 16;
+  const std::size_t POLY1305_DIGEST_DWORDS = 4;
+  const std::size_t POLY1305_KEY_BYTES = 32;
+  const std::size_t POLY1305_KEY_DWORDS = 8;
+  const std::size_t POLY1305_BLOCK_BYTES = 16;
 
-  bool Poly1305VeirfyHMAC(const uint8_t * hmac, const uint8_t * key, const uint8_t * buf, std::size_t sz);
-  
+  void Poly1305HMAC(uint32_t * out, const uint32_t * key, const uint8_t * buf, std::size_t sz);
   
 }
 }
