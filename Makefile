@@ -118,6 +118,9 @@ last-dist:
 doxygen:
 	doxygen -s docs/Doxyfile
 
+test:
+	$(MAKE) -C tests
+
 .PHONY: all
 .PHONY: clean
 .PHONY: deps
