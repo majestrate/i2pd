@@ -45,9 +45,5 @@ int main(int argc, char * argv[])
     uint8_t mac[i2p::crypto::POLY1305_DIGEST_BYTES];
     i2p::crypto::Poly1305HMAC((uint32_t*)mac, (const uint32_t*)nacl_key, nacl_msg, sizeof(nacl_msg));
 
-    if(memcmp(mac, nacl_mac, i2p::crypto::POLY1305_DIGEST_BYTES))
-        std::cout << "poly1305 failed" << std::endl;
-    else
-        std::cout << "poly1305 success" << std::endl;
-    return 0;
+    return memcmp(mac, nacl_mac, i2p::crypto::POLY1305_DIGEST_BYTES) != 0;
 }

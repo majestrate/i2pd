@@ -20,7 +20,7 @@ test-poly1305: ../libi2pd/Log.cpp ../libi2pd/CPU.cpp ../libi2pd/Poly1305.cpp tes
 	$(CXX) $(CXXFLAGS) $(NEEDED_CXXFLAGS) -mavx2 $(INCFLAGS) -o $@ $^
 
 run: $(TESTS)
-	@for TEST in $(TESTS); do ./$$TEST ; done
+	@for TEST in $(TESTS); do echo "$$TEST" && ./$$TEST ; done
 
 clean:
 	rm -f $(TESTS)
