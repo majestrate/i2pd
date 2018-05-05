@@ -1,6 +1,5 @@
 #include "Poly1305.h"
 #include "CPU.h"
-#include "Memory.h"
 #include <immintrin.h>
 
 namespace i2p
@@ -173,9 +172,8 @@ namespace crypto
 	struct Poly1305
 	{
 
-		Poly1305(const uint8_t * key) : m_Leftover(0), m_Final(0)
+		Poly1305(const uint8_t * key) : m_Leftover(0), m_H{0}, m_Final(0)
 		{
-			i2p::util::Zero<poly1305::Block>(m_H);
 			m_R.PutKey(key);
 			m_Pad.Put(key + 16);
 		}
