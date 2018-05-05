@@ -1,13 +1,22 @@
 #include "ChaCha20.h"
+#include <iostream>
+#include <iomanip>
 
-
+void dumphex(const uint8_t * hex8, size_t sz)
+{
+    std::cerr << std::hex << std::setw(2);
+    size_t idx = 0;
+    while(idx < sz)
+        std::cerr << (int) hex8[idx++] << " ";
+    std::cerr << std::endl;
+}
 
 int main(int argc, char * argv[])
 {
     (void) argc;
     (void) argv;
 
-    uint8_t key[] = {
+    const uint8_t key[] = {
         0x00, 0x01, 0x02, 0x03,
         0x04, 0x05, 0x06, 0x07,
         0x08, 0x09, 0x0a, 0x0b,
@@ -18,11 +27,11 @@ int main(int argc, char * argv[])
         0x1c, 0x1d, 0x1e, 0x1f
     };
 
-    uint8_t nonce[] = {
+    const uint8_t nonce[] = {
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x4a, 0x00, 0x00, 0x00, 0x00
     };
 
-    uint8_t input[] = {
+    const uint8_t input[] = {
         0x4c, 0x61, 0x64, 0x69, 0x65, 0x73, 0x20, 0x61, 0x6e, 0x64, 0x20, 0x47, 0x65, 0x6e, 0x74, 0x6c,
         0x65, 0x6d, 0x65, 0x6e, 0x20, 0x6f, 0x66, 0x20, 0x74, 0x68, 0x65, 0x20, 0x63, 0x6c, 0x61, 0x73,
         0x73, 0x20, 0x6f, 0x66, 0x20, 0x27, 0x39, 0x39, 0x3a, 0x20, 0x49, 0x66, 0x20, 0x49, 0x20, 0x63,
@@ -43,10 +52,35 @@ int main(int argc, char * argv[])
         0x5a, 0xf9, 0x0b, 0xbf, 0x74, 0xa3, 0x5b, 0xe6, 0xb4, 0x0b, 0x8e, 0xed, 0xf2, 0x78, 0x5e, 0x42, 
         0x87, 0x4d
     };
+    
+    uint8_t buf[115];
+    memcpy(buf, input, sizeof(input));
+    buf[114] = 0xff;
+    // encrypt
+    i2p::crypto::chacha20(buf, sizeof(input), nonce, key);
+    if(memcmp(expected, buf, sizeof(expected))) 
     {
-        i2p::crypto::ChaCha20 chacha;
-        chacha.SetKey(key);
-        chacha.XOR(input, nonce, sizeof(input));
-    };
-    return memcmp(expected, input, sizeof(expected));
+        std::cerr << "encrypt fail" << std::endl;
+        std::cerr << "got value: ";
+        dumphex(buf, sizeof(expected));
+        std::cerr << "test vector: ";
+        dumphex(expected, sizeof(expected));
+        std::cerr << std::flush;
+        return 1;
+    }
+    if(buf[114] != 0xff) return 1;
+    // decrypt
+    i2p::crypto::chacha20(buf, sizeof(input), nonce, key);
+    if(memcmp(input, buf, sizeof(input))) 
+    {
+        std::cerr << "decrypt fail" << std::endl;
+        std::cerr << "got value: ";
+        dumphex(buf, sizeof(input));
+        std::cerr << "test vector: ";
+        dumphex(input, sizeof(input));
+        std::cerr << std::flush;
+        return 1;
+    }
+    if(buf[114] != 0xff) return 1;
+    return 0;
 }

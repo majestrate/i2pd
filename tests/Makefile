@@ -2,7 +2,9 @@ CXXFLAGS += -Wall -Wextra -pedantic -O0 -g -std=c++11 -D_GLIBCXX_USE_NANOSLEEP=1
 
 TESTS = test-gost test-gost-sig test-base-64 test-poly1305 test-chacha20 test-siphash
 
-all: $(TESTS) run
+all: clean test
+
+test: $(TESTS) run
 
 test-http-%: ../libi2pd/HTTP.cpp test-http-%.cpp
 	$(CXX) $(CXXFLAGS) $(NEEDED_CXXFLAGS) $(INCFLAGS) -o $@ $^
@@ -26,7 +28,7 @@ test-siphash: test-siphash.cpp
 	$(CXX) $(CXXFLAGS) $(NEEDED_CXXFLAGS) $(INCFLAGS) -o $@ $^
 
 run: $(TESTS)
-	@for TEST in $(TESTS); do echo "$$TEST" && ./$$TEST ; done
+	@for TEST in $(TESTS); do echo "$$TEST" ; ./$$TEST || echo "$$TEST failed" ; done
 
 clean:
 	rm -f $(TESTS)
