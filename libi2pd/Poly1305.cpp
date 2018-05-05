@@ -1,5 +1,6 @@
 #include "Poly1305.h"
 #include "CPU.h"
+#include "Memory.h"
 #include <immintrin.h>
 
 namespace i2p
@@ -156,11 +157,6 @@ namespace crypto
 				memcpy(data, d, 17);
 				data[16] = last;
 			}
-
-			void Zero()
-			{
-				memset(data, 0, sizeof(data));
-			}
 		};
 
 		struct Buffer
@@ -179,7 +175,7 @@ namespace crypto
 
 		Poly1305(const uint8_t * key) : m_Leftover(0), m_Final(0)
 		{
-			m_H.Zero();
+			i2p::util::Zero<poly1305::Block>(m_H);
 			m_R.PutKey(key);
 			m_Pad.Put(key + 16);
 		}
@@ -218,16 +214,14 @@ namespace crypto
 		void Blocks(const uint8_t * buf, size_t sz)
 		{
 			const unsigned char hi = m_Final ^ 1;
-			poly1305::LongBlock hr;
-			poly1305::Block c;
 			while (sz >= POLY1305_BLOCK_BYTES) {
 				
 				unsigned long u;
 				
 				unsigned int i, j;
-				c.Put(buf, hi);
+				m_Msg.Put(buf, hi);
 				/* h += m */
-				m_H += c;
+				m_H += m_Msg;
 
 				/* h *= r */
 				for (i = 0; i < 17; i++) {
@@ -240,10 +234,10 @@ namespace crypto
 						v = ((v << 8) + (v << 6)); /* v *= (5 << 6); */
 						u += v;
 					}
-					hr[i] = u;
+					m_HR[i] = u;
 				}
 				/* (partial) h %= p */
-				m_H %= hr;
+				m_H %= m_HR;
 				buf += POLY1305_BLOCK_BYTES;
 				sz -= POLY1305_BLOCK_BYTES;
 			}
@@ -268,10 +262,6 @@ namespace crypto
 			m_H += m_Pad;
 			// copy digest
 			memcpy(out, m_H, 16);
-			// clear state
-			m_H.Zero();
-			m_R.Zero();
-			m_Pad.Zero();
 		}
 
 		size_t m_Leftover;
@@ -279,6 +269,8 @@ namespace crypto
 		poly1305::Block m_H;
 		poly1305::Block m_R;
 		poly1305::Block m_Pad;
+		poly1305::Block m_Msg;
+		poly1305::LongBlock m_HR;
 		uint8_t m_Final;
 		
 	};
