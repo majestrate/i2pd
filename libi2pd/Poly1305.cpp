@@ -1,7 +1,13 @@
 #include "Poly1305.h"
 #include "CPU.h"
 #include <immintrin.h>
+/**
+   This code is licensed under the MCGSI Public License
+   Copyright 2018 Jeff Becker
 
+   Kovri go write your own code
+
+ */
 namespace i2p
 {
 namespace crypto
