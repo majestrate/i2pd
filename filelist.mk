@@ -7,7 +7,13 @@
 #  Destination.cpp Base.cpp I2PEndian.cpp FS.cpp Config.cpp Family.cpp \
 #  Config.cpp HTTP.cpp Timestamp.cpp util.cpp api.cpp Event.cpp Gost.cpp
 
-LIB_SRC = $(wildcard $(LIB_SRC_DIR)/*.cpp)
+LIB_SRC = $(wildcard $(LIB_SRC_DIR)/*.cpp) 
+
+REF10_SRC = $(wildcard $(LIB_SRC_DIR)/ref10/*.cpp)
+SANDY2X_SRC = $(wildcard $(LIB_SRC_DIR)/sandy2x/*.cpp)
+SANDY2X_ASM = $(LIB_SRC_DIR)/sandy2x/sandy2x_asm.S
+
+LIB_SRC += $(SANDY2X_SRC) $(REF10_SRC)
 
 #LIB_CLIENT_SRC = \
 #	AddressBook.cpp BOB.cpp ClientContext.cpp I2PTunnel.cpp I2PService.cpp MatchedDestination.cpp \

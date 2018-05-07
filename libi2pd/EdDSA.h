@@ -3,75 +3,39 @@
 
 #include "Crypto.h"
 #include "Log.h"
+#include "X25519.h"
 
-#include <openssl/bn.h>
 #include <openssl/sha.h>
 #include <cstring>
 #include <memory>
+#include <iostream>
 
 namespace i2p
 {
 namespace crypto
 {
-
-  const size_t EDDSA25519_PUBLIC_KEY_LENGTH = 32;
-	const size_t EDDSA25519_SIGNATURE_LENGTH = 64;
-	const size_t EDDSA25519_PRIVATE_KEY_LENGTH = 32;
-  
-  // EdDSA point
-	struct EDDSAPoint
+	// "constant time" swap a and b if swap
+	// returns original a unconditionally
+	// note,:compiler may optimize out stuff have not checked :^)
+	template<typename T>
+	static T swap_if(bool swap, T& a, T& b)
 	{
-		BIGNUM * x {nullptr};
-		BIGNUM * y {nullptr};
-		BIGNUM * z {nullptr};
-		BIGNUM * t {nullptr}; // projective coordinates
-
-		EDDSAPoint () {}
-		EDDSAPoint (const EDDSAPoint& other)   { *this = other; }
-		EDDSAPoint (EDDSAPoint&& other)        { *this = std::move (other); }
-		EDDSAPoint (BIGNUM * x1, BIGNUM * y1, BIGNUM * z1 = nullptr, BIGNUM * t1 = nullptr)
-			: x(x1)
-			, y(y1)
-			, z(z1)
-			, t(t1)
-		{}
-		~EDDSAPoint () { BN_free (x); BN_free (y); BN_free(z); BN_free(t); }
-
-		EDDSAPoint& operator=(EDDSAPoint&& other)
+		T temp;
+		if(swap)
 		{
-			if (this != &other)
-			{
-				BN_free (x); x = other.x; other.x = nullptr;
-				BN_free (y); y = other.y; other.y = nullptr;
-				BN_free (z); z = other.z; other.z = nullptr;
-				BN_free (t); t = other.t; other.t = nullptr;
-			}
-			return *this;
+			temp = a;
+			a = b;
+			b = temp;
 		}
-
-		EDDSAPoint& operator=(const EDDSAPoint& other)
+		else
 		{
-			if (this != &other)
-			{
-				BN_free (x); x = other.x ? BN_dup (other.x) : nullptr;
-				BN_free (y); y = other.y ? BN_dup (other.y) : nullptr;
-				BN_free (z); z = other.z ? BN_dup (other.z) : nullptr;
-				BN_free (t); t = other.t ? BN_dup (other.t) : nullptr;
-			}
-			return *this;
+			temp = a;
+			temp = b;
+			temp = a;
 		}
+		return temp;
+	}
 
-		EDDSAPoint operator-() const
-		{
-			BIGNUM * x1 = NULL, * y1 = NULL, * z1 = NULL, * t1 = NULL;
-			if (x) { x1 = BN_dup (x); BN_set_negative (x1, !BN_is_negative (x)); };
-			if (y) y1 = BN_dup (y);
-			if (z) z1 = BN_dup (z);
-			if (t) { t1 = BN_dup (t); BN_set_negative (t1, !BN_is_negative (t)); };
-			return EDDSAPoint {x1, y1, z1, t1};
-		}
-	};
-  
   class Ed25519
 	{
 		public:
@@ -169,6 +133,7 @@ namespace crypto
 			{
 				EncodePoint (Normalize (publicKey, ctx), buf);
 			}
+
 
 			bool Verify (const EDDSAPoint& publicKey, const uint8_t * digest, const uint8_t * signature) const
 			{

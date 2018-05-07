@@ -3,6 +3,7 @@
 
 #include <inttypes.h>
 #include "Crypto.h"
+#include "X25519.h"
 
 namespace i2p
 {

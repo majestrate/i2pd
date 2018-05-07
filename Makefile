@@ -56,6 +56,8 @@ mk_obj_dir:
 	@mkdir -p obj
 	@mkdir -p obj/Win32
 	@mkdir -p obj/$(LIB_SRC_DIR)
+	@mkdir -p obj/$(LIB_SRC_DIR)/sandy2x
+	@mkdir -p obj/$(LIB_SRC_DIR)/ref10
 	@mkdir -p obj/$(LIB_CLIENT_SRC_DIR)
 	@mkdir -p obj/$(DAEMON_SRC_DIR)
 
@@ -73,7 +75,10 @@ deps: mk_obj_dir
 	$(CXX) $(CXXFLAGS) $(NEEDED_CXXFLAGS) -MM *.cpp > $(DEPS)
 	@sed -i -e '/\.o:/ s/^/obj\//' $(DEPS)
 
-obj/%.o: %.cpp
+obj/%.o: %.cpp 
+	$(CXX) $(CXXFLAGS) $(NEEDED_CXXFLAGS) $(INCFLAGS) $(CPU_FLAGS) -c -o $@ $<
+
+obj/%.o: %.S
 	$(CXX) $(CXXFLAGS) $(NEEDED_CXXFLAGS) $(INCFLAGS) $(CPU_FLAGS) -c -o $@ $<
 
 # '-' is 'ignore if missing' on first run
@@ -91,7 +96,7 @@ endif
 $(SHLIB_CLIENT): $(patsubst %.cpp,obj/%.o,$(LIB_CLIENT_SRC))
 	$(CXX) $(LDFLAGS) $(LDLIBS) -shared -o $@ $^
 
-$(ARLIB): $(patsubst %.cpp,obj/%.o,$(LIB_SRC))
+$(ARLIB): $(patsubst %.cpp,obj/%.o,$(LIB_SRC)) obj/libi2pd/sandy2x/sandy2x_asm.o
 	$(AR) -r $@ $^
 
 $(ARLIB_CLIENT): $(patsubst %.cpp,obj/%.o,$(LIB_CLIENT_SRC))

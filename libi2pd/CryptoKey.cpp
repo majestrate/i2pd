@@ -2,6 +2,7 @@
 #include "Log.h"
 #include "Gost.h"
 #include "CryptoKey.h"
+#include "EdDSA.h"
 
 namespace i2p
 {
