@@ -12,15 +12,6 @@ namespace i2p
   const size_t EDDSA25519_PUBLIC_KEY_LENGTH = 32;
 	const size_t EDDSA25519_SIGNATURE_LENGTH = 64;
 	const size_t EDDSA25519_PRIVATE_KEY_LENGTH = 32;
-	const size_t CURVE25519_KEY_LENGTH = 32;
-
-  namespace curve25519
-  {
-    /** x25519 scalarmult */
-    void scalarmult(uint8_t * q, const uint8_t * n, const uint8_t * p);
-    /** x25519 scalarmult base */
-    void scalarmult_base(uint8_t * q, const uint8_t * n);
-  }
 
   // EdDSA point
 	struct EDDSAPoint

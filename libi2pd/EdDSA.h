@@ -4,6 +4,7 @@
 #include "Crypto.h"
 #include "Log.h"
 #include "Ed25519.h"
+#include "Curve25519.h"
 
 #include <openssl/sha.h>
 #include <cstring>
@@ -172,7 +173,7 @@ namespace crypto
 				auto base = DecodePoint(n, ctx);
 				auto scalar = BN_bin2bn(p, CURVE25519_KEY_LENGTH, BN_new());
 				auto Q = Mul(base, scalar, ctx);
-				EncodePoint(Q, q);
+				EncodePoint(Normalize(Q, ctx), q);
 				BN_free(scalar);
 				BN_CTX_free(ctx);
 			}
