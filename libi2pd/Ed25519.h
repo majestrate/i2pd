@@ -12,6 +12,7 @@ namespace i2p
   const size_t EDDSA25519_PUBLIC_KEY_LENGTH = 32;
 	const size_t EDDSA25519_SIGNATURE_LENGTH = 64;
 	const size_t EDDSA25519_PRIVATE_KEY_LENGTH = 32;
+	const size_t CURVE25519_KEY_LENGTH = 32;
 
   namespace x25519
   {

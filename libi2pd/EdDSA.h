@@ -3,7 +3,7 @@
 
 #include "Crypto.h"
 #include "Log.h"
-#include "X25519.h"
+#include "Ed25519.h"
 
 #include <openssl/sha.h>
 #include <cstring>
@@ -14,27 +14,6 @@ namespace i2p
 {
 namespace crypto
 {
-	// "constant time" swap a and b if swap
-	// returns original a unconditionally
-	// note,:compiler may optimize out stuff have not checked :^)
-	template<typename T>
-	static T swap_if(bool swap, T& a, T& b)
-	{
-		T temp;
-		if(swap)
-		{
-			temp = a;
-			a = b;
-			b = temp;
-		}
-		else
-		{
-			temp = a;
-			temp = b;
-			temp = a;
-		}
-		return temp;
-	}
 
   class Ed25519
 	{
@@ -187,7 +166,26 @@ namespace crypto
 				BN_CTX_free (bnCtx);
 			}
 
+			void ScalarMult(uint8_t * q, const uint8_t * n, const uint8_t * p) const 
+			{
+				BN_CTX * ctx = BN_CTX_new();
+				auto base = DecodePoint(n, ctx);
+				auto scalar = BN_bin2bn(p, CURVE25519_KEY_LENGTH, BN_new());
+				auto Q = Mul(base, scalar, ctx);
+				EncodePoint(Q, q);
+				BN_free(scalar);
+				BN_CTX_free(ctx);
+			}
+
+			void ScalarMultBase(uint8_t * q, const uint8_t * n) const
+			{
+				BN_CTX * ctx = BN_CTX_new();
+				EncodePublicKey(GeneratePublicKey(n, ctx), q, ctx);
+				BN_CTX_free(ctx);
+			}
+
 		private:
+
 
 			EDDSAPoint Sum (const EDDSAPoint& p1, const EDDSAPoint& p2, BN_CTX * ctx) const
 			{

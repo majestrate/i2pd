@@ -4,8 +4,6 @@
 #ifdef __AVX2__
 #include "sandy2x/sandy2x.h"
 #endif
-#include "ref10/ref10.h"
-
 
 namespace i2p
 {
@@ -24,7 +22,7 @@ namespace crypto
 			else
 #endif
 			{
-				ref10::scalarmult(q, n, p);
+				GetEd25519()->ScalarMult(q, n, p);
 			}
 		}
 
@@ -38,10 +36,11 @@ namespace crypto
 			else
 #endif
 			{
-				ref10::scalarmult_base(q, n);
+				GetEd25519()->ScalarMultBase(q, n);
 			}
 		}
 	}
+
 	static std::unique_ptr<Ed25519> g_Ed25519;
 	std::unique_ptr<Ed25519>& GetEd25519 ()
 	{

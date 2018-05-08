@@ -57,7 +57,6 @@ mk_obj_dir:
 	@mkdir -p obj/Win32
 	@mkdir -p obj/$(LIB_SRC_DIR)
 	@mkdir -p obj/$(LIB_SRC_DIR)/sandy2x
-	@mkdir -p obj/$(LIB_SRC_DIR)/ref10
 	@mkdir -p obj/$(LIB_CLIENT_SRC_DIR)
 	@mkdir -p obj/$(DAEMON_SRC_DIR)
 
