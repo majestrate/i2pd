@@ -1,7 +1,7 @@
 cmake_minimum_required ( VERSION 2.8.12 )
 # this addresses CMP0059 with CMake > 3.3 for PCH flags
 cmake_policy( VERSION 2.8.12 )
-project ( "i2pd" )
+project ("i2pd" ASM CXX)
 
 # for debugging
 #set(CMAKE_VERBOSE_MAKEFILE on)
@@ -9,6 +9,7 @@ project ( "i2pd" )
 # configurale options
 option(WITH_AESNI     "Use AES-NI instructions set" OFF)
 option(WITH_AVX       "Use AVX instructions" OFF)
+option(WITH_AVX2       "Use AVX2 instructions" OFF)
 option(WITH_HARDENING "Use hardening compiler flags" OFF)
 option(WITH_LIBRARY   "Build library" ON)
 option(WITH_BINARY    "Build binary" ON)
@@ -38,7 +39,7 @@ include_directories(${LIBI2PD_CLIENT_SRC_DIR})
 
 set (LIBI2PD_SRC
   "${LIBI2PD_SRC_DIR}/sandy2x/sandy2x.cpp"
-  "${LIBI2PD_SRC_DIR}/sandy2x/fr_frombytes.cpp"
+  "${LIBI2PD_SRC_DIR}/sandy2x/fe_frombytes.cpp"
   "${LIBI2PD_SRC_DIR}/sandy2x/invert.cpp"
   "${LIBI2PD_SRC_DIR}/sandy2x/sandy2x_asm.S"
   "${LIBI2PD_SRC_DIR}/BloomFilter.cpp"
@@ -244,6 +245,10 @@ if (WITH_AVX)
   set ( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx" )
 endif()
 
+if (WITH_AVX2)
+  set ( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2" )
+endif()
+
 if (WITH_ADDRSANITIZER)
   if (NOT MSVC)
     set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fno-omit-frame-pointer" )
@@ -402,6 +407,8 @@ if (WITH_MESHNET)
   message(WARNING "This build will NOT work on mainline i2p")
 endif()
 
+set( CMAKE_ASM_FLAGS "${CMAKE_CXX_FLAGS}")
+
 include(CheckAtomic)
 
 
@@ -416,6 +423,7 @@ message(STATUS "Install prefix:    : ${CMAKE_INSTALL_PREFIX}")
 message(STATUS "Options:")
 message(STATUS "  AESNI            : ${WITH_AESNI}")
 message(STATUS "  AVX              : ${WITH_AVX}")
+message(STATUS "  AVX2             : ${WITH_AVX2}")
 message(STATUS "  HARDENING        : ${WITH_HARDENING}")
 message(STATUS "  LIBRARY          : ${WITH_LIBRARY}")
 message(STATUS "  BINARY           : ${WITH_BINARY}")
