@@ -9,7 +9,7 @@ namespace i2p
 {
 namespace crypto
 {
-	namespace x25519 
+	namespace curve25519
 	{	
 
 		void scalarmult(uint8_t * q, const uint8_t * n, const uint8_t * p)

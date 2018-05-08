@@ -9,6 +9,6 @@ int main(int, char *[])
   uint8_t us[32];
   i2p::cpu::Detect();
   i2p::crypto::InitCrypto(false);
-  i2p::crypto::x25519::scalarmult(result, us, scalar);
+  i2p::crypto::curve25519::scalarmult(result, us, scalar);
   return 0;
 }

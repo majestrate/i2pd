@@ -14,7 +14,7 @@ namespace i2p
 	const size_t EDDSA25519_PRIVATE_KEY_LENGTH = 32;
 	const size_t CURVE25519_KEY_LENGTH = 32;
 
-  namespace x25519
+  namespace curve25519
   {
     /** x25519 scalarmult */
     void scalarmult(uint8_t * q, const uint8_t * n, const uint8_t * p);
