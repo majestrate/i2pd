@@ -48,7 +48,9 @@ namespace data
 				eNTCPV4 = 0x01,
 				eNTCPV6 = 0x02,
 				eSSUV4 = 0x04,
-				eSSUV6 = 0x08
+				eSSUV6 = 0x08,
+				eNTCP2V4 = 0x10,
+				eNTCP2V6 = 0x20
 			};
 
 			enum Caps
@@ -67,7 +69,8 @@ namespace data
 			{
 				eTransportUnknown = 0,
 				eTransportNTCP,
-				eTransportSSU
+				eTransportSSU,
+				eTransportNTCP2
 			};
 
 			typedef Tag<32> IntroKey; // should be castable to MacKey and AESKey
@@ -88,6 +91,14 @@ namespace data
 				std::vector<Introducer> introducers;
 			};
 
+			typedef Tag<16> NTCP2IV_t;
+			typedef Tag<32> NTCP2Pubkey_t;
+		  struct NTCP2Options
+			{
+				NTCP2Pubkey_t pubkey;
+				NTCP2IV_t iv;
+			};
+
 			struct Address
 			{
 				TransportStyle transportStyle;
@@ -97,6 +108,8 @@ namespace data
 				uint64_t date;
 				uint8_t cost;
 				std::unique_ptr<SSUExt> ssu; // not null for SSU
+
+				std::unique_ptr<NTCP2Options> ntcp2; // not null for ntcp2
 
 				bool IsCompatible (const boost::asio::ip::address& other) const
 				{
@@ -133,6 +146,7 @@ namespace data
 			std::shared_ptr<const Address> GetSSUV6Address () const;
 
 			void AddNTCPAddress (const char * host, int port);
+			void AddNTCP2Address (const char * host, int port);
 			void AddSSUAddress (const char * host, int port, const uint8_t * key, int mtu = 0);
 			bool AddIntroducer (const Introducer& introducer);
 			bool RemoveIntroducer (const boost::asio::ip::udp::endpoint& e);

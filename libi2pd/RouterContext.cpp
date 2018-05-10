@@ -66,6 +66,7 @@ namespace i2p
 
 			routerInfo.AddSSUAddress (host.c_str(), port, routerInfo.GetIdentHash ());
 			routerInfo.AddNTCPAddress (host.c_str(), port);
+			routerInfo.AddNTCP2Address(host.c_str(), port);
 		}
 		if (ipv6)
 		{
@@ -80,6 +81,7 @@ namespace i2p
 
 			routerInfo.AddSSUAddress (host.c_str(), port, routerInfo.GetIdentHash ());
 			routerInfo.AddNTCPAddress (host.c_str(), port);
+			routerInfo.AddNTCP2Address(host.c_str(), port);
 		}
 
 		routerInfo.SetCaps (i2p::data::RouterInfo::eReachable |

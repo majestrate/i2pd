@@ -636,6 +636,22 @@ namespace data
 		m_Addresses->push_back(std::move(addr));
 	}
 
+	void RouterInfo::AddNTCP2Address(const char * host, int port)
+	{
+		auto addr = std::make_shared<Address>();
+		addr->host = boost::asio::ip::address::from_string (host);
+		addr->port = port;
+		addr->transportStyle = eTransportNTCP2;
+		addr->cost = 1; // prefer NTCP2 over NTCP
+		addr->date = 0;
+		for (const auto & it: *m_Addresses)
+			if(*it == *addr) return;
+
+		m_SupportedTransports |= addr->host.is_v6() ? eNTCP2V6 : eNTCP2V4;
+		m_Addresses->push_back(std::move(addr));
+		
+	}
+
 	void RouterInfo::AddSSUAddress (const char * host, int port, const uint8_t * key, int mtu)
 	{
 		auto addr = std::make_shared<Address>();
