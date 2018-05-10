@@ -66,6 +66,39 @@ namespace i2p
 			return EDDSAPoint {x1, y1, z1, t1};
 		}
 	};
+
+	struct BNTx
+	{
+		BN_CTX * ctx;
+		BNTx(BN_CTX * _ctx)
+		{
+			ctx = _ctx;
+			BN_CTX_start(ctx);
+		};
+
+		~BNTx() { BN_CTX_end(ctx); }
+
+		operator BN_CTX * () { return ctx; };
+
+		BIGNUM * get() 
+		{
+			return BN_CTX_get(ctx);
+		}
+
+		BIGNUM * get(unsigned long val)
+		{
+			auto num = get();
+			BN_set_word(num, val);
+			return num;
+		}
+
+		BIGNUM * dup(BIGNUM * other)
+		{
+			auto num = get();
+			return BN_copy(num, other);
+		}
+
+	};
   }
 }
 

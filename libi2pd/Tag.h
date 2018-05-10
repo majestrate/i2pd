@@ -49,7 +49,14 @@ public:
 
 	void Fill(uint8_t c)
 	{
-		memset(m_Buf, c, sz);
+		for(size_t i = 0; i < sz; ++i)
+			m_Buf[i] = c;
+	}
+
+	void Zero()
+	{
+		for(size_t i = 0; i < sz/8; ++i)
+			ll[i] = 0;
 	}
 
 	void Randomize()
