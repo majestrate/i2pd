@@ -1,6 +1,7 @@
 #include "Curve25519.h"
 #include "CPU.h"
 #include "Crypto.h"
+#include "Timestamp.h"
 
 #include <iomanip>
 #include <iostream>
@@ -46,15 +47,41 @@ int main(int, char *[])
   uint8_t buf[32];
   i2p::cpu::Detect();
   i2p::crypto::InitCrypto(false);
-  i2p::crypto::curve25519::scalarmult(buf, scalar, coord);
-  auto result = memcmp(buf, expected, 32);
-  if(result)
+  
+  uint8_t privkey[32];
+  PutValue(privkey, "77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a");
+  uint8_t pubkey[32];
+  PutValue(pubkey, "8520f0098930a754748b7ddcb43ef75a0dbf3a0d26381af4eba4a98eaa9b4e6a");
+
+  i2p::crypto::curve25519::scalarmult_base(buf, privkey);
+  if(memcmp(buf, pubkey, 32))
   {
+    std::cout << "scalarmult_base failed" << std::endl;
     std::cout << "got " ;
     dumphex(buf, 32);
     std::cout << "expected ";
-    dumphex(expected, 32);
+    dumphex(pubkey, 32);
     return 1;
   }
+
+  const auto iters = 5000;
+  auto times = iters;
+  auto now = i2p::util::GetMillisecondsSinceEpoch();
+  while(times--)
+  {
+    i2p::crypto::curve25519::scalarmult(buf, scalar, coord);
+    auto result = memcmp(buf, expected, 32);
+    if(result)
+    {
+      std::cout << "scalarmult failed" << std::endl;
+      std::cout << "got " ;
+      dumphex(buf, 32);
+      std::cout << "expected ";
+      dumphex(expected, 32);
+      return 1;
+    }
+  }
+  auto dlt = i2p::util::GetMillisecondsSinceEpoch() - now;
+  std::cout << "took " << dlt << "ms for " << iters << " iterations " << dlt / float(iters) << " ms/iter" << std::endl;
   return 0;
 }

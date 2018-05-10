@@ -179,85 +179,102 @@ namespace crypto
 				k[31] &= 127;
 				k[31] |= 64;
 				auto scalar = DecodeBN<CURVE25519_KEY_LENGTH>(k);
-				{
-					BNTx tx(c);
-					auto Q = tx.get();
-					auto X1 = tx.dup(U);
-					auto X2 = tx.get(1);
-					auto Z2 = tx.get(0);
-					auto X3 = tx.dup(U);
-					auto Z3 = tx.get(1);
-					auto a24 = tx.get(121665);
-					auto a = tx.get(); auto aa = tx.get();
-					auto b = tx.get(); auto bb = tx.get();
-					auto e = tx.get(); auto c = tx.get();
-					auto d = tx.get();
-					auto da = tx.get(); auto cb = tx.get();
-					auto tmp1 = tx.get(); auto tmp2 = tx.get();
-					unsigned int swap = 0;
-					auto bits = BN_num_bits(scalar);
-					while(bits)
-					{
-						--bits;
-						auto k_t = BN_is_bit_set(scalar, bits) ? 1 : 0;
-						swap ^= k_t;
-						swap_if<BIGNUM*>(swap, X2, X3);
-						swap_if<BIGNUM*>(swap, Z2, Z3);
-						swap = k_t;
-						// a = x2 + z2
-						BN_mod_add(a, X2, Z2, q, tx);
-						// aa = a^2
-						BN_mod_sqr(aa, a, q, tx);
-						// b = x2 - z2
-						BN_mod_sub(b, X2, Z2, q, tx);
-						// bb = b^2
-						BN_mod_sqr(bb, b, q, tx);
-						// e = aa - bb
-						BN_mod_sub(e, aa, bb, q, tx);
-						// c = x3 + z3
-						BN_mod_add(c, X3, Z3, q, tx);
-						// d = x3 - z3
-						BN_mod_sub(d, X3, Z3, q, tx);
-						// da = d * a
-						BN_mod_mul(da, d, a, q, tx);
-						// cb = c * b
-						BN_mod_mul(cb, c, b, q, tx);
-						// x3 = ( da + cb )^2
-						BN_mod_add(tmp1, da, cb, q, tx);
-						BN_mod_sqr(X3, tmp1, q, tx);
-						// z3 == x1 * (da - cb)^2
-						BN_mod_sub(tmp1, da, cb, q, tx);
-						BN_mod_sqr(tmp2, tmp1, q, tx);
-						BN_mod_mul(Z3, X1, tmp2, q, tx);
-						// x2 = aa * bb
-						BN_mod_mul(X2, aa, bb, q, tx);
-						// z2 = e * (aa + a24 * e)
-						BN_mod_mul(tmp1, a24, e, q, tx);
-						BN_mod_add(tmp2, aa, tmp1, q, tx);
-						BN_mod_mul(Z2, e, tmp2, q, tx);
-					}
-					swap_if<BIGNUM*>(swap, X2, X3);
-					swap_if<BIGNUM*>(swap, Z2, Z3);
-					// x2 * (z2 ^ (p - 2))
-					BN_set_word(tmp1, 2);
-					BN_sub(tmp2, q, tmp1);
-					BN_mod_exp(tmp1, Z2, tmp2, q, tx);
-					BN_mod_mul(Q, X2, tmp1, q, tx);
-					EncodeBN(Q, result, CURVE25519_KEY_LENGTH);
-				}	
+				auto Q = BN_new();
+				BNScalarMult(Q, U, scalar, c);
+				EncodeBN(Q, result, CURVE25519_KEY_LENGTH);
 				BN_free(scalar);
 				BN_free(U);
+				BN_free(Q);
 				BN_CTX_free(c);
 			}
 
 			void ScalarMultBase(uint8_t * q, const uint8_t * n) const
 			{
 				BN_CTX * ctx = BN_CTX_new();
-				EncodePublicKey(GeneratePublicKey(n, ctx), q, ctx);
+				uint8_t k[CURVE25519_KEY_LENGTH];
+				memcpy(k, n, CURVE25519_KEY_LENGTH);
+				k[0] &= 248;
+				k[31] &= 127;
+				k[31] |= 64;
+				auto scalar = DecodeBN<CURVE25519_KEY_LENGTH>(k);
+				auto U = BN_new();
+				auto Q = BN_new();
+				BN_set_word(U, 9);
+				BNScalarMult(Q, U, scalar, ctx);
+				EncodeBN(Q, q, CURVE25519_KEY_LENGTH);
+				BN_free(U);
+				BN_free(Q);
+				BN_free(scalar);
 				BN_CTX_free(ctx);
 			}
 
 		private:
+
+			void BNScalarMult(BIGNUM *Q, BIGNUM *U, BIGNUM * scalar, BN_CTX * ctx) const
+			{
+				BN_Tx tx(ctx);
+				auto X1 = tx.dup(U);
+				auto X2 = tx.get(1);
+				auto Z2 = tx.get(0);
+				auto X3 = tx.dup(U);
+				auto Z3 = tx.get(1);
+				auto a24 = tx.get(121665);
+				auto a = tx.get(); auto aa = tx.get();
+				auto b = tx.get(); auto bb = tx.get();
+				auto e = tx.get(); auto c = tx.get();
+				auto d = tx.get();
+				auto da = tx.get(); auto cb = tx.get();
+				auto tmp1 = tx.get(); auto tmp2 = tx.get();
+				unsigned int swap = 0;
+				auto bits = BN_num_bits(scalar);
+				while(bits)
+				{
+					--bits;
+					auto k_t = BN_is_bit_set(scalar, bits) ? 1 : 0;
+					swap ^= k_t;
+					swap_if<BIGNUM*>(swap, X2, X3);
+					swap_if<BIGNUM*>(swap, Z2, Z3);
+					swap = k_t;
+					// a = x2 + z2
+					BN_mod_add(a, X2, Z2, q, tx);
+					// aa = a^2
+					BN_mod_sqr(aa, a, q, tx);
+					// b = x2 - z2
+					BN_mod_sub(b, X2, Z2, q, tx);
+					// bb = b^2
+					BN_mod_sqr(bb, b, q, tx);
+					// e = aa - bb
+					BN_mod_sub(e, aa, bb, q, tx);
+					// c = x3 + z3
+					BN_mod_add(c, X3, Z3, q, tx);
+					// d = x3 - z3
+					BN_mod_sub(d, X3, Z3, q, tx);
+					// da = d * a
+					BN_mod_mul(da, d, a, q, tx);
+					// cb = c * b
+					BN_mod_mul(cb, c, b, q, tx);
+					// x3 = ( da + cb )^2
+					BN_mod_add(tmp1, da, cb, q, tx);
+					BN_mod_sqr(X3, tmp1, q, tx);
+					// z3 == x1 * (da - cb)^2
+					BN_mod_sub(tmp1, da, cb, q, tx);
+					BN_mod_sqr(tmp2, tmp1, q, tx);
+					BN_mod_mul(Z3, X1, tmp2, q, tx);
+					// x2 = aa * bb
+					BN_mod_mul(X2, aa, bb, q, tx);
+					// z2 = e * (aa + a24 * e)
+					BN_mod_mul(tmp1, a24, e, q, tx);
+					BN_mod_add(tmp2, aa, tmp1, q, tx);
+					BN_mod_mul(Z2, e, tmp2, q, tx);
+				}
+				swap_if<BIGNUM*>(swap, X2, X3);
+				swap_if<BIGNUM*>(swap, Z2, Z3);
+				// x2 * (z2 ^ (q - 2))
+				BN_set_word(tmp1, 2);
+				BN_sub(tmp2, q, tmp1);
+				BN_mod_exp(tmp1, Z2, tmp2, q, tx);
+				BN_mod_mul(Q, X2, tmp1, q, tx);
+			}	
 
 			template<typename T>
 			static void swap_if(unsigned int swap, T & a, T & b)

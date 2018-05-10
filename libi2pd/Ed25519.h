@@ -67,16 +67,17 @@ namespace i2p
 		}
 	};
 
-	struct BNTx
+	/** BN_CTX transaction RAII wrapper */
+	struct BN_Tx
 	{
 		BN_CTX * ctx;
-		BNTx(BN_CTX * _ctx)
+		BN_Tx(BN_CTX * _ctx)
 		{
 			ctx = _ctx;
 			BN_CTX_start(ctx);
 		};
 
-		~BNTx() { BN_CTX_end(ctx); }
+		~BN_Tx() { BN_CTX_end(ctx); }
 
 		operator BN_CTX * () { return ctx; };
 
@@ -94,8 +95,7 @@ namespace i2p
 
 		BIGNUM * dup(BIGNUM * other)
 		{
-			auto num = get();
-			return BN_copy(num, other);
+			return BN_copy(get(), other);
 		}
 
 	};
