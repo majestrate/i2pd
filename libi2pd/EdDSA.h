@@ -167,11 +167,9 @@ namespace crypto
 				BN_CTX_free (bnCtx);
 			}
 
-
-
-			void ScalarMult(uint8_t * result, const uint8_t * n, const uint8_t * p) const 
+			void ScalarMult(uint8_t * q, const uint8_t * n, const uint8_t * p, BN_CTX * ctx) const 
 			{
-				BN_CTX * c = BN_CTX_new();
+				BN_Tx tx(ctx);
 				auto U = DecodeBN<CURVE25519_KEY_LENGTH>(p);
 				uint8_t k[CURVE25519_KEY_LENGTH];
 				memcpy(k, n, CURVE25519_KEY_LENGTH);
@@ -179,40 +177,33 @@ namespace crypto
 				k[31] &= 127;
 				k[31] |= 64;
 				auto scalar = DecodeBN<CURVE25519_KEY_LENGTH>(k);
-				auto Q = BN_new();
-				BNScalarMult(Q, U, scalar, c);
-				EncodeBN(Q, result, CURVE25519_KEY_LENGTH);
+				auto Q = tx.get();
+				BNScalarMult(Q, U, scalar, tx);
+				EncodeBN(Q, q, CURVE25519_KEY_LENGTH);
 				BN_free(scalar);
 				BN_free(U);
-				BN_free(Q);
-				BN_CTX_free(c);
 			}
 
-			void ScalarMultBase(uint8_t * q, const uint8_t * n) const
+			void ScalarMultBase(uint8_t * q, const uint8_t * n, BN_CTX * ctx) const
 			{
-				BN_CTX * ctx = BN_CTX_new();
+				BN_Tx tx(ctx);
 				uint8_t k[CURVE25519_KEY_LENGTH];
 				memcpy(k, n, CURVE25519_KEY_LENGTH);
 				k[0] &= 248;
 				k[31] &= 127;
 				k[31] |= 64;
 				auto scalar = DecodeBN<CURVE25519_KEY_LENGTH>(k);
-				auto U = BN_new();
-				auto Q = BN_new();
-				BN_set_word(U, 9);
-				BNScalarMult(Q, U, scalar, ctx);
+				auto U = tx.get(9);
+				auto Q = tx.get();
+				BNScalarMult(Q, U, scalar, tx);
 				EncodeBN(Q, q, CURVE25519_KEY_LENGTH);
-				BN_free(U);
-				BN_free(Q);
 				BN_free(scalar);
-				BN_CTX_free(ctx);
 			}
 
 		private:
 
-			void BNScalarMult(BIGNUM *Q, BIGNUM *U, BIGNUM * scalar, BN_CTX * ctx) const
+			void BNScalarMult(BIGNUM *Q, const BIGNUM *U, const BIGNUM *scalar, BN_Tx & tx) const
 			{
-				BN_Tx tx(ctx);
 				auto X1 = tx.dup(U);
 				auto X2 = tx.get(1);
 				auto Z2 = tx.get(0);
@@ -279,10 +270,11 @@ namespace crypto
 			template<typename T>
 			static void swap_if(unsigned int swap, T & a, T & b)
 			{
+				// probably constatnt time swap
 				if(swap)
-				{
 					std::swap(a, b);
-				}
+				else
+				  std::swap(a, a);
 			}
 
 			EDDSAPoint Sum (const EDDSAPoint& p1, const EDDSAPoint& p2, BN_CTX * ctx) const

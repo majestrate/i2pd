@@ -53,7 +53,9 @@ int main(int, char *[])
   uint8_t pubkey[32];
   PutValue(pubkey, "8520f0098930a754748b7ddcb43ef75a0dbf3a0d26381af4eba4a98eaa9b4e6a");
 
-  i2p::crypto::curve25519::scalarmult_base(buf, privkey);
+  BN_CTX * ctx = BN_CTX_new();
+
+  i2p::crypto::curve25519::scalarmult_base(buf, privkey, ctx);
   if(memcmp(buf, pubkey, 32))
   {
     std::cout << "scalarmult_base failed" << std::endl;
@@ -69,7 +71,7 @@ int main(int, char *[])
   auto now = i2p::util::GetMillisecondsSinceEpoch();
   while(times--)
   {
-    i2p::crypto::curve25519::scalarmult(buf, scalar, coord);
+    i2p::crypto::curve25519::scalarmult(buf, scalar, coord, ctx);
     auto result = memcmp(buf, expected, 32);
     if(result)
     {

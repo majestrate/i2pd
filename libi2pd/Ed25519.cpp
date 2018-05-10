@@ -12,7 +12,7 @@ namespace crypto
 	namespace curve25519
 	{	
 
-		void scalarmult(uint8_t * q, const uint8_t * n, const uint8_t * p)
+		void scalarmult(uint8_t * q, const uint8_t * n, const uint8_t * p, BN_CTX * ctx)
 		{
 #ifdef __AVX2__
 			if(i2p::cpu::avx2)
@@ -22,11 +22,11 @@ namespace crypto
 			else
 #endif
 			{
-				GetEd25519()->ScalarMult(q, n, p);
+				GetEd25519()->ScalarMult(q, n, p, ctx);
 			}
 		}
 
-		void scalarmult_base(uint8_t * q, const uint8_t * n)
+		void scalarmult_base(uint8_t * q, const uint8_t * n, BN_CTX * ctx)
 		{
 #ifdef __AVX2__
 			if(i2p::cpu::avx2)
@@ -36,7 +36,7 @@ namespace crypto
 			else
 #endif
 			{
-				GetEd25519()->ScalarMultBase(q, n);
+				GetEd25519()->ScalarMultBase(q, n, ctx);
 			}
 		}
 	}

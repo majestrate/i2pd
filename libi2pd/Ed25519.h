@@ -93,7 +93,7 @@ namespace i2p
 			return num;
 		}
 
-		BIGNUM * dup(BIGNUM * other)
+		BIGNUM * dup(const BIGNUM * other)
 		{
 			return BN_copy(get(), other);
 		}
