@@ -46,12 +46,15 @@ SOURCES += DaemonQT.cpp mainwindow.cpp \
     ../../libi2pd/HTTP.cpp \
     ../../libi2pd/I2NPProtocol.cpp \
     ../../libi2pd/I2PEndian.cpp \
+    ../../libi2pd/I2PString.cpp \    
     ../../libi2pd/Identity.cpp \
     ../../libi2pd/LeaseSet.cpp \
     ../../libi2pd/Log.cpp \
     ../../libi2pd/NetDb.cpp \
     ../../libi2pd/NetDbRequests.cpp \
     ../../libi2pd/NTCPSession.cpp \
+    ../../libi2pd/NTCP2.cpp \
+    ../../libi2pd/NTCP2Session.cpp \
     ../../libi2pd/Profiling.cpp \
     ../../libi2pd/Reseed.cpp \
     ../../libi2pd/RouterContext.cpp \
