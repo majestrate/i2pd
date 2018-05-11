@@ -13,9 +13,9 @@ namespace transport
 {
   const size_t NTCP2_BUFFER_SIZE = 65537;
 
-  struct NTCP2Options : public i2p::data::Tag<16>
+  struct NTCP2OptionBlock : public i2p::data::Tag<16>
   {
-    NTCP2Options(uint16_t ver=2) : i2p::data::Tag<16>()
+    NTCP2OptionBlock(uint16_t ver=2) : i2p::data::Tag<16>()
     {
       // zero all fields
       Zero();
@@ -35,9 +35,21 @@ namespace transport
       return buf16toh(data());
     }
 
+    void PutPadLength(uint16_t l)
+    {
+      uint8_t * ptr = *this;
+      htobe16buf(ptr+2, l);
+    }
+
     uint16_t PadLength() const
     {
       return buf16toh(data() + 2);
+    }
+
+    void PutM3P2Length(uint16_t l)
+    {
+      uint8_t * ptr = *this;
+      htobe16buf(ptr+4, l);
     }
 
     uint16_t M3P2Length() const
@@ -66,8 +78,10 @@ namespace transport
       typedef std::shared_ptr<I2NPMessage> I2NPMessage_ptr;
       typedef std::vector<I2NPMessage_ptr> I2NPMessageList;
 
-      NTCP2Session(NTCP2Server & server);
+      NTCP2Session(NTCP2Server& server, RI_cptr outbound=nullptr);
+      NTCP2Session(NTCP2Session &) = delete;
       NTCP2Session(NTCP2Session &&) = delete;
+      ~NTCP2Session();
 
       void Terminate();
       void Done();
@@ -80,13 +94,21 @@ namespace transport
 
       void SendI2NPMessages(const I2NPMessageList & msgs);
 
+      bool IsEstablished () const { return m_IsEstablished; };
+      bool IsTerminated () const { return m_IsTerminated; };
+
+    private:
+      void PostMessages(I2NPMessageList msgs);
+
     private:
       typedef I2NPMessageList SendQueue;
 
       NTCP2Server& m_Server;
       Socket_t m_Socket;
 
-      NTCP2Options m_RemoteOptions;
+      bool m_IsEstablished, m_IsTerminated;
+
+      NTCP2OptionBlock m_LocalOptions, m_RemoteOptions;
 
       i2p::crypto::AESAlignedBuffer<NTCP2_BUFFER_SIZE + 16> m_ReceiveBuffer;
       size_t m_ReceiveBufferOffset;

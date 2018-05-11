@@ -65,6 +65,11 @@ namespace data
 			// copy buffer
 			if (!m_Buffer)
 				m_Buffer = new uint8_t[MAX_RI_BUFFER_SIZE];
+
+			// bounds check
+			if(len > MAX_RI_BUFFER_SIZE)
+				len = MAX_RI_BUFFER_SIZE;
+
 			memcpy (m_Buffer, buf, len);
 			m_BufferLen = len;
 			// skip identity
@@ -176,8 +181,8 @@ namespace data
 			auto address = std::make_shared<Address>();
 			s.read ((char *)&address->cost, sizeof (address->cost));
 			s.read ((char *)&address->date, sizeof (address->date));
-			char transportStyle[5];
-			ReadString (transportStyle, 5, s);
+			char transportStyle[6];
+			ReadString (transportStyle, 6, s);
 			if (!strcmp (transportStyle, "NTCP"))
 				address->transportStyle = eTransportNTCP;
 			else if (!strcmp (transportStyle, "SSU"))
@@ -185,6 +190,10 @@ namespace data
 				address->transportStyle = eTransportSSU;
 				address->ssu.reset (new SSUExt ());
 				address->ssu->mtu = 0;
+			}
+			else if (!strcmp(transportStyle, "NTCP2"))
+			{
+				address->transportStyle = eTransportNTCP2;
 			}
 			else
 				address->transportStyle = eTransportUnknown;
@@ -211,19 +220,62 @@ namespace data
 							supportedTransports |= eNTCPV4; // TODO:
 							address->addressString = value;
 						}
-						else
+						else if (address->transportStyle == eTransportSSU)
 						{
 							supportedTransports |= eSSUV4; // TODO:
+							address->addressString = value;
+						}
+						else if (address->transportStyle == eTransportNTCP2)
+						{
+							supportedTransports |= eNTCP2V4;
 							address->addressString = value;
 						}
 					}
 					else
 					{
 						// add supported protocol
-						if (address->host.is_v4 ())
-							supportedTransports |= (address->transportStyle == eTransportNTCP) ? eNTCPV4 : eSSUV4;
-						else
-							supportedTransports |= (address->transportStyle == eTransportNTCP) ? eNTCPV6 : eSSUV6;
+						auto isv4 = address->host.is_v4 ();
+						switch(address->transportStyle)
+						{
+							case eTransportNTCP:
+								supportedTransports |= isv4 ? eNTCPV4 : eNTCPV6;
+								break;
+							case eTransportNTCP2:
+								supportedTransports |= isv4 ? eNTCP2V4 : eNTCP2V6;
+								break;
+							case eTransportSSU:
+								supportedTransports |= isv4 ? eSSUV4 : eSSUV6;
+								break;
+							default:
+								break;
+						}							
+					}
+				}
+				else if (!strcmp (key, "n"))
+				{
+					if(!address->ntcp2) address->ntcp2 = std::unique_ptr<NTCP2Options>(new NTCP2Options);
+					address->ntcp2->protocolName = value;
+				}
+				else if (!strcmp (key, "s"))
+				{
+					if(!address->ntcp2) address->ntcp2 = std::unique_ptr<NTCP2Options>(new NTCP2Options);
+					address->ntcp2->pubkey.FromBase64(value);
+				}
+				else if (!strcmp (key, "i"))
+				{
+					if(!address->ntcp2) address->ntcp2 = std::unique_ptr<NTCP2Options>(new NTCP2Options);
+					address->ntcp2->iv.FromBase64(value);
+				}
+				else if (!strcmp (key, "v"))
+				{
+					if(!address->ntcp2) address->ntcp2 = std::unique_ptr<NTCP2Options>(new NTCP2Options);
+					std::istringstream buff;
+					buff.str(value);
+					for(std::string line; std::getline(buff, line, ','); )
+					{
+						auto v = std::stoi(line);
+						if(v > 0)
+							address->ntcp2->supportedVersions.insert(v);
 					}
 				}
 				else if (!strcmp (key, "port"))
@@ -424,6 +476,11 @@ namespace data
 			std::stringstream properties;
 			if (address.transportStyle == eTransportNTCP)
 				WriteString ("NTCP", s);
+			else if (address.transportStyle == eTransportNTCP2 && address.ntcp2)
+			{
+				WriteString("NTCP2", s);
+				address.ntcp2->Write(properties);
+			}
 			else if (address.transportStyle == eTransportSSU)
 			{
 				WriteString ("SSU", s);
@@ -596,32 +653,6 @@ namespace data
 		return true;
 	}
 
-	size_t RouterInfo::ReadString (char * str, size_t len, std::istream& s) const
-	{
-		uint8_t l;
-		s.read ((char *)&l, 1);
-		if (l < len)
-		{
-			s.read (str, l);
-			if (!s) l = 0; // failed, return empty string
-			str[l] = 0;
-		}
-		else
-		{
-			LogPrint (eLogWarning, "RouterInfo: string length ", (int)l, " exceeds buffer size ", len);
-			s.seekg (l, std::ios::cur); // skip
-			str[0] = 0;
-		}
-		return l+1;
-	}
-
-	void RouterInfo::WriteString (const std::string& str, std::ostream& s) const
-	{
-		uint8_t len = str.size ();
-		s.write ((char *)&len, 1);
-		s.write (str.c_str (), len);
-	}
-
 	void RouterInfo::AddNTCPAddress (const char * host, int port)
 	{
 		auto addr = std::make_shared<Address>();
@@ -636,7 +667,7 @@ namespace data
 		m_Addresses->push_back(std::move(addr));
 	}
 
-	void RouterInfo::AddNTCP2Address(const char * host, int port)
+	void RouterInfo::AddNTCP2Address(const char * host, int port, const i2p::crypto::NTCP2_Key & pubkey, const i2p::crypto::NTCP2_IV & iv)
 	{
 		auto addr = std::make_shared<Address>();
 		addr->host = boost::asio::ip::address::from_string (host);
@@ -646,6 +677,12 @@ namespace data
 		addr->date = 0;
 		for (const auto & it: *m_Addresses)
 			if(*it == *addr) return;
+
+		addr->ntcp2 = std::unique_ptr<NTCP2Options>(new NTCP2Options);
+		addr->ntcp2->iv = iv;
+		addr->ntcp2->pubkey = pubkey;
+		addr->ntcp2->protocolName = NTCP2_PROTOCOL_NAME;
+		addr->ntcp2->supportedVersions.insert(2);
 
 		m_SupportedTransports |= addr->host.is_v6() ? eNTCP2V6 : eNTCP2V4;
 		m_Addresses->push_back(std::move(addr));
@@ -825,6 +862,11 @@ namespace data
 	std::shared_ptr<const RouterInfo::Address> RouterInfo::GetSSUV6Address () const
 	{
 		return GetAddress (eTransportSSU, false, true);
+	}
+
+	std::shared_ptr<const RouterInfo::Address> RouterInfo::GetNTCP2Address (bool v4only) const
+	{
+		return GetAddress(eTransportNTCP2, v4only);
 	}
 
 	std::shared_ptr<const RouterInfo::Address> RouterInfo::GetAddress (TransportStyle s, bool v4only, bool v6only) const

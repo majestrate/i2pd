@@ -35,6 +35,8 @@ namespace i2p
 	void RouterContext::CreateNewRouter ()
 	{
 		m_Keys = i2p::data::PrivateKeys::CreateRandomKeys (i2p::data::SIGNING_KEY_TYPE_EDDSA_SHA512_ED25519);
+		m_NTCP2Keys.reset(new i2p::crypto::NTCP2PrivateKeys);
+		m_NTCP2Keys->Generate();
 		SaveKeys ();
 		NewRouterInfo ();
 	}
@@ -66,7 +68,7 @@ namespace i2p
 
 			routerInfo.AddSSUAddress (host.c_str(), port, routerInfo.GetIdentHash ());
 			routerInfo.AddNTCPAddress (host.c_str(), port);
-			routerInfo.AddNTCP2Address(host.c_str(), port);
+			routerInfo.AddNTCP2Address(host.c_str(), port, m_NTCP2Keys->ToPublicKey(), m_NTCP2Keys->IV());
 		}
 		if (ipv6)
 		{
@@ -81,7 +83,7 @@ namespace i2p
 
 			routerInfo.AddSSUAddress (host.c_str(), port, routerInfo.GetIdentHash ());
 			routerInfo.AddNTCPAddress (host.c_str(), port);
-			routerInfo.AddNTCP2Address(host.c_str(), port);
+			routerInfo.AddNTCP2Address(host.c_str(), port, m_NTCP2Keys->ToPublicKey(), m_NTCP2Keys->IV());
 		}
 
 		routerInfo.SetCaps (i2p::data::RouterInfo::eReachable |
@@ -377,6 +379,62 @@ namespace i2p
 			UpdateRouterInfo ();
 	}
 
+	void RouterContext::EnsureNTCP2PrivateKeys()
+	{
+		if(!m_NTCP2Keys)
+		{
+			m_NTCP2Keys.reset(new i2p::crypto::NTCP2PrivateKeys);
+			std::ifstream ntcp2fk (i2p::fs::DataDirPath(NTCP2_KEYS), std::ifstream::in | std::ifstream::binary);
+			if(ntcp2fk.is_open())
+			{
+				uint8_t ntcp2buf[i2p::crypto::NTCP2PrivateKeys::BufferSize];
+				ntcp2fk.read((char*) ntcp2buf, sizeof(ntcp2buf));
+				if(m_NTCP2Keys->FromBuffer(ntcp2buf, sizeof(ntcp2buf)) == 0)
+				{
+					LogPrint(eLogError, NTCP2_KEYS, " is malfromed. Regenerating.");
+					m_NTCP2Keys->Generate ();
+					SaveKeys ();
+				}
+			}
+			else
+			{
+				m_NTCP2Keys->Generate ();
+				SaveKeys ();
+			}
+		}
+	}
+
+	void RouterContext::UpdateNTCP2V6Address (const boost::asio::ip::address& host)
+	{
+		bool updated = false, found = false;
+		int port = 0;
+		auto& addresses = m_RouterInfo.GetAddresses ();
+		for (auto& addr: addresses)
+		{
+			if (addr->host.is_v6 () && addr->transportStyle == i2p::data::RouterInfo::eTransportNTCP2)
+			{
+				if (addr->host != host)
+				{
+					addr->host = host;
+					updated = true;
+				}
+				found = true;
+			}
+			else
+				port = addr->port;
+		}
+		if (!found)
+		{
+			EnsureNTCP2PrivateKeys();
+			// create new address
+			m_RouterInfo.AddNTCP2Address (host.to_string ().c_str (), port, m_NTCP2Keys->ToPublicKey(), m_NTCP2Keys->IV());
+			updated = true;
+		}
+		if (updated)
+			UpdateRouterInfo ();
+	}
+
+
 	void RouterContext::UpdateStats ()
 	{
 		if (m_IsFloodfill)
@@ -409,6 +467,10 @@ namespace i2p
 			m_Keys.FromBuffer (buf, len);
 			delete[] buf;
 		}
+
+		// NTCP2 Keys
+		EnsureNTCP2PrivateKeys();
+
 
 		m_RouterInfo.SetRouterIdentity (GetIdentity ());
 		i2p::data::RouterInfo routerInfo(i2p::fs::DataDirPath (ROUTER_INFO));
@@ -443,6 +505,11 @@ namespace i2p
 		m_Keys.ToBuffer (buf, len);
 		fk.write ((char *)buf, len);
 		delete[] buf;
+		// save ntcp2 keys to ntcp2-keys.dat
+		std::ofstream ntcp2fk(i2p::fs::DataDirPath(NTCP2_KEYS), std::ofstream::binary | std::ofstream::out);
+		uint8_t ntcp2buf [i2p::crypto::NTCP2PrivateKeys::BufferSize];
+		m_NTCP2Keys->ToBuffer(ntcp2buf, sizeof(ntcp2buf));
+		ntcp2fk.write((char*) ntcp2buf, sizeof(ntcp2buf));
 	}
 
 	std::shared_ptr<i2p::tunnel::TunnelPool> RouterContext::GetTunnelPool () const

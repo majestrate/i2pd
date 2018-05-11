@@ -63,6 +63,11 @@ namespace crypto
 	void HMACMD5Digest (uint8_t * msg, size_t len, const MACKey& key, uint8_t * digest);
 	void HMACSHA256Digest (uint8_t * msg, size_t len, const MACKey & key, uint8_t * digest);
 
+	// NTCP2	
+  typedef i2p::data::Tag<16> NTCP2_IV;
+  typedef i2p::data::Tag<32> NTCP2_Key;
+
+
 	// AES
 	struct ChipherBlock
 	{

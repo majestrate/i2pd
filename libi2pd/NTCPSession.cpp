@@ -1288,8 +1288,8 @@ namespace transport
 					auto session = it.second;
 					// Termniate modifies m_NTCPSession, so we postpone it
 					m_Service.post ([session] {
-							LogPrint (eLogDebug, "NTCP: No activity for ", session->GetTerminationTimeout (), " seconds");
-							session->Terminate ();
+						LogPrint (eLogDebug, "NTCP: Close inactive session to ", session->GetIdentHashBase64 ());
+						session->Terminate ();
 					});
 				}
 			// pending

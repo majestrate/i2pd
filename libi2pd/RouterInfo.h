@@ -4,6 +4,7 @@
 #include <inttypes.h>
 #include <string>
 #include <map>
+#include <set>
 #include <vector>
 #include <list>
 #include <iostream>
@@ -11,6 +12,8 @@
 #include <boost/shared_ptr.hpp>
 #include "Identity.h"
 #include "Profiling.h"
+#include "I2PString.h"
+#include "NTCP2.h"
 
 namespace i2p
 {
@@ -91,12 +94,48 @@ namespace data
 				std::vector<Introducer> introducers;
 			};
 
-			typedef Tag<16> NTCP2IV_t;
-			typedef Tag<32> NTCP2Pubkey_t;
 		  struct NTCP2Options
 			{
-				NTCP2Pubkey_t pubkey;
-				NTCP2IV_t iv;
+				std::string protocolName;
+				i2p::crypto::NTCP2_Key pubkey;
+				i2p::crypto::NTCP2_IV iv;
+				std::set<int> supportedVersions;
+
+				// write options as map
+				void Write(std::ostream & out) const
+				{
+					WriteString("n", out);
+					out << "=";
+					WriteString(protocolName, out);
+					out << ";";
+
+					WriteString("s", out);
+					out << "=";
+					WriteString(pubkey.ToBase64(), out);
+					out << ";";
+
+					WriteString("i", out);
+					out << "=";
+					WriteString(iv.ToBase64(), out);
+					out << ";";
+
+					WriteString("v", out);
+					out << "=";
+					if(supportedVersions.size())
+					{
+						std::ostringstream s;
+						for(auto v : supportedVersions)
+							s << "," << v;
+						auto ver = s.str();
+						WriteString(ver.substr(1), out);
+					}
+					else
+					{
+						// default to version 2 if non specified
+						WriteString("2", out);
+					}
+					out << ";";
+				}
 			};
 
 			struct Address
@@ -142,11 +181,12 @@ namespace data
 			uint64_t GetTimestamp () const { return m_Timestamp; };
 			Addresses& GetAddresses () { return *m_Addresses; }; // should be called for local RI only, otherwise must return shared_ptr
 			std::shared_ptr<const Address> GetNTCPAddress (bool v4only = true) const;
+			std::shared_ptr<const Address> GetNTCP2Address (bool v4only = true) const;
 			std::shared_ptr<const Address> GetSSUAddress (bool v4only = true) const;
 			std::shared_ptr<const Address> GetSSUV6Address () const;
 
 			void AddNTCPAddress (const char * host, int port);
-			void AddNTCP2Address (const char * host, int port);
+			void AddNTCP2Address (const char * host, int port, const i2p::crypto::NTCP2_Key & pubkey, const i2p::crypto::NTCP2_IV & iv);
 			void AddSSUAddress (const char * host, int port, const uint8_t * key, int mtu = 0);
 			bool AddIntroducer (const Introducer& introducer);
 			bool RemoveIntroducer (const boost::asio::ip::udp::endpoint& e);
@@ -211,8 +251,6 @@ namespace data
 			void ReadFromStream (std::istream& s);
 			void ReadFromBuffer (bool verifySignature);
 			void WriteToStream (std::ostream& s) const;
-			size_t ReadString (char* str, size_t len, std::istream& s) const;
-			void WriteString (const std::string& str, std::ostream& s) const;
 			void ExtractCaps (const char * value);
 			std::shared_ptr<const Address> GetAddress (TransportStyle s, bool v4only, bool v6only = false) const;
 			void UpdateCapsProperty ();

@@ -389,6 +389,12 @@ namespace transport
 			if (!peer.numAttempts) // NTCP
 			{
 				peer.numAttempts++;
+				auto addressV2 = peer.router->GetNTCP2Address (!context.SupportsV6 ());
+				// try ntcp 2 if it's there first
+				if(addressV2)
+				{
+					
+				}
 				auto address = peer.router->GetNTCPAddress (!context.SupportsV6 ());
 				if (address && m_NTCPServer)
 				{

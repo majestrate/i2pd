@@ -3,13 +3,71 @@
 #include "RouterInfo.h"
 #include "RouterContext.h"
 #include "NetDb.hpp"
+#include "Curve25519.h"
 
 namespace i2p
 {
+  namespace crypto
+  {
+    NTCP2_Key NTCP2PrivateKeys::ToPublicKey()
+    {
+      if(!m_PubKey)
+      {
+        m_PubKey.reset(new NTCP2_Key);
+        BN_CTX * ctx = BN_CTX_new();
+        uint8_t * ptr = *m_PubKey.get();
+        curve25519::scalarmult_base(ptr, m_Seed, ctx);
+        BN_CTX_free(ctx);
+      }
+      return NTCP2_Key(m_PubKey->data());
+    }
+    size_t NTCP2PrivateKeys::FromBuffer(const uint8_t * buf, size_t sz)
+    {
+      // d2:iv16:<insert iv here>2:sk32:<insert seed here>e
+      if(sz <= BufferSize)
+      {
+        return 0;
+      }
+      if(memcmp(buf, "d2:iv16:", 8) || memcmp(buf + 24, "2:sk32:", 7) || buf[BufferSize-1] != 'e') return 0;
+      memcpy(m_IV, buf + 8, 16);
+      memcpy(m_Seed, buf + 31, 32);
+      m_PubKey.reset();
+      return BufferSize;
+    }
+
+    size_t NTCP2PrivateKeys::ToBuffer(uint8_t * buf, size_t sz) const
+    {
+      if(sz <= BufferSize)
+      {
+        return 0;
+      }
+      memcpy(buf, "d2:iv16:", 8);
+      buf += 8;
+      memcpy(buf, m_IV, 16);
+      buf += 16;
+      memcpy(buf, "2:sk32:", 7);
+      buf += 7;
+      memcpy(buf, m_Seed, 32);
+      buf += 32;
+      *buf = 'e';
+      return BufferSize;
+    }
+
+    void NTCP2PrivateKeys::Generate()
+    {
+      i2p::data::Tag<32> buf;
+      buf.Randomize ();
+      SHA256(buf, 32, m_Seed);
+      m_IV.Randomize ();
+      m_PubKey.reset();
+    }
+  }
+
   namespace transport
   {
 
-    const int NTCP2_CONNECT_TIMEOUT = 5;
+    const int NTCP2_CONNECT_TIMEOUT = 5; // 5 seconds
+    const int NTCP2_TERMINATION_CHECK_TIMEOUT = 30; // 30 seconds
 
     NTCP2Server::NTCP2Server() : 
       m_IsRunning(false), m_Thread(nullptr),
@@ -216,6 +274,49 @@ namespace i2p
         if(conn->GetSocket ().local_endpoint().protocol() == boost::asio::ip::tcp::v6())
           context.UpdateNTCP2V6Address(conn->GetSocket ().local_endpoint ().address ());
         conn->ClientLogin ();
+      }
+    }
+
+    void NTCP2Server::ScheduleTermination()
+    {
+      m_TerminationTimer.expires_from_now (boost::posix_time::seconds(NTCP2_TERMINATION_CHECK_TIMEOUT));
+		    m_TerminationTimer.async_wait (std::bind (&NTCP2Server::HandleTerminationTimer,
+			    this, std::placeholders::_1));
+    }
+
+    void NTCP2Server::HandleTerminationTimer(const error_t & ecode)
+    {
+      if(ecode != boost::asio::error::operation_aborted)
+      {
+        auto ts = i2p::util::GetSecondsSinceEpoch ();
+        for (auto & it : m_Sessions)
+        {
+          if(it.second->IsTerminationTimeoutExpired(ts))
+          {
+            // we are iterating through m_Sessions and terminate modifies m_Sessions
+            // call later
+            auto session = it.second;
+            m_Service.post([session] {
+              LogPrint(eLogDebug, "NTCP2: Close inactive session to ", session->GetIdentHashBase64());
+              session->Terminate ();
+            });
+          }
+        }
+        // pending
+        for(auto it = m_PendingIncomingSessions.begin (); it != m_PendingIncomingSessions.end (); )
+        {
+          if ((*it)->IsEstablished () || (*it)->IsTerminated ())
+				  	it = m_PendingIncomingSessions.erase (it); // established or terminated
+				  else if ((*it)->IsTerminationTimeoutExpired (ts))
+				  {
+					  (*it)->Terminate ();
+					  it = m_PendingIncomingSessions.erase (it); // expired
+				  }
+				  else
+					  it++;
+        }
+
+        ScheduleTermination ();
       }
     }
 

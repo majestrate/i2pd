@@ -14,6 +14,7 @@ namespace i2p
 {
 	const char ROUTER_INFO[] = "router.info";
 	const char ROUTER_KEYS[] = "router.keys";
+	const char NTCP2_KEYS[] = "ntcp2.keys";
 	const int ROUTER_INFO_UPDATE_INTERVAL = 1800; // 30 minutes
 
 	enum RouterStatus
@@ -90,6 +91,9 @@ namespace i2p
 			void UpdateStats ();
 			void CleanupDestination ();	// garlic destination
 
+			i2p::crypto::NTCP2_Key GetNTCP2PublicKey() const;
+			i2p::crypto::NTCP2_IV GetNTCP2IV() const;
+
 			// implements LocalDestination
 			std::shared_ptr<const i2p::data::IdentityEx> GetIdentity () const { return m_Keys.GetPublic (); };
 			bool Decrypt (const uint8_t * encrypted, uint8_t * data, BN_CTX * ctx) const;
@@ -112,11 +116,13 @@ namespace i2p
 			void UpdateRouterInfo ();
 			bool Load ();
 			void SaveKeys ();
+			void EnsureNTCP2PrivateKeys ();
 
 		private:
 
 			i2p::data::RouterInfo m_RouterInfo;
 			i2p::data::PrivateKeys m_Keys;
+			std::unique_ptr<i2p::crypto::NTCP2PrivateKeys> m_NTCP2Keys;
 			std::shared_ptr<i2p::crypto::CryptoKeyDecryptor> m_Decryptor;
 			uint64_t m_LastUpdateTime;
 			bool m_AcceptsTunnels, m_IsFloodfill;

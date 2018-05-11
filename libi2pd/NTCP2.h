@@ -10,8 +10,41 @@
 
 namespace i2p
 {
+namespace crypto
+{
+	class NTCP2PrivateKeys
+	{
+  public:
+    const static size_t BufferSize = 64;
+    NTCP2PrivateKeys () = default;
+    ~NTCP2PrivateKeys () = default;
+    NTCP2_Key ToPublicKey();
+    NTCP2_IV & IV() { return m_IV; };
+    size_t FromBuffer(const uint8_t * buf, size_t sz);
+    size_t ToBuffer(uint8_t *buf, size_t sz) const;
+
+    /** randomize IV */
+    void RotateIV() { m_IV.Randomize(); };
+
+    /** generate new seed and IV */
+    void Generate();
+
+  private:
+
+		NTCP2_Key m_Seed;
+    NTCP2_IV m_IV;
+    std::unique_ptr<NTCP2_Key> m_PubKey;
+	};
+}
+
+namespace data
+{
+  const char NTCP2_PROTOCOL_NAME[] = "NXK2CS";
+}
+
 namespace transport
 {
+
   class NTCP2Session;
 
   class NTCP2Server
