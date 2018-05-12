@@ -38,6 +38,7 @@ public:
 	operator const uint8_t * () const { return m_Buf; }
 
 	const uint8_t * data() const { return m_Buf; }
+	const uint32_t * word() const { return ww; }
 	const uint64_t * GetLL () const { return ll; }
 
 	bool IsZero () const
@@ -49,8 +50,13 @@ public:
 
 	void Fill(uint8_t c)
 	{
-		for(size_t i = 0; i < sz; ++i)
-			m_Buf[i] = c;
+		if(c)
+		{
+			for(size_t i = 0; i < sz; ++i)
+				m_Buf[i] = c;
+		}
+		else
+			Zero();
 	}
 
 	void Zero()
@@ -93,6 +99,7 @@ private:
 	union // 8 bytes aligned
 	{
 		uint8_t m_Buf[sz];
+		uint32_t ww[sz/4];
 		uint64_t ll[sz/8];
 	};
 };

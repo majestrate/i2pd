@@ -108,7 +108,7 @@ namespace transport
       void HandleReadSessionCreated(const error_t & err);
       void IncrementNonce();
       // encrypt in place with m_AEADKey
-      void EncryptFrame(uint8_t * buf, size_t sz);
+      void EncryptFrame(uint8_t * buf, size_t sz, uint32_t * hmac);
 
     private:
       typedef I2NPMessageList SendQueue;

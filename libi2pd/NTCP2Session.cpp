@@ -2,6 +2,7 @@
 #include "Curve25519.h"
 #include "RouterContext.h"
 #include "ChaCha20.h"
+#include "Poly1305.h"
 #include <openssl/aes.h>
 #include <cassert>
 
@@ -82,7 +83,8 @@ namespace i2p
       m_LocalOptions.PutM3P2Length((rand() % 32) + 80 + context.GetIdentity()->GetFullLen());
       memcpy(m_HandshakeSendBuffer + 32, m_LocalOptions, 16);
       // Encrypt in place
-      EncryptFrame(m_HandshakeSendBuffer + 32, 16);
+      uint8_t * hmac = m_HandshakeSendBuffer + 48;
+      EncryptFrame(m_HandshakeSendBuffer + 32, 16, (uint32_t*)hmac);
       // fill random padding
       RAND_bytes(m_HandshakeSendBuffer + 64, padlen);
 
@@ -119,9 +121,10 @@ namespace i2p
         boost::asio::transfer_all(), std::bind(&NTCP2Session::HandleSessionRequestSent, shared_from_this(), std::placeholders::_1, std::placeholders::_2));
     }
 
-    void NTCP2Session::EncryptFrame(uint8_t * buf, size_t sz)
+    void NTCP2Session::EncryptFrame(uint8_t * buf, size_t sz, uint32_t * hmac)
     {
       i2p::crypto::chacha20(buf, sz, m_Nonce, m_AEADKey);
+      i2p::crypto::Poly1305HMAC(hmac, m_AEADKey.word(), buf, sz);
     }
 
     void NTCP2Session::ServerLogin()
