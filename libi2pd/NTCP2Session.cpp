@@ -22,14 +22,14 @@ namespace i2p
     {
     }
 
-    size_t NTCP2Session::GenerateSessionRequest()
+    size_t NTCP2Session::GenerateSessionRequest(const std::string & protocolName)
     {
       // zero nonce
       m_Nonce.Zero();
       // space for 3 sha256 digests;
       uint8_t temp[96];
       // protocol name
-      Hash("Noise_XK_25519_ChaChaPoly_SHA256", 32, m_ChainingKey);
+      Hash(protocolName.c_str(), protocolName.size(), m_ChainingKey);
       // MixHash(null prologue)
       Hash(m_ChainingKey, 32, temp);
       // MixHash(null s)
@@ -47,7 +47,7 @@ namespace i2p
       // MixHash(null re)
       Hash(temp + 64, 32, temp);
         
-      // generate seed for X
+      // generate seed for X via sha256(random)
       // use this buffer becuase we don't need it yet
       m_LocalEphemeralPubkey.Randomize();
       Hash(m_LocalEphemeralPubkey, 32, m_LocalEphemeralSeed);
@@ -67,27 +67,29 @@ namespace i2p
       temp[0] = 1;
       i2p::crypto::HMACSHA256Digest(temp , 1, temp + 64, m_ChainingKey);
       // AEAD_key = HMAC-SHA256(temp_key, ck || byte(0x02)).
-      temp[0] = 2;
-      memcpy(temp + 1, m_ChainingKey, 32);
+      memcpy(temp, m_ChainingKey, 32);
+      temp[32] = 2;
       i2p::crypto::HMACSHA256Digest(temp, 33, temp + 64, m_AEADKey);
 
       // encrypt X with remote ident and IV
-      AES_KEY XKEY;
-      AES_set_encrypt_key(GetRemoteIdentity()->GetIdentHash(), 256, &XKEY);
-      AES_cbc_encrypt(m_LocalEphemeralPubkey, m_HandshakeSendBuffer, 32, &XKEY, m_RemoteAddr->ntcp2->iv, 1);
+      {
+        i2p::crypto::CBCEncryption aes;
+        aes.SetKey(GetRemoteIdentity()->GetIdentHash());
+        aes.SetIV(m_RemoteAddr->ntcp2->iv);
+        aes.Encrypt(m_LocalEphemeralPubkey, 32, m_HandshakeSendBuffer);
+      }
       // put options
-      uint16_t padlen = ( rand() % 32 ) + 1;
+      uint16_t padlen = rand() % 32;
       m_LocalOptions.PutPadLength(padlen);
       m_LocalOptions.PutTimestamp(i2p::util::GetSecondsSinceEpoch());
       // 48 + 32 + options (0) + padding 0-32 bytes
       m_LocalOptions.PutM3P2Length((rand() % 32) + 80 + context.GetIdentity()->GetFullLen());
       memcpy(m_HandshakeSendBuffer + 32, m_LocalOptions, 16);
-      // Encrypt in place
-      uint8_t * hmac = m_HandshakeSendBuffer + 48;
-      EncryptFrame(m_HandshakeSendBuffer + 32, 16, (uint32_t*)hmac);
-      // fill random padding
-      RAND_bytes(m_HandshakeSendBuffer + 64, padlen);
-
+      // fill random padding encrypt in place and hmac
+      uint32_t hmac[4];
+      RAND_bytes(m_HandshakeSendBuffer + 48, padlen);
+      EncryptFrame(m_HandshakeSendBuffer + 32, 16 + padlen, hmac); 
+      memcpy(m_HandshakeSendBuffer + 48 + padlen, hmac, 16);
       return 64 + padlen;
     }
 
@@ -115,7 +117,7 @@ namespace i2p
 
     void NTCP2Session::SendSessionRequest()
     {
-      auto len = GenerateSessionRequest();
+      auto len = GenerateSessionRequest("Noise_XKaesobfse_25519_ChaChaPoly_SHA256");
       LogPrint(eLogDebug, "NTCP2Session: send Session Request ",len, " bytes");
       boost::asio::async_write(m_Socket, boost::asio::buffer(m_HandshakeSendBuffer, len), 
         boost::asio::transfer_all(), std::bind(&NTCP2Session::HandleSessionRequestSent, shared_from_this(), std::placeholders::_1, std::placeholders::_2));

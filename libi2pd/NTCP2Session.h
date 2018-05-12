@@ -33,7 +33,7 @@ namespace transport
 
     uint16_t Version() const
     {
-      return buf16toh(data());
+      return bufbe16toh(data());
     }
 
     void PutPadLength(uint16_t l)
@@ -44,7 +44,7 @@ namespace transport
 
     uint16_t PadLength() const
     {
-      return buf16toh(data() + 2);
+      return bufbe16toh(data() + 2);
     }
 
     void PutM3P2Length(uint16_t l)
@@ -55,12 +55,12 @@ namespace transport
 
     uint16_t M3P2Length() const
     {
-      return buf16toh(data() + 4);
+      return bufbe16toh(data() + 4);
     }
 
     uint32_t Timestamp() const
     {
-      return buf32toh(data() + 8);
+      return bufbe32toh(data() + 8);
     }
 
   };
@@ -102,7 +102,7 @@ namespace transport
     private:
       void PostMessages(I2NPMessageList msgs);
       void Hash(const void* data, size_t sz, uint8_t *out);
-      size_t GenerateSessionRequest();
+      size_t GenerateSessionRequest(const std::string & protocolName);
       void SendSessionRequest();
       void HandleSessionRequestSent(const error_t & err, size_t transferred);
       void HandleReadSessionCreated(const error_t & err);
