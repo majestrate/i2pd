@@ -24,7 +24,7 @@ namespace i2p
     size_t NTCP2PrivateKeys::FromBuffer(const uint8_t * buf, size_t sz)
     {
       // d2:iv16:<insert iv here>2:sk32:<insert seed here>e
-      if(sz <= BufferSize)
+      if(sz > BufferSize)
       {
         return 0;
       }
@@ -37,7 +37,7 @@ namespace i2p
 
     size_t NTCP2PrivateKeys::ToBuffer(uint8_t * buf, size_t sz) const
     {
-      if(sz <= BufferSize)
+      if(sz > BufferSize)
       {
         return 0;
       }

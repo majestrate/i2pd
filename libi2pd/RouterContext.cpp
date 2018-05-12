@@ -387,9 +387,9 @@ namespace i2p
 			std::ifstream ntcp2fk (i2p::fs::DataDirPath(NTCP2_KEYS), std::ifstream::in | std::ifstream::binary);
 			if(ntcp2fk.is_open())
 			{
-				uint8_t ntcp2buf[i2p::crypto::NTCP2PrivateKeys::BufferSize];
-				ntcp2fk.read((char*) ntcp2buf, sizeof(ntcp2buf));
-				if(m_NTCP2Keys->FromBuffer(ntcp2buf, sizeof(ntcp2buf)) == 0)
+				char ntcp2buf[i2p::crypto::NTCP2PrivateKeys::BufferSize];
+				ntcp2fk.read(ntcp2buf, sizeof(ntcp2buf));
+				if(m_NTCP2Keys->FromBuffer((uint8_t*)ntcp2buf, sizeof(ntcp2buf)) == 0)
 				{
 					LogPrint(eLogError, NTCP2_KEYS, " is malfromed. Regenerating.");
 					m_NTCP2Keys->Generate ();

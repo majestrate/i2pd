@@ -68,8 +68,10 @@ namespace data
 
 			// bounds check
 			if(len > MAX_RI_BUFFER_SIZE)
+			{
+				LogPrint(eLogWarning, "RouterInfo: buffer too large, truncating");
 				len = MAX_RI_BUFFER_SIZE;
-
+			}
 			memcpy (m_Buffer, buf, len);
 			m_BufferLen = len;
 			// skip identity
@@ -790,24 +792,24 @@ namespace data
 
 	bool RouterInfo::IsV6 () const
 	{
-		return m_SupportedTransports & (eNTCPV6 | eSSUV6);
+		return m_SupportedTransports & (eNTCPV6 | eSSUV6 | eNTCP2V6);
 	}
 
 	bool RouterInfo::IsV4 () const
 	{
-		return m_SupportedTransports & (eNTCPV4 | eSSUV4);
+		return m_SupportedTransports & (eNTCPV4 | eSSUV4 | eNTCP2V4);
 	}
 
 	void RouterInfo::EnableV6 ()
 	{
 		if (!IsV6 ())
-			m_SupportedTransports |= eNTCPV6 | eSSUV6;
+			m_SupportedTransports |= eNTCPV6 | eSSUV6 | eNTCP2V6;
 	}
 
   void RouterInfo::EnableV4 ()
 	{
 		if (!IsV4 ())
-			m_SupportedTransports |= eNTCPV4 | eSSUV4;
+			m_SupportedTransports |= eNTCPV4 | eSSUV4 | eNTCP2V4;
 	}
 
 
@@ -815,7 +817,7 @@ namespace data
 	{
 		if (IsV6 ())
 		{
-			m_SupportedTransports &= ~(eNTCPV6 | eSSUV6);
+			m_SupportedTransports &= ~(eNTCPV6 | eSSUV6 | eNTCP2V6);
 			for (auto it = m_Addresses->begin (); it != m_Addresses->end ();)
 			{
 				auto addr = *it;
@@ -831,7 +833,7 @@ namespace data
 	{
 		if (IsV4 ())
 		{
-			m_SupportedTransports &= ~(eNTCPV4 | eSSUV4);
+			m_SupportedTransports &= ~(eNTCPV4 | eSSUV4 | eNTCP2V4);
 			for (auto it = m_Addresses->begin (); it != m_Addresses->end ();)
 			{
 				auto addr = *it;
