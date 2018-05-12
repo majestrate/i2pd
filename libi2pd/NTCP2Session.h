@@ -6,6 +6,7 @@
 #include "Timestamp.h"
 #include <memory>
 #include <vector>
+#include <openssl/sha.h>
 
 namespace i2p
 {
@@ -73,12 +74,13 @@ namespace transport
       typedef i2p::data::RouterInfo RI;
       typedef std::shared_ptr<const RI> RI_cptr;
 
+      typedef NTCP2Server::error_t error_t;
       typedef NTCP2Server::Socket_t Socket_t;
       typedef NTCP2Server::Service_t Service_t;
       typedef std::shared_ptr<I2NPMessage> I2NPMessage_ptr;
       typedef std::vector<I2NPMessage_ptr> I2NPMessageList;
 
-      NTCP2Session(NTCP2Server& server, RI_cptr outbound=nullptr);
+      NTCP2Session(NTCP2Server& server, RI_cptr outbound=nullptr, std::shared_ptr<const RI::Address> remote=nullptr);
       NTCP2Session(NTCP2Session &) = delete;
       NTCP2Session(NTCP2Session &&) = delete;
       ~NTCP2Session();
@@ -99,16 +101,35 @@ namespace transport
 
     private:
       void PostMessages(I2NPMessageList msgs);
+      void Hash(const void* data, size_t sz, uint8_t *out);
+      size_t GenerateSessionRequest();
+      void SendSessionRequest();
+      void HandleSessionRequestSent(const error_t & err, size_t transferred);
+      void HandleReadSessionCreated(const error_t & err);
+      void IncrementNonce();
+      // encrypt in place with m_AEADKey
+      void EncryptFrame(uint8_t * buf, size_t sz);
 
     private:
       typedef I2NPMessageList SendQueue;
 
       NTCP2Server& m_Server;
       Socket_t m_Socket;
+      std::shared_ptr<const RI::Address> m_RemoteAddr;
 
       bool m_IsEstablished, m_IsTerminated;
 
       NTCP2OptionBlock m_LocalOptions, m_RemoteOptions;
+  
+      SHA256_CTX m_SHA;
+      BN_CTX * m_BNCTX;
+
+      uint8_t m_HandshakeSendBuffer[96]; // 64 + 32 bytes max padding
+      i2p::data::Tag<32> m_AEADKey; 
+      i2p::data::Tag<16> m_Nonce;
+
+      i2p::crypto::NTCP2_Key m_RemoteStaticKey, m_ChainingKey;
+      i2p::crypto::NTCP2_Key m_LocalEphemeralSeed, m_LocalEphemeralPubkey;
 
       i2p::crypto::AESAlignedBuffer<NTCP2_BUFFER_SIZE + 16> m_ReceiveBuffer;
       size_t m_ReceiveBufferOffset;

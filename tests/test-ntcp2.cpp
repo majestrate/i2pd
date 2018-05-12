@@ -7,14 +7,10 @@
 
 int main(int argc, char * argv[])
 {
-  std::string remoteip;
-  uint16_t remoteport;
   std::string rifile;
-  if (argc == 4)
+  if (argc == 2)
   {
-    remoteip = argv[1];
-    remoteport = std::atoi(argv[2]);
-    rifile = argv[3];
+    rifile = argv[1];
   }
   else
     return 1;
@@ -36,9 +32,10 @@ int main(int argc, char * argv[])
   auto ident = remoteRI->GetIdentHash();
   i2p::transport::NTCP2Server ntcp2;
   ntcp2.Start();
+  auto ntcp2addr = remoteRI->GetNTCP2Address();
   LogPrint(eLogInfo, "TEST: outbound NTCP2 connection to ", ident.ToBase64());
-  auto conn = std::make_shared<i2p::transport::NTCP2Session>(ntcp2, remoteRI);
-  ntcp2.Connect(i2p::transport::NTCP2Server::IP_t::from_string(remoteip), remoteport, conn);
+  auto conn = std::make_shared<i2p::transport::NTCP2Session>(ntcp2, remoteRI, ntcp2addr);
+  ntcp2.Connect(ntcp2addr, conn);
   std::this_thread::sleep_for(std::chrono::seconds(1));
   auto session = ntcp2.FindSession(ident);
   if(session && session->IsEstablished())

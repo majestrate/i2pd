@@ -76,7 +76,8 @@ namespace transport
       void RemoveSession(Session_ptr conn);
       Session_ptr FindSession(const Ident & remote);
 
-      void Connect(const IP_t & addr, uint16_t port, Session_ptr conn);
+      template<typename Address>
+      void Connect(std::shared_ptr<const Address> addr, Session_ptr conn);
 
     private:
       typedef std::map<Ident, Session_ptr> SessionMap_t;

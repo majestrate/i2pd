@@ -238,9 +238,10 @@ namespace i2p
       }
     }
 
-    void NTCP2Server::Connect(const IP_t & addr, uint16_t port, Session_ptr conn)
+    template<>
+    void NTCP2Server::Connect(std::shared_ptr<const i2p::data::RouterInfo::Address> remote, Session_ptr conn)
     {
-      LogPrint(eLogDebug, "NTCP2: Connecting to ", addr, ":", port);
+      LogPrint(eLogDebug, "NTCP2: Connecting to ", remote->host, ":", remote->port);
       m_Service.post([=]() {
         if(this->AddSession(conn))
         {
@@ -253,7 +254,7 @@ namespace i2p
               conn->Terminate ();
             }
           });
-          conn->GetSocket ().async_connect(Endpoint_t(addr, port), std::bind(&NTCP2Server::HandleConnect, this, std::placeholders::_1, conn, timer));
+          conn->GetSocket ().async_connect(Endpoint_t(remote->host, remote->port), std::bind(&NTCP2Server::HandleConnect, this, std::placeholders::_1, conn, timer));
         }
       });
     }
