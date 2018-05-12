@@ -122,7 +122,7 @@ last-dist:
 doxygen:
 	doxygen -s docs/Doxyfile
 
-test:
+test: $(ARLIB)
 	$(MAKE) -C tests
 
 .PHONY: all
