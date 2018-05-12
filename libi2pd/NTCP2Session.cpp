@@ -57,6 +57,19 @@ namespace i2p
       Hash(temp, 64, temp+64);
       // store aead key
       memcpy(m_AEADKey, temp +64, 32);
+      // calculate shared secret
+      // input_key = DH()
+      i2p::crypto::curve25519::scalarmult(temp, m_LocalEphemeralSeed, m_RemoteStaticKey, m_BNCTX);
+      // temp_key = HMAC-SHA256(ck, input_key), temp_key is temp + 64
+      i2p::crypto::HMACSHA256Digest(temp, 32, m_ChainingKey, temp + 64);
+      // ck = HMAC-SH256(temp_key, 0x01)
+      temp[0] = 1;
+      i2p::crypto::HMACSHA256Digest(temp , 1, temp + 64, m_ChainingKey);
+      // AEAD_key = HMAC-SHA256(temp_key, ck || byte(0x02)).
+      temp[0] = 2;
+      memcpy(temp + 1, m_ChainingKey, 32);
+      i2p::crypto::HMACSHA256Digest(temp, 33, temp + 64, m_AEADKey);
+
       // encrypt X with remote ident and IV
       AES_KEY XKEY;
       AES_set_encrypt_key(GetRemoteIdentity()->GetIdentHash(), 256, &XKEY);

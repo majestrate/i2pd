@@ -61,7 +61,7 @@ namespace crypto
 	// HMAC
 	typedef i2p::data::Tag<32> MACKey;
 	void HMACMD5Digest (uint8_t * msg, size_t len, const MACKey& key, uint8_t * digest);
-	void HMACSHA256Digest (uint8_t * msg, size_t len, const MACKey & key, uint8_t * digest);
+	void HMACSHA256Digest (const uint8_t * msg, size_t len, const uint8_t * key, uint8_t * digest);
 
 	// NTCP2	
   typedef i2p::data::Tag<16> NTCP2_IV;

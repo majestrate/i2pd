@@ -571,6 +571,11 @@ namespace crypto
 		MD5((uint8_t *)hash, 96, digest);
 	}
 
+	void HMACSHA256Digest (const uint8_t * msg, size_t len, const uint8_t * key, uint8_t * digest)
+	{
+		HMAC(EVP_sha256(), key, 32, msg, len, digest, nullptr);
+	}
+
 // AES
 #ifdef AESNI
         #ifdef ARM64AES
