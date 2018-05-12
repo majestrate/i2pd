@@ -71,7 +71,7 @@ namespace i2p
       // Encrypt in place
       EncryptFrame(m_HandshakeSendBuffer + 32, 16);
       // fill random padding
-      RAND_bytes(m_HandshakeSendBuffer + 32, padlen);
+      RAND_bytes(m_HandshakeSendBuffer + 64, padlen);
 
       return 64 + padlen;
     }
