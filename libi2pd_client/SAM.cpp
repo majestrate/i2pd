@@ -29,6 +29,7 @@ namespace client
 
 	void SAMSocket::Terminate (const char* reason)
 	{
+		if(m_SocketType == eSAMSocketTypeTerminated) return;
 		if (m_SocketType == eSAMSocketTypeSession)
 			m_Owner.CloseSession (m_ID);
 		Close();
