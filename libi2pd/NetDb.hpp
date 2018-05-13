@@ -104,6 +104,8 @@ namespace data
 
 			void ReseedFromFloodfill(const RouterInfo & ri, int numRouters=40, int numFloodfills=20);
 
+			void Flush() { SaveUpdated(); };
+
 		private:
 
 			void Load ();

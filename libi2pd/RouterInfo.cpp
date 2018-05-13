@@ -196,6 +196,7 @@ namespace data
 			else if (!strcmp(transportStyle, "NTCP2"))
 			{
 				address->transportStyle = eTransportNTCP2;
+				address->ntcp2 = std::unique_ptr<NTCP2Options>(new NTCP2Options);
 			}
 			else
 				address->transportStyle = eTransportUnknown;
@@ -255,29 +256,31 @@ namespace data
 				}
 				else if (!strcmp (key, "n"))
 				{
-					if(!address->ntcp2) address->ntcp2 = std::unique_ptr<NTCP2Options>(new NTCP2Options);
-					address->ntcp2->protocolName = value;
+					if(address->ntcp2)
+						address->ntcp2->protocolName = value;
 				}
 				else if (!strcmp (key, "s"))
 				{
-					if(!address->ntcp2) address->ntcp2 = std::unique_ptr<NTCP2Options>(new NTCP2Options);
-					address->ntcp2->pubkey.FromBase64(value);
+					if(address->ntcp2)
+						address->ntcp2->pubkey.FromBase64(value);
 				}
 				else if (!strcmp (key, "i"))
 				{
-					if(!address->ntcp2) address->ntcp2 = std::unique_ptr<NTCP2Options>(new NTCP2Options);
-					address->ntcp2->iv.FromBase64(value);
+					if(address->ntcp2)
+						address->ntcp2->iv.FromBase64(value);
 				}
 				else if (!strcmp (key, "v"))
 				{
-					if(!address->ntcp2) address->ntcp2 = std::unique_ptr<NTCP2Options>(new NTCP2Options);
-					std::istringstream buff;
-					buff.str(value);
-					for(std::string line; std::getline(buff, line, ','); )
+					if(address->ntcp2)
 					{
-						auto v = std::stoi(line);
-						if(v > 0)
-							address->ntcp2->supportedVersions.insert(v);
+						std::istringstream buff;
+						buff.str(value);
+						for(std::string line; std::getline(buff, line, ','); )
+						{
+							auto v = std::stoi(line);
+							if(v > 0)
+								address->ntcp2->supportedVersions.insert(v);
+						}
 					}
 				}
 				else if (!strcmp (key, "port"))
