@@ -8,7 +8,7 @@
 #include <utility>
 #include <boost/asio.hpp>
 
-#ifdef ANDROID
+//#ifdef ANDROID
 #include <boost/lexical_cast.hpp>
 namespace std
 {
@@ -23,7 +23,7 @@ inline int stoi(const std::string& str)
 	return boost::lexical_cast<int>(str);
 }
 }
-#endif
+//#endif
 
 namespace i2p
 {
