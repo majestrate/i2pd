@@ -1,4 +1,4 @@
-RPI_PREFIX ?= $HOME/local/rpi
+RPI_PREFIX ?= $(HOME)/local/rpi
 
 USE_STATIC = yes
 USE_AESNI	= yes
