@@ -679,7 +679,7 @@ namespace client
 		{
 			LogPrint (eLogError, "SAM: read error: ", ecode.message ());
 			if (ecode != boost::asio::error::operation_aborted)
-				Terminate ("read error");
+				Terminate (ecode.message());
 		}
 		else
 		{
