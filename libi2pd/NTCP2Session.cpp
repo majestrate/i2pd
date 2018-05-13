@@ -60,7 +60,7 @@ namespace i2p
       memcpy(m_AEADKey, temp +64, 32);
       // calculate shared secret
       // input_key = DH()
-      i2p::crypto::curve25519::scalarmult(temp, m_LocalEphemeralSeed, m_RemoteStaticKey, m_BNCTX);
+      i2p::crypto::curve25519::scalarmult(temp, m_RemoteStaticKey, m_LocalEphemeralSeed, m_BNCTX);
       // temp_key = HMAC-SHA256(ck, input_key), temp_key is temp + 64
       i2p::crypto::HMACSHA256Digest(temp, 32, m_ChainingKey, temp + 64);
       // ck = HMAC-SH256(temp_key, 0x01)
