@@ -36,6 +36,12 @@ namespace data
          */
         void Reseeder::Bootstrap ()
         {
+						bool disable; i2p::config::GetOption("reseed.disabled", disable);
+						if(disable) 
+						{
+							LogPrint(eLogInfo, "Reseed: disabled");
+							return;
+						}
             std::string su3FileName; i2p::config::GetOption("reseed.file", su3FileName);
             std::string zipFileName; i2p::config::GetOption("reseed.zipfile", zipFileName);
 

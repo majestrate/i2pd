@@ -70,11 +70,13 @@ namespace transport
       void Start();
       void Stop();
 
+      bool IsBound() const;
+
       Service_t & GetService() { return m_Service; };
 
       bool AddSession(Session_ptr conn);
       void RemoveSession(Session_ptr conn);
-      Session_ptr FindSession(const Ident & remote);
+      Session_ptr FindSession(const Ident & remote) const;
 
       template<typename Address>
       void Connect(std::shared_ptr<const Address> addr, Session_ptr conn);

@@ -6,6 +6,7 @@
 #include "Transports.h"
 #include "Config.h"
 #include "HTTP.h"
+#include "NTCP2Session.h"
 #ifdef WITH_EVENTS
 #include "Event.h"
 #include "util.h"
@@ -137,7 +138,7 @@ namespace transport
 		}
 	}
 
-	void Transports::Start (bool enableNTCP, bool enableSSU)
+	void Transports::Start (bool enableNTCP, bool enableSSU, bool enableNTCP2)
 	{
 		if (!m_Service)
 		{
@@ -197,18 +198,32 @@ namespace transport
 		for (const auto& address : addresses)
 		{
 			if (!address) continue;
-			if (m_NTCPServer == nullptr && enableNTCP)
+			if (m_NTCPServer == nullptr && enableNTCP && address->transportStyle == RouterInfo::eTransportNTCP)
 			{
 				m_NTCPServer = new NTCPServer (threads);
 				m_NTCPServer->SetSessionLimits(softLimit, hardLimit);
 				m_NTCPServer->Start ();
 				if (!(m_NTCPServer->IsBoundV6() || m_NTCPServer->IsBoundV4())) {
 					/** failed to bind to NTCP */
-					LogPrint(eLogError, "Transports: failed to bind to TCP");
+					LogPrint(eLogError, "Transports: failed to bind to TCP for NTCP");
 					m_NTCPServer->Stop();
 					delete m_NTCPServer;
 					m_NTCPServer = nullptr;
 				}
+				continue;
+			}
+			if (m_NTCP2Server == nullptr && enableNTCP2 && address->transportStyle == RouterInfo::eTransportNTCP2)
+			{
+				m_NTCP2Server = new NTCP2Server ();
+				m_NTCP2Server->Start ();
+				if(!m_NTCP2Server->IsBound())
+				{
+					LogPrint(eLogError, "Transports: failed to bind to TCP for NTCP2");
+					m_NTCP2Server->Stop ();
+					delete m_NTCP2Server;
+					m_NTCP2Server = nullptr;
+				}
+				continue;
 			}
 
 			if (address->transportStyle == RouterInfo::eTransportSSU)
@@ -391,9 +406,11 @@ namespace transport
 				peer.numAttempts++;
 				auto addressV2 = peer.router->GetNTCP2Address (!context.SupportsV6 ());
 				// try ntcp 2 if it's there first
-				if(addressV2)
+				if(addressV2 && m_NTCP2Server)
 				{
-					
+					auto conn = std::make_shared<NTCP2Session>(*m_NTCP2Server, peer.router, addressV2);
+					m_NTCP2Server->Connect<RouterInfo::Address>(addressV2, conn);
+					return true;
 				}
 				auto address = peer.router->GetNTCPAddress (!context.SupportsV6 ());
 				if (address && m_NTCPServer)

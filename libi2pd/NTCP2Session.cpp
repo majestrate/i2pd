@@ -1,9 +1,10 @@
 #include "NTCP2Session.h"
 #include "Curve25519.h"
 #include "RouterContext.h"
+#include "EdDSA.h"
 #include "ChaCha20.h"
 #include "Poly1305.h"
-#include <openssl/aes.h>
+#include "Transports.h"
 #include <cassert>
 
 namespace i2p
@@ -24,6 +25,12 @@ namespace i2p
 
     size_t NTCP2Session::GenerateSessionRequest(const std::string & protocolName)
     {
+      // remote set static key
+      m_RemoteStaticKey = m_RemoteAddr->ntcp2->pubkey;
+      if(!i2p::crypto::GetEd25519()->IsECPoint(m_RemoteStaticKey, m_BNCTX))
+      {
+        return 0;
+      }
       // zero nonce
       m_Nonce.Zero();
       // space for 3 sha256 digests;
@@ -36,12 +43,7 @@ namespace i2p
       Hash(temp, 32, temp+32);
       // MixHash(null e)
       Hash(temp + 32, 32, temp);
-     
-      // remote set static key
-      m_RemoteStaticKey = m_RemoteAddr->ntcp2->pubkey;
-      
       // MixHash(rs)
-      // TODO: verify EC point
       memcpy(temp+32, m_RemoteStaticKey, 32);
       Hash(temp, 64, temp + 64);
       // MixHash(null re)
@@ -107,7 +109,17 @@ namespace i2p
 
     void NTCP2Session::Terminate()
     {
-
+      if(!m_IsTerminated)
+      {
+        m_IsTerminated = true;
+        m_IsEstablished = false;
+        m_Socket.close ();
+        transports.PeerDisconnected (shared_from_this ());
+        m_Server.RemoveSession (shared_from_this ());
+        m_SendQueue.clear ();
+        m_NextMessage = nullptr;
+        LogPrint(eLogDebug, "NTCP2Session: Terminated");
+      }
     }
 
     void NTCP2Session::ClientLogin()
@@ -118,9 +130,17 @@ namespace i2p
     void NTCP2Session::SendSessionRequest()
     {
       auto len = GenerateSessionRequest("Noise_XKaesobfse_25519_ChaChaPoly_SHA256");
-      LogPrint(eLogDebug, "NTCP2Session: send Session Request ",len, " bytes");
-      boost::asio::async_write(m_Socket, boost::asio::buffer(m_HandshakeSendBuffer, len), 
-        boost::asio::transfer_all(), std::bind(&NTCP2Session::HandleSessionRequestSent, shared_from_this(), std::placeholders::_1, std::placeholders::_2));
+      if(len)
+      {
+        LogPrint(eLogDebug, "NTCP2Session: send Session Request ",len, " bytes");
+        boost::asio::async_write(m_Socket, boost::asio::buffer(m_HandshakeSendBuffer, len), 
+          boost::asio::transfer_all(), std::bind(&NTCP2Session::HandleSessionRequestSent, shared_from_this(), std::placeholders::_1, std::placeholders::_2));
+      }
+      else
+      {
+        LogPrint(eLogError, "NTCP2Session: could not build SessionRequest");
+        Terminate();
+      }
     }
 
     void NTCP2Session::EncryptFrame(uint8_t * buf, size_t sz, uint32_t * hmac)

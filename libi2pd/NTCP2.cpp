@@ -82,6 +82,11 @@ namespace i2p
       Stop();
     }
 
+    bool NTCP2Server::IsBound() const
+    {
+      return m_IsRunning && (m_V4Acceptor != nullptr || m_V6Acceptor != nullptr);
+    }
+
     void NTCP2Server::Start()
     {
       if(m_IsRunning)
@@ -208,7 +213,7 @@ namespace i2p
         m_Sessions.erase(session->GetRemoteIdentity()->GetIdentHash ());
     }
 
-    NTCP2Server::Session_ptr NTCP2Server::FindSession(const Ident & ident)
+    NTCP2Server::Session_ptr NTCP2Server::FindSession(const Ident & ident) const
     {
       auto it = m_Sessions.find(ident);
       if (it != m_Sessions.end ())

@@ -102,6 +102,8 @@ namespace data
 
 			void ClearRouterInfos () { m_RouterInfos.clear (); };
 
+			void ReseedFromFloodfill(const RouterInfo & ri, int numRouters=40, int numFloodfills=20);
+
 		private:
 
 			void Load ();
@@ -113,8 +115,7 @@ namespace data
 			void ManageLeaseSets ();
 			void ManageRequests ();
 
-		void ReseedFromFloodfill(const RouterInfo & ri, int numRouters=40, int numFloodfills=20);
-
+		
     	template<typename Filter>
         std::shared_ptr<const RouterInfo> GetRandomRouter (Filter filter) const;
 

@@ -114,6 +114,10 @@ namespace crypto
 				EncodePoint (Normalize (publicKey, ctx), buf);
 			}
 
+			bool IsECPoint(const uint8_t * buf, BN_CTX * ctx) const
+			{
+				return IsOnCurve(DecodePublicKey(buf, ctx), ctx);
+			}
 
 			bool Verify (const EDDSAPoint& publicKey, const uint8_t * digest, const uint8_t * signature) const
 			{

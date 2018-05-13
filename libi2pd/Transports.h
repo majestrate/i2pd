@@ -75,9 +75,10 @@ namespace transport
 			Transports ();
 			~Transports ();
 
-			void Start (bool enableNTCP=true, bool enableSSU=true);
+			void Start (bool enableNTCP=true, bool enableSSU=true, bool enableNTCP2=true);
 			void Stop ();
 
+			bool IsBoundNTCP2() const { return m_NTCP2Server != nullptr; }
 			bool IsBoundNTCP() const { return m_NTCPServer != nullptr; }
 			bool IsBoundSSU() const { return m_SSUServer != nullptr; }
 
@@ -152,6 +153,7 @@ namespace transport
 			boost::asio::io_service::work * m_Work;
 			boost::asio::deadline_timer * m_PeerCleanupTimer, * m_PeerTestTimer;
 
+			NTCP2Server * m_NTCP2Server;
 			NTCPServer * m_NTCPServer;
 			SSUServer * m_SSUServer;
 			mutable std::mutex m_PeersMutex;
@@ -177,6 +179,7 @@ namespace transport
 		public:
 
 			// for HTTP only
+			const NTCP2Server * GetNTCP2Server () const { return m_NTCP2Server; };
 			const NTCPServer * GetNTCPServer () const { return m_NTCPServer; };
 			const SSUServer * GetSSUServer () const { return m_SSUServer; };
 			const decltype(m_Peers)& GetPeers () const { return m_Peers; };
