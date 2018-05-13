@@ -1,9 +1,9 @@
 RPI_PREFIX ?= $(HOME)/local/rpi
 
 USE_STATIC = yes
-USE_AESNI	= yes
-USE_AVX		= yes
-USE_STATIC	= no
+USE_AESNI	= no
+USE_AVX		= no
+USE_AVX2  = no
 LIBDIR = $(RPI_PREFIX)/lib
 INCFLAGS = -I$(RPI_PREFIX)/include
 
