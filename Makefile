@@ -23,7 +23,9 @@ ifeq ($(WEBSOCKETS),1)
 	NEEDED_CXXFLAGS += -DWITH_EVENTS
 endif
 
-ifneq (, $(findstring darwin, $(SYS)))
+ifeq ($(RPI_CROSS),1)
+	include Makefile.rpi-cross
+else ifneq (, $(findstring darwin, $(SYS)))
 	DAEMON_SRC += $(DAEMON_SRC_DIR)/UnixDaemon.cpp
 	ifeq ($(HOMEBREW),1)
 		include Makefile.homebrew
