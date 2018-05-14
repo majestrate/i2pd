@@ -32,12 +32,18 @@ namespace data
 	{
 	}
 
-        /** @brief tries to bootstrap into I2P network (from local files and servers, with respect of options)
-         */
-        void Reseeder::Bootstrap ()
-        {
-            std::string su3FileName; i2p::config::GetOption("reseed.file", su3FileName);
-            std::string zipFileName; i2p::config::GetOption("reseed.zipfile", zipFileName);
+/** @brief tries to bootstrap into I2P network (from local files and servers, with respect of options)
+*/
+	void Reseeder::Bootstrap ()
+	{
+		std::string su3FileName; i2p::config::GetOption("reseed.file", su3FileName);
+		std::string zipFileName; i2p::config::GetOption("reseed.zipfile", zipFileName);
+		bool enabled; i2p::config::GetOption("reseed.enabled", enabled);
+		if(!enabled)
+		{
+			LogPrint(eLogInfo, "Reseed: Disabled");
+			return;
+		}
 
             if (su3FileName.length() > 0) // bootstrap from SU3 file or URL
             {

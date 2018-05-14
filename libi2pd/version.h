@@ -13,10 +13,15 @@
 #define I2PD_VERSION MAKE_VERSION(I2PD_VERSION_MAJOR, I2PD_VERSION_MINOR, I2PD_VERSION_MICRO)
 #define VERSION I2PD_VERSION
 
+#ifdef LOKI_TESTNET
+/** 9 for loki test network becuase it's the higest signle digit number */
+#define I2PD_NET_ID 9
+#else
 #ifdef MESHNET
 #define I2PD_NET_ID 3
 #else
 #define I2PD_NET_ID 2
+#endif
 #endif
 
 #define I2P_VERSION_MAJOR 0
