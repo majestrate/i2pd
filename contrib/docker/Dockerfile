@@ -12,6 +12,10 @@ ENV REPO_URL=${REPO_URL}
 ENV I2PD_HOME="/home/i2pd"
 ENV DATA_DIR="${I2PD_HOME}/data"
 
+# make it build fast
+ARG MAKE_OPTS="-j16"
+ENV MAKE_OPTS=${MAKE_OPTS}
+
 RUN mkdir -p "$I2PD_HOME" "$DATA_DIR" \
     && adduser -S -h "$I2PD_HOME" i2pd \
     && chown -R i2pd:nobody "$I2PD_HOME"
@@ -29,7 +33,7 @@ RUN apk --no-cache --virtual build-dependendencies add make gcc g++ libtool boos
     && cd /tmp/build && git clone -b ${GIT_BRANCH} ${REPO_URL} \
     && cd i2pd \
     && if [ -n "${GIT_TAG}" ]; then git checkout tags/${GIT_TAG}; fi \
-    && make \
+    && make ${MAKE_OPTS} \
     && cp -R contrib/certificates /i2pd_certificates \
     && mkdir -p /usr/local/bin \
     && mv i2pd /usr/local/bin \

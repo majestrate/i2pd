@@ -123,6 +123,9 @@ last-dist:
 doxygen:
 	doxygen -s docs/Doxyfile
 
+docker:
+	docker build contrib/docker/
+
 .PHONY: all
 .PHONY: clean
 .PHONY: deps
