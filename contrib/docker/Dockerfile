@@ -2,11 +2,11 @@ FROM alpine:latest
 LABEL authors "Mikal Villa <mikal@sigterm.no>, Darknet Villain <supervillain@riseup.net>"
 
 # Expose git branch, tag and URL variables as arguments
-ARG GIT_BRANCH="master"
+ARG GIT_BRANCH="loki-testnet"
 ENV GIT_BRANCH=${GIT_BRANCH}
 ARG GIT_TAG=""
 ENV GIT_TAG=${GIT_TAG}
-ARG REPO_URL="https://github.com/PurpleI2P/i2pd.git"
+ARG REPO_URL="https://github.com/majestrate/i2pd.git"
 ENV REPO_URL=${REPO_URL}
 
 ENV I2PD_HOME="/home/i2pd"
