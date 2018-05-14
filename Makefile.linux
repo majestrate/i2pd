@@ -40,7 +40,12 @@ ifeq ($(USE_STATIC),yes)
 	LDLIBS += $(LIBDIR)/libboost_program_options.a
 	LDLIBS += $(LIBDIR)/libssl.a
 	LDLIBS += $(LIBDIR)/libcrypto.a
-	LDLIBS += $(LIBDIR)/libz.a
+  # docker alpine linux has libz.a in /lib/
+	ifeq ($(DOCKER),1)
+		LDLIBS += /lib/libz.a
+	else
+		LDLIBS += $(LIBDIR)/libz.a
+	endif
 	LDLIBS += -lpthread -static-libstdc++ -static-libgcc -lrt -ldl
 	USE_AESNI := no
 else

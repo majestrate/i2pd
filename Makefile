@@ -21,6 +21,8 @@ USE_UPNP	:= no
 
 LOKI_TESTNET ?= 1
 
+DOCKER ?= 0
+
 ifeq ($(LOKI_TESTNET),1)
 	NEEDED_CXXFLAGS += -DLOKI_TESTNET
 endif
