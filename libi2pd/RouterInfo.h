@@ -16,6 +16,15 @@ namespace i2p
 {
 namespace data
 {
+  /** how many i2np messages have we sent in the last hour */
+  const char ROUTER_INFO_PROPERTY_TX_HOUR[] = "netdb.i2np.tx.hour";
+  /** how many i2np messages have we tried to send but failed in last hour via ntcp */
+  const char ROUTER_INFO_PROPERTY_NTCP_DROP_HOUR[] = "netdb.ntcp.drop.hour";
+  /** how many i2np messages have we tried to send but failed in last hour via ssu */
+  const char ROUTER_INFO_PROPERTY_SSU_DROP_HOUR[] = "netdb.ssu.drop.hour";
+  /** how many i2np messages have we recieved in the last hour */
+  const char ROUTER_INFO_PROPERTY_RX_HOUR[] = "netdb.i2np.rx.hour";
+  
 	const char ROUTER_INFO_PROPERTY_LEASESETS[] = "netdb.knownLeaseSets";
 	const char ROUTER_INFO_PROPERTY_ROUTERS[] = "netdb.knownRouters";
 	const char ROUTER_INFO_PROPERTY_NETID[] = "netId";

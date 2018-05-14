@@ -564,6 +564,7 @@ namespace i2p
 
 	void HandleI2NPMessage (uint8_t * msg, size_t len)
 	{
+		
 		if (len < I2NP_HEADER_SIZE)
 		{
 			LogPrint (eLogError, "I2NP: message length ", len, " is smaller than header");
@@ -603,6 +604,7 @@ namespace i2p
 	{
 		if (msg)
 		{
+			stats.rx ++;
 			uint8_t typeID = msg->GetTypeID ();
 			LogPrint (eLogDebug, "I2NP: Handling message with type ", (int)typeID);
 			switch (typeID)
@@ -689,4 +691,6 @@ namespace i2p
 			m_TunnelGatewayMsgs.clear ();
 		}
 	}
+
+	I2NPStatsTracker stats;
 }

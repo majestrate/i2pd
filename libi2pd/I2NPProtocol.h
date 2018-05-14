@@ -246,7 +246,33 @@ namespace tunnel
 	size_t GetI2NPMessageLength (const uint8_t * msg, size_t len);
 	void HandleI2NPMessage (uint8_t * msg, size_t len);
 	void HandleI2NPMessage (std::shared_ptr<I2NPMessage> msg);
+  
+  struct I2NPStatsTracker
+  {
+    uint64_t tx = 0;
+    uint64_t ssudrop = 0;
+    uint64_t ntcpdrop = 0;
+    uint64_t rx = 0;
 
+    bool _tick = false;
+    
+    /** calculate RMS when ticking is done every 30 minutes */
+    void Tick()
+    {
+      if(_tick)
+      {
+        tx >>= 1;
+        ssudrop >>= 1;
+        ntcpdrop >>= 1;
+        rx >>= 1;
+      }
+      _tick = !_tick;
+    }
+    
+  };
+  
+  extern I2NPStatsTracker stats;
+  
 	class I2NPMessagesHandler
 	{
 		public:
@@ -256,7 +282,6 @@ namespace tunnel
 			void Flush ();
 
 		private:
-
 			std::vector<std::shared_ptr<I2NPMessage> > m_TunnelMsgs, m_TunnelGatewayMsgs;
 	};
 

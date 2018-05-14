@@ -720,10 +720,10 @@ namespace transport
 
 	void NTCPSession::HandleSent (const boost::system::error_code& ecode, std::size_t bytes_transferred, std::vector<std::shared_ptr<I2NPMessage> > msgs)
 	{
-		(void) msgs;
 		m_IsSending = false;
 		if (ecode)
 		{
+			i2p::stats.ntcpdrop += msgs.size();
 			LogPrint (eLogWarning, "NTCP: Couldn't send msgs: ", ecode.message ());
 			// we shouldn't call Terminate () here, because HandleReceive takes care
 			// TODO: 'delete this' statement in Terminate () must be eliminated later
@@ -731,6 +731,7 @@ namespace transport
 		}
 		else
 		{
+			i2p::stats.tx += msgs.size();
 			m_LastActivityTimestamp = i2p::util::GetSecondsSinceEpoch ();
 			m_NumSentBytes += bytes_transferred;
 			i2p::transport::transports.UpdateSentBytes (bytes_transferred);
@@ -767,6 +768,7 @@ namespace transport
 			else
 			{
 				LogPrint (eLogWarning, "NTCP: outgoing messages queue size exceeds ", NTCP_MAX_OUTGOING_QUEUE_SIZE);
+				i2p::stats.ntcpdrop += NTCP_MAX_OUTGOING_QUEUE_SIZE;
 				Terminate ();
 			}
 		}

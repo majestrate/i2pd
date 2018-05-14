@@ -10,6 +10,7 @@
 #include "Log.h"
 #include "Family.h"
 #include "RouterContext.h"
+#include "RouterInfo.h"
 
 namespace i2p
 {
@@ -93,6 +94,7 @@ namespace i2p
 
 	void RouterContext::UpdateRouterInfo ()
 	{
+	
 		m_RouterInfo.CreateBuffer (m_Keys);
 		m_RouterInfo.SaveToFile (i2p::fs::DataDirPath (ROUTER_INFO));
 		m_LastUpdateTime = i2p::util::GetSecondsSinceEpoch ();
@@ -377,13 +379,29 @@ namespace i2p
 
 	void RouterContext::UpdateStats ()
 	{
+		// tick stats
+		i2p::stats.Tick();
 		if (m_IsFloodfill)
 		{
 			// update routers and leasesets
 			m_RouterInfo.SetProperty (i2p::data::ROUTER_INFO_PROPERTY_LEASESETS, std::to_string(i2p::data::netdb.GetNumLeaseSets ()));
 			m_RouterInfo.SetProperty (i2p::data::ROUTER_INFO_PROPERTY_ROUTERS,   std::to_string(i2p::data::netdb.GetNumRouters ()));
+			
+#ifndef LOKI_TESTNET
 			UpdateRouterInfo ();
+			return;
+#endif
+
 		}
+#ifdef LOKI_TESTNET
+		// put stats
+		m_RouterInfo.SetProperty(i2p::data::ROUTER_INFO_PROPERTY_SSU_DROP_HOUR, std::to_string(i2p::stats.ssudrop));
+		m_RouterInfo.SetProperty(i2p::data::ROUTER_INFO_PROPERTY_NTCP_DROP_HOUR, std::to_string(i2p::stats.ntcpdrop));
+		m_RouterInfo.SetProperty(i2p::data::ROUTER_INFO_PROPERTY_TX_HOUR, std::to_string(i2p::stats.tx));
+		m_RouterInfo.SetProperty(i2p::data::ROUTER_INFO_PROPERTY_RX_HOUR, std::to_string(i2p::stats.rx));
+		// update
+		UpdateRouterInfo ();
+#endif
 	}
 
 	bool RouterContext::Load ()

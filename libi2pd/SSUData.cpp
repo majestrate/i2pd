@@ -91,6 +91,7 @@ namespace transport
 		auto it = m_SentMessages.find (msgID);
 		if (it != m_SentMessages.end ())
 		{
+			i2p::stats.tx ++;
 			m_SentMessages.erase (it);
 			if (m_SentMessages.empty ())
 				m_ResendTimer.cancel ();
@@ -460,6 +461,7 @@ namespace transport
 					{
 						LogPrint (eLogInfo, "SSU: message has not been ACKed after ", MAX_NUM_RESENDS, " attempts, deleted");
 						it = m_SentMessages.erase (it);
+						i2p::stats.ssudrop ++;
 					}
 				}
 				else
