@@ -56,11 +56,15 @@ namespace transport
 
 			TransportSession (std::shared_ptr<const i2p::data::RouterInfo> router, int terminationTimeout):
 				m_DHKeysPair (nullptr), m_NumSentBytes (0), m_NumReceivedBytes (0), m_IsOutgoing (router), m_TerminationTimeout (terminationTimeout),
-				m_LastActivityTimestamp (i2p::util::GetSecondsSinceEpoch ()),
-        m_Caps(router->GetCaps())
+				m_LastActivityTimestamp (i2p::util::GetSecondsSinceEpoch ())
 			{
 				if (router)
+				{
 					m_RemoteIdentity = router->GetRouterIdentity ();
+					m_Caps = router->GetCaps ();
+				}
+				else
+					m_Caps = 0;
 			}
 
 			virtual ~TransportSession () {};
