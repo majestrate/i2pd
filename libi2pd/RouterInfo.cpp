@@ -347,6 +347,9 @@ namespace data
 		{
 			switch (*cap)
 			{
+			  case CAPS_FLAG_I2NPEXT:
+				  m_Caps |= Caps::eI2NPExtensions;
+  				break;
 				case CAPS_FLAG_FLOODFILL:
 					m_Caps |= Caps::eFloodfill;
 				break;
@@ -404,7 +407,7 @@ namespace data
 		if (m_Caps & eHidden) caps += CAPS_FLAG_HIDDEN; // hidden
 		if (m_Caps & eReachable) caps += CAPS_FLAG_REACHABLE; // reachable
 		if (m_Caps & eUnreachable) caps += CAPS_FLAG_UNREACHABLE; // unreachable
-
+		if (m_Caps & eI2NPExtensions) caps += CAPS_FLAG_I2NPEXT; // i2np extensions
 		SetProperty ("caps", caps);
 	}
 
@@ -689,7 +692,7 @@ namespace data
 		return false;
 	}
 
-	void RouterInfo::SetCaps (uint8_t caps)
+	void RouterInfo::SetCaps (Caps_t caps)
 	{
 		m_Caps = caps;
 		UpdateCapsProperty ();

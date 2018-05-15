@@ -96,6 +96,46 @@ namespace i2p
 		return newMsg;
 	}
 
+	std::shared_ptr<I2NPMessage> CreateI2NPExtNegotiateMsg(const I2NPExtList & supported)
+	{
+		uint16_t numsupported = supported.size ();
+		uint16_t sz = numsupported * 32;
+		auto msg = NewI2NPMessage (4 + sz);
+		uint8_t * buf = msg->GetPayload ();
+		// extension id, 0 for advertisement
+		htobe16buf(buf, 0);
+		// length
+		htobe16buf(buf + 2, sz);
+		// extension header done
+		buf += 4;
+		// put supported extensions
+		for (const auto & ext : supported)
+		{
+			memcpy(buf , ext, 32);
+			buf += 32;
+		}
+		// fill header
+		msg->FillI2NPMessageHeader(eI2NPExtension);
+		return msg;
+	}
+
+	std::shared_ptr<I2NPMessage> CreateI2NPExtDataMsg(const I2NPExtInfo & extinfo, const uint8_t * data, uint16_t sz)
+	{
+		auto msg = NewI2NPMessage (4 + sz);
+		uint8_t * buf = msg->GetPayload ();
+		// extension id
+		htobe16buf(buf, extinfo.GetExtension());
+		// length
+		htobe16buf(buf + 2, sz);
+		// extension header done
+		buf += 4;
+		// put data
+	  memcpy(buf, data, sz);
+		// fill header
+		msg->FillI2NPMessageHeader(eI2NPExtension);
+		return msg;
+	}
+	
 	std::shared_ptr<I2NPMessage> CreateDeliveryStatusMsg (uint32_t msgID)
 	{
 		auto m = NewI2NPShortMessage ();
@@ -693,4 +733,14 @@ namespace i2p
 	}
 
 	I2NPStatsTracker stats;
+
+	std::string as_string(const I2NPExtList & l)
+	{
+    std::string str;
+    str += "[ ";
+    for(const auto & i : l)
+      str += i.GetName() + " ";
+    str += "]";
+    return str;
+  }
 }

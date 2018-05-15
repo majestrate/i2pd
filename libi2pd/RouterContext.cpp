@@ -83,8 +83,8 @@ namespace i2p
 			routerInfo.AddNTCPAddress (host.c_str(), port);
 		}
 
-		routerInfo.SetCaps (i2p::data::RouterInfo::eReachable |
-			i2p::data::RouterInfo::eSSUTesting | i2p::data::RouterInfo::eSSUIntroducer); // LR, BC
+		routerInfo.SetCaps (i2p::data::RouterInfo::eReachable | i2p::data::RouterInfo::eI2NPExtensions |
+			i2p::data::RouterInfo::eSSUTesting | i2p::data::RouterInfo::eSSUIntroducer); // LRi, BC
 		routerInfo.SetProperty ("netId", std::to_string (m_NetID));
 		routerInfo.SetProperty ("router.version", I2P_VERSION);
 		routerInfo.CreateBuffer (m_Keys);
@@ -469,6 +469,59 @@ namespace i2p
 	void RouterContext::HandleI2NPMessage (const uint8_t * buf, size_t len, std::shared_ptr<i2p::tunnel::InboundTunnel> from)
 	{
 		i2p::HandleI2NPMessage (CreateI2NPMessage (buf, GetI2NPMessageLength (buf, len), from));
+	}
+
+	void RouterContext::HandleExtensionMessageFrom(std::shared_ptr<I2NPMessage> msg, std::shared_ptr<const i2p::data::IdentityEx> routerFrom)
+	{
+		if(!routerFrom)
+		{
+			LogPrint(eLogError, "I2NPExt: unexpected anonymous extension message");
+			return;
+		}
+		
+		if(msg->GetPayloadLength() < 4)
+		{
+			LogPrint(eLogError, "I2NPExt: extension message too short");
+			return;
+		}
+		
+		uint8_t * buf = msg->GetPayload();
+		I2NPExtID_t id = bufbe16toh(buf);
+		uint16_t sz = bufbe16toh(buf + 2);
+		buf += 4;
+		if(id == 0) // advertisement
+		{
+			I2NPExtList supported;
+			if(sz % 32)
+			{
+				LogPrint(eLogError, "I2NPExt: invalid size of extension advertisement, ", (int) sz, " bytes");
+				return ;
+			}
+			while(sz)
+			{
+				supported.emplace(buf);
+				buf += 32;
+				sz -= 32;
+			}
+			auto ident = routerFrom->GetIdentHash ();
+			{
+				std::unique_lock<std::mutex> lock(m_RemoteExtensionsMutex);
+				m_RemoteExtensions[ident] = supported;
+			}
+			LogPrint(eLogDebug, "I2NPExt: router ", ident.ToBase64(), " extensions updated, supports ", as_string(supported));
+		}
+		else
+		{
+			// extension data
+		}
+	}
+
+	void RouterContext::ClearExtensionFrom(const i2p::data::IdentHash & router)
+	{
+		std::unique_lock<std::mutex> lock(m_RemoteExtensionsMutex);
+		auto itr = m_RemoteExtensions.find(router);
+		if(itr != m_RemoteExtensions.end())
+			m_RemoteExtensions.erase(itr);
 	}
 
 	void RouterContext::ProcessGarlicMessage (std::shared_ptr<I2NPMessage> msg)

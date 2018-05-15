@@ -10,6 +10,7 @@
 #include "Identity.h"
 #include "RouterInfo.h"
 #include "LeaseSet.h"
+#include "I2NPExt.h"
 
 namespace i2p
 {
@@ -69,7 +70,7 @@ namespace i2p
 	const size_t BUILD_RESPONSE_RECORD_PADDING_OFFSET = 32;
 	const size_t BUILD_RESPONSE_RECORD_PADDING_SIZE = 495;
 	const size_t BUILD_RESPONSE_RECORD_RET_OFFSET = BUILD_RESPONSE_RECORD_PADDING_OFFSET + BUILD_RESPONSE_RECORD_PADDING_SIZE;
-
+  
 	enum I2NPMessageType
 	{
 		eI2NPDatabaseStore = 1,
@@ -83,7 +84,9 @@ namespace i2p
 		eI2NPTunnelBuild = 21,
 		eI2NPTunnelBuildReply = 22,
 		eI2NPVariableTunnelBuild = 23,
-		eI2NPVariableTunnelBuildReply = 24
+		eI2NPVariableTunnelBuildReply = 24,
+    /* the trailing messages requires I2NPExtension cap in router info */
+    eI2NPExtension = 225
 	};
 
 	const int NUM_TUNNEL_BUILD_RECORDS = 8;
@@ -216,6 +219,10 @@ namespace tunnel
 	std::shared_ptr<I2NPMessage> CreateI2NPMessage (const uint8_t * buf, size_t len, std::shared_ptr<i2p::tunnel::InboundTunnel> from = nullptr);
 	std::shared_ptr<I2NPMessage> CopyI2NPMessage (std::shared_ptr<I2NPMessage> msg);
 
+  std::shared_ptr<I2NPMessage> CreateI2NPExtDataMsg (const I2NPExtInfo & extinfo, const uint8_t * data, uint16_t sz);
+
+  std::shared_ptr<I2NPMessage> CreateI2NPExtNegotiateMsg (const I2NPExtList & supported);
+  
 	std::shared_ptr<I2NPMessage> CreateDeliveryStatusMsg (uint32_t msgID);
 	std::shared_ptr<I2NPMessage> CreateRouterInfoDatabaseLookupMsg (const uint8_t * key, const uint8_t * from,
 		uint32_t replyTunnelID, bool exploratory = false, std::set<i2p::data::IdentHash> * excludedPeers = nullptr);
@@ -256,7 +263,7 @@ namespace tunnel
 
     bool _tick = false;
     
-    /** calculate RMS when ticking is done every 30 minutes */
+    /** calculate hourly RMS when ticking is done every 30 minutes */
     void Tick()
     {
       if(_tick)

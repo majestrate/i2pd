@@ -707,12 +707,19 @@ namespace transport
 					if (firstMsg && firstMsg->GetTypeID () == eI2NPDatabaseStore &&
 							i2p::data::IdentHash(firstMsg->GetPayload () + DATABASE_STORE_KEY_OFFSET) == i2p::context.GetIdentHash ())
 						sendDatabaseStore = false; // we have it in the list already
+
 				}
 				if (sendDatabaseStore)
 					session->SendI2NPMessages ({ CreateDatabaseStoreMsg () });
 				else
 					session->SetTerminationTimeout (10); // most likely it's publishing, no follow-up messages expected, set timeout to 10 seconds
+
 				it->second.sessions.push_back (session);
+				
+				// send i2np extenions negotiation message
+				if (session->SupportsI2NPExtensions())
+					session->SendI2NPMessages ({ CreateI2NPExtNegotiateMsg ( i2p::context.SupportedI2NPExt()) } );
+				
 				session->SendI2NPMessages (it->second.delayedMessages);
 				it->second.delayedMessages.clear ();
 			}
@@ -728,6 +735,10 @@ namespace transport
 				EmitEvent({{"type" , "transport.connected"}, {"ident", ident.ToBase64()}, {"inbound", "true"}});
 #endif
 				session->SendI2NPMessages ({ CreateDatabaseStoreMsg () }); // send DatabaseStore
+				// send i2np extension negotiation
+				if(session->SupportsI2NPExtensions())
+					session->SendI2NPMessages({ CreateI2NPExtNegotiateMsg ( i2p::context.SupportedI2NPExt()) } );
+				
 				std::unique_lock<std::mutex>	l(m_PeersMutex);
 				m_Peers.insert (std::make_pair (ident, Peer{ 0, nullptr, { session }, i2p::util::GetSecondsSinceEpoch (), {} }));
 			}
@@ -741,6 +752,7 @@ namespace transport
 			auto remoteIdentity = session->GetRemoteIdentity ();
 			if (!remoteIdentity) return;
 			auto ident = remoteIdentity->GetIdentHash ();
+			i2p::context.ClearExtensionFrom(ident);
 #ifdef WITH_EVENTS
 			EmitEvent({{"type" , "transport.disconnected"}, {"ident", ident.ToBase64()}});
 #endif

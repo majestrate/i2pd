@@ -245,7 +245,10 @@ namespace transport
 #ifdef WITH_EVENTS
 							QueueIntEvent("transport.recvmsg", m_Session.GetIdentHashBase64(), 1);
 #endif
-							m_Handler.PutNextMessage (msg);
+							if(msg->GetTypeID() == eI2NPExtension)
+								i2p::context.HandleExtensionMessageFrom(msg, m_Session.GetRemoteIdentity());
+							else
+								m_Handler.PutNextMessage (msg);
 						}
 						else
 							LogPrint (eLogDebug, "SSU: message expired");

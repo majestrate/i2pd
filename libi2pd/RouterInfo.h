@@ -31,6 +31,7 @@ namespace data
 	const char ROUTER_INFO_PROPERTY_FAMILY[] = "family";
 	const char ROUTER_INFO_PROPERTY_FAMILY_SIG[] = "family.sig";
 
+	const char CAPS_FLAG_I2NPEXT = 'i';
 	const char CAPS_FLAG_FLOODFILL = 'f';
 	const char CAPS_FLAG_HIDDEN = 'H';
 	const char CAPS_FLAG_REACHABLE = 'R';
@@ -62,16 +63,19 @@ namespace data
 
 			enum Caps
 			{
-				eFloodfill = 0x01,
-				eHighBandwidth = 0x02,
-				eExtraBandwidth = 0x04,
-				eReachable = 0x08,
-				eSSUTesting = 0x10,
-				eSSUIntroducer = 0x20,
-				eHidden = 0x40,
-				eUnreachable = 0x80
+				eFloodfill = 0x0001,
+				eHighBandwidth = 0x0002,
+				eExtraBandwidth = 0x0004,
+				eReachable = 0x0008,
+				eSSUTesting = 0x0010,
+				eSSUIntroducer = 0x0020,
+				eHidden = 0x0040,
+				eUnreachable = 0x0080,
+				eI2NPExtensions = 0x0100
 			};
 
+			typedef uint16_t Caps_t;
+    
 			enum TransportStyle
 			{
 				eTransportUnknown = 0,
@@ -150,6 +154,7 @@ namespace data
 			std::string GetProperty (const std::string& key) const; // called from RouterContext only
 			void ClearProperties () { m_Properties.clear (); };
 			bool IsFloodfill () const { return m_Caps & Caps::eFloodfill; };
+			bool SupportsI2NPExtensions () const { return m_Caps & Caps::eI2NPExtensions; };
 			bool IsReachable () const { return m_Caps & Caps::eReachable; };
 			bool IsNTCP (bool v4only = true) const;
 			bool IsSSU (bool v4only = true) const;
@@ -167,8 +172,8 @@ namespace data
 			bool IsHighBandwidth () const { return m_Caps & RouterInfo::eHighBandwidth; };
 			bool IsExtraBandwidth () const { return m_Caps & RouterInfo::eExtraBandwidth; };
 
-			uint8_t GetCaps () const { return m_Caps; };
-			void SetCaps (uint8_t caps);
+			Caps_t GetCaps () const { return m_Caps; };
+			void SetCaps (Caps_t caps);
 			void SetCaps (const char * caps);
 
 			void SetUnreachable (bool unreachable) { m_IsUnreachable = unreachable; };
@@ -222,7 +227,8 @@ namespace data
 			boost::shared_ptr<Addresses> m_Addresses; // TODO: use std::shared_ptr and std::atomic_store for gcc >= 4.9
 			std::map<std::string, std::string> m_Properties;
 			bool m_IsUpdated, m_IsUnreachable;
-			uint8_t m_SupportedTransports, m_Caps;
+			uint8_t m_SupportedTransports;
+			Caps_t m_Caps;
 			mutable std::shared_ptr<RouterProfile> m_Profile;
 	};
 }

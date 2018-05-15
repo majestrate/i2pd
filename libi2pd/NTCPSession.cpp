@@ -652,7 +652,10 @@ namespace transport
 #ifdef WITH_EVENTS
 					QueueIntEvent("transport.recvmsg", GetIdentHashBase64(), 1);
 #endif
-					m_Handler.PutNextMessage (m_NextMessage);
+					if(m_NextMessage->GetTypeID() == eI2NPExtension)
+						i2p::context.HandleExtensionMessageFrom(m_NextMessage, GetRemoteIdentity());
+					else
+						m_Handler.PutNextMessage (m_NextMessage);
 				}
 				else
 					LogPrint (eLogInfo, "NTCP: message expired");

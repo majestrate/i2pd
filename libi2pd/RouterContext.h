@@ -9,6 +9,7 @@
 #include "Identity.h"
 #include "RouterInfo.h"
 #include "Garlic.h"
+#include "I2NPExt.h"
 
 namespace i2p
 {
@@ -103,6 +104,14 @@ namespace i2p
 			void ProcessGarlicMessage (std::shared_ptr<I2NPMessage> msg);
 			void ProcessDeliveryStatusMessage (std::shared_ptr<I2NPMessage> msg);
 
+    void HandleExtensionMessageFrom(std::shared_ptr<I2NPMessage> msg, std::shared_ptr<const i2p::data::IdentityEx> fromRouter);
+
+    void ClearExtensionFrom(const i2p::data::IdentHash & ident);
+    
+      void AddI2NPExt(I2NPExtInfo ext);
+    
+      const I2NPExtList & SupportedI2NPExt() const { return m_OurExtensions; };
+    
 		private:
 
 			void CreateNewRouter ();
@@ -125,6 +134,9 @@ namespace i2p
 			RouterError m_Error;
 			int m_NetID;
 			std::mutex m_GarlicMutex;
+      I2NPExtList m_OurExtensions;
+      std::mutex m_RemoteExtensionsMutex;
+      std::map<i2p::data::IdentHash, I2NPExtList> m_RemoteExtensions;
 	};
 
 	extern RouterContext context;
