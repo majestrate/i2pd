@@ -100,14 +100,11 @@ namespace i2p
 	{
 		uint16_t numsupported = supported.size ();
 		uint16_t sz = numsupported * 32;
-		auto msg = NewI2NPMessage (4 + sz);
+		auto msg = NewI2NPMessage (2 + sz);
 		uint8_t * buf = msg->GetPayload ();
 		// extension id, 0 for advertisement
 		htobe16buf(buf, 0);
-		// length
-		htobe16buf(buf + 2, sz);
-		// extension header done
-		buf += 4;
+		buf += 2;
 		// put supported extensions
 		for (const auto & ext : supported)
 		{
@@ -121,14 +118,11 @@ namespace i2p
 
 	std::shared_ptr<I2NPMessage> CreateI2NPExtDataMsg(const I2NPExtInfo & extinfo, const uint8_t * data, uint16_t sz)
 	{
-		auto msg = NewI2NPMessage (4 + sz);
+		auto msg = NewI2NPMessage (2 + sz);
 		uint8_t * buf = msg->GetPayload ();
 		// extension id
 		htobe16buf(buf, extinfo.GetExtension());
-		// length
-		htobe16buf(buf + 2, sz);
-		// extension header done
-		buf += 4;
+		buf += 2;
 		// put data
 	  memcpy(buf, data, sz);
 		// fill header
