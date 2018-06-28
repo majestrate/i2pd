@@ -4,7 +4,7 @@ USE_STATIC = yes
 USE_AESNI	= no
 USE_AVX		= no
 USE_AVX2  = no
-LIBDIR := $(RPI_PREFIX)/lib
+LIBDIR ?= $(RPI_PREFIX)/lib
 INCFLAGS = -I$(RPI_PREFIX)/include
 
 include Makefile.linux

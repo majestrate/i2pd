@@ -75,11 +75,11 @@ namespace crypto
 
 			Block & operator ~ ()
 			{
-				static const Block minusp = {
+				static const Block minusp = {{
 					0x05,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
 					0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
 					0xfc
-				};
+					}};
 				Block orig;
 				unsigned char neg;
 				unsigned int i;
@@ -134,7 +134,7 @@ namespace crypto
 	struct Poly1305
 	{
 
-		Poly1305(const uint8_t * key) : m_Leftover(0), m_H{0}, m_Final(0)
+		Poly1305(const uint8_t * key) : m_Leftover(0), m_Final(0)
 		{
 			m_R.PutKey(key);
 			m_Pad.Put(key + 16);
@@ -226,7 +226,7 @@ namespace crypto
 
 		size_t m_Leftover;
 		poly1305::Buffer m_Buffer;
-		poly1305::Block m_H;
+		poly1305::Block m_H = {{0}};
 		poly1305::Block m_R;
 		poly1305::Block m_Pad;
 		poly1305::Block m_Msg;
