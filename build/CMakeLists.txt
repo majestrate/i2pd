@@ -77,6 +77,10 @@ set (LIBI2PD_SRC
   "${LIBI2PD_SRC_DIR}/api.cpp"
   "${LIBI2PD_SRC_DIR}/Event.cpp"
   "${LIBI2PD_SRC_DIR}/Gost.cpp"
+  "${LIBI2PD_SRC_DIR}/ChaCha20.cpp"	
+  "${LIBI2PD_SRC_DIR}/Poly1305.cpp"
+  "${LIBI2PD_SRC_DIR}/Ed25519.cpp"
+  "${LIBI2PD_SRC_DIR}/NTCP2.cpp"		
 )
 
 if (WITH_WEBSOCKETS)
