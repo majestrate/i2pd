@@ -5,6 +5,7 @@
 
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include "Base.h"
 #include "FS.h"
@@ -90,6 +91,8 @@ namespace http {
 	const char HTTP_COMMAND_LOGLEVEL[] = "set_loglevel";
 	const char HTTP_PARAM_SAM_SESSION_ID[] = "id";
 	const char HTTP_PARAM_ADDRESS[] = "address";
+
+	static std::string ConvertTime (uint64_t time);
 
 	static void ShowUptime (std::stringstream& s, int seconds)
 	{
@@ -259,17 +262,26 @@ namespace http {
 			s << "<b>Our external address:</b>" << "<br>\r\n" ;
 			for (const auto& address : i2p::context.GetRouterInfo().GetAddresses())
 			{
+				if (address->IsNTCP2 () && !address->IsPublishedNTCP2 ())
+				{
+					s << "NTCP2";
+					if (address->host.is_v6 ()) s << "v6";
+					s << "&nbsp;&nbsp; supported <br>\r\n";
+					continue;
+				}
 				switch (address->transportStyle)
 				{
 					case i2p::data::RouterInfo::eTransportNTCP:
-						if (address->host.is_v6 ())
-							s << "NTCP6&nbsp;&nbsp;";
-						else
-							s << "NTCP&nbsp;&nbsp;";
-					break;
+					{
+						s << "NTCP";
+						if (address->IsPublishedNTCP2 ()) s << "2";
+						if (address->host.is_v6 ()) s << "v6";
+						s << "&nbsp;&nbsp;";
+						break;
+					}
 					case i2p::data::RouterInfo::eTransportSSU:
 						if (address->host.is_v6 ())
-							s << "SSU6&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
+							s << "SSUv6&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
 						else
 							s << "SSU&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
 					break;
@@ -454,14 +466,14 @@ namespace http {
 					s << "<div class='invalid'>!! Invalid !! </div>\r\n";
 				s << "<div class='slide'><label for='slide" << counter << "'>" << dest.ToBase32() << "</label>\r\n";
 				s << "<input type='checkbox' id='slide" << (counter++) << "'/>\r\n<p class='content'>\r\n";
-				s << "<b>Expires:</b> " << ls.GetExpirationTime() << "<br>\r\n";
+				s << "<b>Expires:</b> " << ConvertTime(ls.GetExpirationTime()) << "<br>\r\n";
 				auto leases = ls.GetNonExpiredLeases();
 				s << "<b>Non Expired Leases: " << leases.size() << "</b><br>\r\n";
 				for ( auto & l : leases )
 				{
 					s << "<b>Gateway:</b> " << l->tunnelGateway.ToBase64() << "<br>\r\n";
 					s << "<b>TunnelID:</b> " << l->tunnelID << "<br>\r\n";
-					s << "<b>EndDate:</b> " << l->endDate << "<br>\r\n";
+					s << "<b>EndDate:</b> " << ConvertTime(l->endDate) << "<br>\r\n";
 				}
 				s << "</p>\r\n</div>\r\n</div>\r\n";
 			}
@@ -540,6 +552,46 @@ namespace http {
 		}
 	}
 
+	template<typename Sessions>
+	static void ShowNTCPTransports (std::stringstream& s, const Sessions& sessions, const std::string name)
+	{
+		std::stringstream tmp_s, tmp_s6; uint16_t cnt = 0, cnt6 = 0;
+		for (const auto& it: sessions )
+		{
+			if (it.second && it.second->IsEstablished () && !it.second->GetSocket ().remote_endpoint ().address ().is_v6 ())
+			{
+				// incoming connection doesn't have remote RI
+				if (it.second->IsOutgoing ()) tmp_s << " &#8658; ";
+				tmp_s << i2p::data::GetIdentHashAbbreviation (it.second->GetRemoteIdentity ()->GetIdentHash ()) << ": "
+					<< it.second->GetSocket ().remote_endpoint().address ().to_string ();
+				if (!it.second->IsOutgoing ()) tmp_s << " &#8658; ";
+				tmp_s << " [" << it.second->GetNumSentBytes () << ":" << it.second->GetNumReceivedBytes () << "]";
+				tmp_s << "<br>\r\n" << std::endl;
+				cnt++;
+			}
+			if (it.second && it.second->IsEstablished () && it.second->GetSocket ().remote_endpoint ().address ().is_v6 ())
+			{
+				if (it.second->IsOutgoing ()) tmp_s6 << " &#8658; ";
+				tmp_s6 << i2p::data::GetIdentHashAbbreviation (it.second->GetRemoteIdentity ()->GetIdentHash ()) << ": "
+					<< "[" << it.second->GetSocket ().remote_endpoint().address ().to_string () << "]";
+				if (!it.second->IsOutgoing ()) tmp_s6 << " &#8658; ";
+				tmp_s6 << " [" << it.second->GetNumSentBytes () << ":" << it.second->GetNumReceivedBytes () << "]";
+				tmp_s6 << "<br>\r\n" << std::endl;
+				cnt6++;
+			}
+		}
+		if (!tmp_s.str ().empty ())
+		{
+			s << "<div class='slide'><label for='slide_" << boost::algorithm::to_lower_copy(name) << "'><b>" << name << "</b> ( " << cnt << " )</label>\r\n<input type='checkbox' id='slide_" << boost::algorithm::to_lower_copy(name) << "'/>\r\n<p class='content'>";
+			s << tmp_s.str () << "</p>\r\n</div>\r\n";
+		}
+		if (!tmp_s6.str ().empty ())
+		{
+			s << "<div class='slide'><label for='slide_" << boost::algorithm::to_lower_copy(name) << "v6'><b>" << name << "v6</b> ( " << cnt6 << " )</label>\r\n<input type='checkbox' id='slide_" << boost::algorithm::to_lower_copy(name) << "v6'/>\r\n<p class='content'>";
+			s << tmp_s6.str () << "</p>\r\n</div>\r\n";
+		}
+	}
+
 	void ShowTransports (std::stringstream& s)
 	{
 		s << "<b>Transports:</b><br>\r\n<br>\r\n";
@@ -548,43 +600,14 @@ namespace http {
 		{
 			auto sessions = ntcpServer->GetNTCPSessions ();
 			if (!sessions.empty ())
-			{
-				std::stringstream tmp_s, tmp_s6; uint16_t cnt = 0, cnt6 = 0;
-				for (const auto& it: sessions )
-				{
-					if (it.second && it.second->IsEstablished () && !it.second->GetSocket ().remote_endpoint ().address ().is_v6 ())
-					{
-						// incoming connection doesn't have remote RI
-						if (it.second->IsOutgoing ()) tmp_s << " &#8658; ";
-						tmp_s << i2p::data::GetIdentHashAbbreviation (it.second->GetRemoteIdentity ()->GetIdentHash ()) << ": "
-							<< it.second->GetSocket ().remote_endpoint().address ().to_string ();
-						if (!it.second->IsOutgoing ()) tmp_s << " &#8658; ";
-						tmp_s << " [" << it.second->GetNumSentBytes () << ":" << it.second->GetNumReceivedBytes () << "]";
-						tmp_s << "<br>\r\n" << std::endl;
-						cnt++;
-					}
-					if (it.second && it.second->IsEstablished () && it.second->GetSocket ().remote_endpoint ().address ().is_v6 ())
-					{
-						if (it.second->IsOutgoing ()) tmp_s6 << " &#8658; ";
-						tmp_s6 << i2p::data::GetIdentHashAbbreviation (it.second->GetRemoteIdentity ()->GetIdentHash ()) << ": "
-							<< "[" << it.second->GetSocket ().remote_endpoint().address ().to_string () << "]";
-						if (!it.second->IsOutgoing ()) tmp_s6 << " &#8658; ";
-						tmp_s6 << " [" << it.second->GetNumSentBytes () << ":" << it.second->GetNumReceivedBytes () << "]";
-						tmp_s6 << "<br>\r\n" << std::endl;
-						cnt6++;
-					}
-				}
-				if (!tmp_s.str ().empty ())
-				{
-					s << "<div class='slide'><label for='slide_ntcp'><b>NTCP</b> ( " << cnt << " )</label>\r\n<input type='checkbox' id='slide_ntcp'/>\r\n<p class='content'>";
-					s << tmp_s.str () << "</p>\r\n</div>\r\n";
-				}
-				if (!tmp_s6.str ().empty ())
-				{
-					s << "<div class='slide'><label for='slide_ntcp6'><b>NTCP6</b> ( " << cnt6 << " )</label>\r\n<input type='checkbox' id='slide_ntcp6'/>\r\n<p class='content'>";
-					s << tmp_s6.str () << "</p>\r\n</div>\r\n";
-				}
-			}
+				ShowNTCPTransports (s, sessions, "NTCP");
+		}
+		auto ntcp2Server = i2p::transport::transports.GetNTCP2Server ();
+		if (ntcp2Server)
+		{
+			auto sessions = ntcp2Server->GetNTCP2Sessions ();
+			if (!sessions.empty ())
+				ShowNTCPTransports (s, sessions, "NTCP2");
 		}
 		auto ssuServer = i2p::transport::transports.GetSSUServer ();
 		if (ssuServer)
@@ -609,7 +632,7 @@ namespace http {
 			auto sessions6 = ssuServer->GetSessionsV6 ();
 			if (!sessions6.empty ())
 			{
-				s << "<div class='slide'><label for='slide_ssu6'><b>SSU6</b> ( " << (int) sessions6.size() << " )</label>\r\n<input type='checkbox' id='slide_ssu6'/>\r\n<p class='content'>";
+				s << "<div class='slide'><label for='slide_ssuv6'><b>SSUv6</b> ( " << (int) sessions6.size() << " )</label>\r\n<input type='checkbox' id='slide_ssuv6'/>\r\n<p class='content'>";
 				for (const auto& it: sessions6)
 				{
 					auto endpoint = it.second->GetRemoteEndpoint ();
@@ -744,6 +767,16 @@ namespace http {
 		}
 	}
 
+	std::string ConvertTime (uint64_t time)
+	{
+		ldiv_t divTime = ldiv(time,1000);
+		time_t t = divTime.quot;
+		struct tm *tm = localtime(&t);
+		char date[128];
+		snprintf(date, sizeof(date), "%02d/%02d/%d %02d:%02d:%02d.%03ld", tm->tm_mday, tm->tm_mon + 1, tm->tm_year + 1900, tm->tm_hour, tm->tm_min, tm->tm_sec, divTime.rem);
+		return date;
+	}
+
 	HTTPConnection::HTTPConnection (std::string hostname, std::shared_ptr<boost::asio::ip::tcp::socket> socket):
 		m_Socket (socket), m_Timer (socket->get_io_service ()), m_BufferLen (0),
 		expected_host(hostname)
@@ -862,7 +895,7 @@ namespace http {
 			{
 				/* deny request as it's from a non whitelisted hostname */
 				res.code = 403;
-				content = "host missmatch";
+				content = "host mismatch";
 				SendReply(res, content);
 				return;
 			}

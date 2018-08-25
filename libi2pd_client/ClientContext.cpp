@@ -362,8 +362,6 @@ namespace client
 	{
 		m_SharedLocalDestination = CreateNewLocalDestination (); // non-public, DSA
 		m_SharedLocalDestination->Acquire ();
-		m_Destinations[m_SharedLocalDestination->GetIdentity ()->GetIdentHash ()] = m_SharedLocalDestination;
-		m_SharedLocalDestination->Start ();
 	}
 
 	std::shared_ptr<ClientDestination> ClientContext::FindLocalDestination (const i2p::data::IdentHash& destination) const
@@ -502,7 +500,8 @@ namespace client
 						if (type == I2P_TUNNELS_SECTION_TYPE_SOCKS)
 						{
 							// socks proxy
-							auto tun = std::make_shared<i2p::proxy::SOCKSProxy>(name, address, port, false, "", destinationPort, localDestination);
+							std::string outproxy = section.second.get("outproxy", "");
+							auto tun = std::make_shared<i2p::proxy::SOCKSProxy>(name, address, port, !outproxy.empty(), outproxy, destinationPort, localDestination);
 							clientTunnel = tun;
 							clientEndpoint = tun->GetLocalEndpoint ();
 						}
