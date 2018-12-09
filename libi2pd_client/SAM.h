@@ -75,6 +75,25 @@ namespace client
 		eSAMSocketTypeTerminated
 	};
 
+	/** subtype of ClientDestintion for SAM */
+	class SAMDestination : public ClientDestination
+	{
+	public:
+		SAMDestination(ioservice_ptr service, const i2p::data::PrivateKeys& keys, bool isPublic, const std::map<std::string, std::string> * params) :
+			ClientDestination(service, keys, isPublic, params)
+		{}
+
+		/** we don't spawn a new thread for running the io service */
+		std::thread * SpawnThread() override
+		{
+			return nullptr;
+		}
+
+		void StopService() override
+		{
+		}
+	};
+	
 	class SAMBridge;
 	struct SAMSession;
 	class SAMSocket: public std::enable_shared_from_this<SAMSocket>
@@ -151,11 +170,11 @@ namespace client
 	struct SAMSession
 	{
 		SAMBridge & m_Bridge;
-		std::shared_ptr<ClientDestination> localDestination;
+		std::shared_ptr<SAMDestination> localDestination;
 		std::shared_ptr<boost::asio::ip::udp::endpoint> UDPEndpoint;
 		std::string Name;
 
-		SAMSession (SAMBridge & parent, const std::string & name, std::shared_ptr<ClientDestination> dest);
+		SAMSession (SAMBridge & parent, const std::string & name, std::shared_ptr<SAMDestination> dest);
 		~SAMSession ();
 
 		void CloseStreams ();
@@ -166,12 +185,13 @@ namespace client
 		public:
 
 			SAMBridge (const std::string& address, int port);
+		  SAMBridge (std::shared_ptr<boost::asio::io_service> service, const std::string& address, int port);
 			~SAMBridge ();
 
 			void Start ();
 			void Stop ();
 
-			boost::asio::io_service& GetService () { return m_Service; };
+		boost::asio::io_service& GetService () { return *m_Service.get(); };
 			std::shared_ptr<SAMSession> CreateSession (const std::string& id, const std::string& destination, // empty string	 means transient
 				const std::map<std::string, std::string> * params);
 			void CloseSession (const std::string& id);
@@ -198,7 +218,7 @@ namespace client
 
 			bool m_IsRunning;
 			std::thread * m_Thread;
-			boost::asio::io_service m_Service;
+	  	std::shared_ptr<boost::asio::io_service> m_Service;
 			boost::asio::ip::tcp::acceptor m_Acceptor;
 			boost::asio::ip::udp::endpoint m_DatagramEndpoint, m_SenderEndpoint;
 			boost::asio::ip::udp::socket m_DatagramSocket;

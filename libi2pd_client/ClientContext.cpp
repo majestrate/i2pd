@@ -301,17 +301,45 @@ namespace client
 	}
 
 	std::shared_ptr<ClientDestination> ClientContext::CreateNewLocalDestination (bool isPublic,
-		i2p::data::SigningKeyType sigType, i2p::data::CryptoKeyType cryptoType,
-		const std::map<std::string, std::string> * params)
+	  i2p::data::SigningKeyType sigType, i2p::data::CryptoKeyType cryptoType)
 	{
 		i2p::data::PrivateKeys keys = i2p::data::PrivateKeys::CreateRandomKeys (sigType, cryptoType);
-		auto localDestination = std::make_shared<ClientDestination> (keys, isPublic, params);
+		auto localDestination = std::make_shared<ClientDestination> (keys, isPublic);
 		std::unique_lock<std::mutex> l(m_DestinationsMutex);
 		m_Destinations[localDestination->GetIdentHash ()] = localDestination;
 		localDestination->Start ();
 		return localDestination;
 	}
 
+	std::shared_ptr<SAMDestination> ClientContext::CreateNewSAMDestination (std::shared_ptr<boost::asio::io_service> service, bool isPublic,
+		i2p::data::SigningKeyType sigType, i2p::data::CryptoKeyType cryptoType,
+		const std::map<std::string, std::string> * params)
+	{
+		i2p::data::PrivateKeys keys = i2p::data::PrivateKeys::CreateRandomKeys (sigType, cryptoType);
+		auto localDestination = std::make_shared<SAMDestination> (service, keys, isPublic, params);
+		std::unique_lock<std::mutex> l(m_DestinationsMutex);
+		m_Destinations[localDestination->GetIdentHash ()] = localDestination;
+		localDestination->Start ();
+		return localDestination;
+	}
+
+	std::shared_ptr<SAMDestination> ClientContext::CreateNewSAMDestination (std::shared_ptr<boost::asio::io_service> service, const i2p::data::PrivateKeys& keys, bool isPublic,
+		const std::map<std::string, std::string> * params)
+	{
+		auto it = m_Destinations.find (keys.GetPublic ()->GetIdentHash ());
+		if (it != m_Destinations.end ())
+		{
+			LogPrint (eLogWarning, "Clients: Local destination ", m_AddressBook.ToAddress(keys.GetPublic ()->GetIdentHash ()), " exists");
+			return nullptr;
+		}
+		auto localDestination = std::make_shared<SAMDestination> (service, keys, isPublic, params);
+		std::unique_lock<std::mutex> l(m_DestinationsMutex);
+		m_Destinations[keys.GetPublic ()->GetIdentHash ()] = localDestination;
+		localDestination->Start ();
+		return localDestination;
+	}
+
+	
 	std::shared_ptr<ClientDestination> ClientContext::CreateNewMatchedTunnelDestination(const i2p::data::PrivateKeys &keys, const std::string & name, const std::map<std::string, std::string> * params)
 	{
 		MatchedTunnelDestination * cl = new MatchedTunnelDestination(keys, name, params);

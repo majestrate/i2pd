@@ -13,10 +13,15 @@ namespace i2p
 {
 namespace client
 {
-	LeaseSetDestination::LeaseSetDestination (bool isPublic, const std::map<std::string, std::string> * params):
-		m_IsRunning (false), m_Thread (nullptr), m_IsPublic (isPublic),
-		m_PublishReplyToken (0), m_LastSubmissionTime (0), m_PublishConfirmationTimer (m_Service),
-		m_PublishVerificationTimer (m_Service), m_PublishDelayTimer (m_Service), m_CleanupTimer (m_Service)
+	LeaseSetDestination::LeaseSetDestination (bool isPublic, const std::map<std::string, std::string> * params)
+		: LeaseSetDestination(std::make_shared<boost::asio::io_service>(), isPublic, params) {}
+	
+	LeaseSetDestination::LeaseSetDestination (ioservice_ptr service, bool isPublic, const std::map<std::string, std::string> * params):
+		m_IsRunning (false), m_Thread (nullptr),
+		m_Service(service),
+		m_IsPublic (isPublic),
+		m_PublishReplyToken (0), m_LastSubmissionTime (0), m_PublishConfirmationTimer (*service.get()),
+		m_PublishVerificationTimer (*service.get()), m_PublishDelayTimer (*service.get()), m_CleanupTimer (*service.get())
 	{
 		int inLen   = DEFAULT_INBOUND_TUNNEL_LENGTH;
 		int inQty   = DEFAULT_INBOUND_TUNNELS_QUANTITY;
@@ -110,7 +115,7 @@ namespace client
 		{
 			try
 			{
-				m_Service.run ();
+				m_Service->run ();
 			}
 			catch (std::exception& ex)
 			{
@@ -132,14 +137,23 @@ namespace client
 			m_CleanupTimer.expires_from_now (boost::posix_time::minutes (DESTINATION_CLEANUP_TIMEOUT));
 			m_CleanupTimer.async_wait (std::bind (&LeaseSetDestination::HandleCleanupTimer,
 				shared_from_this (), std::placeholders::_1));
-			m_Thread = new std::thread (std::bind (&LeaseSetDestination::Run, shared_from_this ()));
-
+			m_Thread = SpawnThread();
 			return true;
 		}
 		else
 			return false;
 	}
 
+	std::thread * LeaseSetDestination::SpawnThread()
+	{
+		return new std::thread (std::bind (&LeaseSetDestination::Run, shared_from_this ()));
+	}
+
+	void LeaseSetDestination::StopService()
+	{
+		m_Service->stop();
+	}
+	
 	bool LeaseSetDestination::Stop ()
 	{
 		if (m_IsRunning)
@@ -154,7 +168,7 @@ namespace client
 				m_Pool->SetLocalDestination (nullptr);
 				i2p::tunnel::tunnels.StopTunnelPool (m_Pool);
 			}
-			m_Service.stop ();
+			StopService();
 			if (m_Thread)
 			{
 				m_Thread->join ();
@@ -282,7 +296,7 @@ namespace client
 		if (m_IsPublic)
 		{
 			auto s = shared_from_this ();
-			m_Service.post ([s](void)
+			m_Service->post ([s](void)
 			{
 				s->m_PublishVerificationTimer.cancel ();
 				s->Publish ();
@@ -306,7 +320,7 @@ namespace client
 		memcpy (data.k, key, 32);
 		memcpy (data.t, tag, 32);
 		auto s = shared_from_this ();
-		m_Service.post ([s,data](void)
+		m_Service->post ([s,data](void)
 			{
 				s->AddSessionKey (data.k, data.t);
 			});
@@ -315,12 +329,12 @@ namespace client
 
 	void LeaseSetDestination::ProcessGarlicMessage (std::shared_ptr<I2NPMessage> msg)
 	{
-		m_Service.post (std::bind (&LeaseSetDestination::HandleGarlicMessage, shared_from_this (), msg));
+		m_Service->post (std::bind (&LeaseSetDestination::HandleGarlicMessage, shared_from_this (), msg));
 	}
 
 	void LeaseSetDestination::ProcessDeliveryStatusMessage (std::shared_ptr<I2NPMessage> msg)
 	{
-		m_Service.post (std::bind (&LeaseSetDestination::HandleDeliveryStatusMessage, shared_from_this (), msg));
+		m_Service->post (std::bind (&LeaseSetDestination::HandleDeliveryStatusMessage, shared_from_this (), msg));
 	}
 
 	void LeaseSetDestination::HandleI2NPMessage (const uint8_t * buf, size_t len, std::shared_ptr<i2p::tunnel::InboundTunnel> from)
@@ -594,17 +608,17 @@ namespace client
 		if (!m_Pool || !IsReady ())
 		{
 			if (requestComplete)
-				m_Service.post ([requestComplete](void){requestComplete (nullptr);});
+				m_Service->post ([requestComplete](void){requestComplete (nullptr);});
 			return false;
 		}
-		m_Service.post (std::bind (&LeaseSetDestination::RequestLeaseSet, shared_from_this (), dest, requestComplete));
+		m_Service->post (std::bind (&LeaseSetDestination::RequestLeaseSet, shared_from_this (), dest, requestComplete));
 		return true;
 	}
 
 	void LeaseSetDestination::CancelDestinationRequest (const i2p::data::IdentHash& dest, bool notify)
 	{
 		auto s = shared_from_this ();
-		m_Service.post ([dest, notify, s](void)
+		m_Service->post ([dest, notify, s](void)
 			{
 				auto it = s->m_LeaseSetRequests.find (dest);
 				if (it != s->m_LeaseSetRequests.end ())
@@ -622,7 +636,7 @@ namespace client
 		auto floodfill = i2p::data::netdb.GetClosestFloodfill (dest, excluded);
 		if (floodfill)
 		{
-			auto request = std::make_shared<LeaseSetRequest> (m_Service);
+			auto request = std::make_shared<LeaseSetRequest> (GetService());
 			if (requestComplete)
 				request->requestComplete.push_back (requestComplete);
 			auto ts = i2p::util::GetSecondsSinceEpoch ();
@@ -764,8 +778,10 @@ namespace client
 		}
 	}
 
-	ClientDestination::ClientDestination (const i2p::data::PrivateKeys& keys, bool isPublic, const std::map<std::string, std::string> * params):
-		LeaseSetDestination (isPublic, params), m_Keys (keys), m_StreamingAckDelay (DEFAULT_INITIAL_ACK_DELAY),
+	ClientDestination::ClientDestination (const i2p::data::PrivateKeys& keys, bool isPublic, const std::map<std::string, std::string> * params) : ClientDestination(std::make_shared<boost::asio::io_service>(), keys, isPublic, params) {}
+	
+	ClientDestination::ClientDestination (ioservice_ptr service, const i2p::data::PrivateKeys& keys, bool isPublic, const std::map<std::string, std::string> * params):
+		LeaseSetDestination (service, isPublic, params), m_Keys (keys), m_StreamingAckDelay (DEFAULT_INITIAL_ACK_DELAY),
 		m_DatagramDestination (nullptr), m_RefCounter (0),
 		m_ReadyChecker(GetService())
 	{
