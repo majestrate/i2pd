@@ -1087,6 +1087,7 @@ namespace client
 		{
 			session->localDestination->Release ();
 			session->localDestination->StopAcceptingStreams ();
+			session->localDestination->Stop();
 			session->CloseStreams ();
 		}
 	}
