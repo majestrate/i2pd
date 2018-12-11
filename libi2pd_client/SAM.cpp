@@ -25,14 +25,14 @@ namespace client
 
 	SAMSocket::~SAMSocket ()
 	{
-		m_Stream = nullptr;
 	}	
 
 	void SAMSocket::Terminate (const char* reason)
 	{
 		if(m_Stream)
 		{
-			m_Stream->AsyncClose ();
+			m_Stream->Close ();
+			m_Stream->Terminate ();
 			m_Stream = nullptr;
 		}
 		auto Session = m_Owner.FindSession(m_ID);
@@ -907,15 +907,17 @@ namespace client
 	
 	SAMSession::~SAMSession ()
 	{
-		i2p::client::context.DeleteLocalDestination (localDestination);
 	}
 
-	void SAMSession::CloseStreams ()
+	void SAMSession::Close ()
 	{
 		for(const auto & itr : m_Bridge.ListSockets(Name))
 		{
 			itr->Terminate(nullptr);
 		}
+		localDestination->StopAcceptingStreams ();
+		localDestination->Stop ();
+		i2p::client::context.DeleteLocalDestination(localDestination);
 	}
 
 	SAMBridge::SAMBridge (const std::string& address, int port):
@@ -1080,9 +1082,7 @@ namespace client
 		}
 		if (session)
 		{
-			session->localDestination->Release ();
-			session->localDestination->StopAcceptingStreams ();
-			session->CloseStreams ();
+			session->Close();
 		}
 	}
 

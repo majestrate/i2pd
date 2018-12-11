@@ -686,7 +686,9 @@ namespace stream
 			}
 		}
 		if (!m_CurrentOutboundTunnel || !m_CurrentOutboundTunnel->IsEstablished ())
+		{
 			m_CurrentOutboundTunnel = m_LocalDestination.GetOwner ()->GetTunnelPool ()->GetNewOutboundTunnel (m_CurrentOutboundTunnel);
+		}
 		if (!m_CurrentOutboundTunnel)
 		{
 			LogPrint (eLogError, "Streaming: No outbound tunnels in the pool, sSID=", m_SendStreamID);

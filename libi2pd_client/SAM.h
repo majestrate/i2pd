@@ -158,7 +158,7 @@ namespace client
 		SAMSession (SAMBridge & parent, const std::string & name, std::shared_ptr<ClientDestination> dest);
 		~SAMSession ();
 
-		void CloseStreams ();
+		void Close ();
 	};
 
 	class SAMBridge
